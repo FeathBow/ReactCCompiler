@@ -1,0 +1,68 @@
+{
+    "name": "reactccompiler",
+    "version": "1.0.0",
+    "description": "ReactCCompiler is a C-like compiler implemented in a high-level programming language, featuring lexical analysis, syntax analysis, intermediate code generation, and target code generation, with support for arrays and function call compilation.",
+    "main": "index.js",
+    "scripts": {
+        "lint": "npm run lint-eslint && npm run lint-stylelint",
+        "lint-eslint": "eslint -c .eslintrc.js --ext .ts,.tsx,.js src",
+        "lint-stylelint": "stylelint --config .stylelintrc.js src/**/*.{less,css,scss}",
+        "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
+        "prepare": "husky install"
+    },
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/FeathBow/ReactCCompiler.git"
+    },
+    "keywords": [],
+    "author": {
+        "name": "FeathBow",
+        "url": "https://github.com/FeathBow"
+    },
+    "license": "MPL-2.0",
+    "bugs": {
+        "url": "https://github.com/FeathBow/ReactCCompiler/issues"
+    },
+    "homepage": "https://github.com/FeathBow/ReactCCompiler#readme",
+    "devDependencies": {
+        "@commitlint/cli": "^19.2.1",
+        "@commitlint/config-conventional": "^19.1.0",
+        "@typescript-eslint/eslint-plugin": "^6.21.0",
+        "conventional-changelog-cli": "^4.1.0",
+        "eslint": "^8.57.0",
+        "eslint-config-prettier": "^9.1.0",
+        "eslint-config-standard-with-typescript": "^43.0.1",
+        "eslint-plugin-eslint-comments": "^3.2.0",
+        "eslint-plugin-import": "^2.29.1",
+        "eslint-plugin-n": "^16.6.2",
+        "eslint-plugin-promise": "^6.1.1",
+        "eslint-plugin-react": "^7.34.1",
+        "eslint-plugin-unicorn": "^51.0.1",
+        "husky": "^8.0.0",
+        "lint-staged": "^15.2.2",
+        "prettier": "^3.2.5",
+        "stylelint": "^16.2.1",
+        "stylelint-config-rational-order": "^0.1.2",
+        "stylelint-config-standard": "^36.0.0",
+        "stylelint-declaration-block-no-ignored-properties": "^2.8.0",
+        "stylelint-order": "^6.0.4",
+        "typescript": "^5.4.3"
+    },
+    "husky": {
+        "hooks": {
+            "pre-commit": "lint-staged",
+            "commit-msg": "commitlint --config commitlint.config.js -E HUSKY_GIT_PARAMS"
+        }
+    },
+    "lint-staged": {
+        "*.{ts,tsx,js}": [
+            "eslint --config .eslintrc.js"
+        ],
+        "*.{css,less,scss}": [
+            "stylelint --config .stylelintrc.js"
+        ],
+        "*.{ts,tsx,js,json,html,yml,css,less,scss,md}": [
+            "prettier --write"
+        ]
+    }
+}
