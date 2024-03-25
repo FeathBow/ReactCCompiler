@@ -1,0 +1,36 @@
+{
+    "compilerOptions": {
+        // base options
+        "target": "es2016",
+        "module": "ESNext",
+        "lib": ["dom", "dom.iterable", "esnext"], // list of library files to be included in the compilation
+        "allowJs": true, // allow JavaScript files to be compiled
+        "jsx": "react", // specify JSX code generation: "react" | "react-jsx" | "react-jsxdev"
+        "isolatedModules": true,
+        "strict": true, // enable all strict type-checking options
+
+        // strict type-checking options
+        "moduleResolution": "node", // specify module resolution strategy: "node" | "classic"
+        "esModuleInterop": true, // emit additional JavaScript to ease support for importing CommonJS modules
+        "resolveJsonModule": true, // include modules imported with .json extension
+        "baseUrl": "./", // root directory to resolve non-relative module names
+        "paths": {
+            //  "Src/*": ["src/*"]  =>  import { ... } from "Src/..."
+            "Src/*": ["src/*"],
+            "Components/*": ["src/components/*"],
+            "Utils/*": ["src/utils/*"]
+        },
+
+        // Additional checks
+        "experimentalDecorators": true, // enable experimental support for TC39 stage 2 draft decorators
+        "emitDecoratorMetadata": true, // emit design-type metadata for decorated declarations in source files
+
+        // advanced options
+        "forceConsistentCasingInFileNames": true, // ensure that casing is correct in imports
+        "skipLibCheck": true, // skip type checking of declaration files
+        "allowSyntheticDefaultImports": true, // allow default imports from modules with no default export
+        "noEmit": true // do not emit output files
+    },
+    "include": [".eslintrc.js"],
+    "exclude": ["node_modules"]
+}

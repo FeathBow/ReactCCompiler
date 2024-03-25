@@ -15,7 +15,6 @@ module.exports = {
         'plugin:eslint-comments/recommended',
         'plugin:unicorn/recommended',
         'prettier',
-        
     ],
     parser: '@typescript-eslint/parser',
     parserOptions: {
@@ -34,8 +33,10 @@ module.exports = {
             node: {
                 extensions: ['.tsx', '.ts', '.js', '.json'],
             },
+            typescript: {},
         },
     },
+
     overrides: [
         {
             files: ['**/*.d.ts'],
