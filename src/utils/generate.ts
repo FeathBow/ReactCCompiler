@@ -2,6 +2,7 @@ import { type ASTNode, ASTNodeKind, type LocalVariable, type FunctionNode } from
 import { logMessage } from './logger';
 
 let depth: number = 0;
+const generated: string[] = [];
 
 function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
@@ -10,6 +11,7 @@ function generateExpression(node: ASTNode): void {
                 logMessage('error', 'Invalid number', { node, position: generateExpression });
                 throw new Error('invalid number');
             }
+            generated.push(`  mov $${node.numberValue}, %rax`);
             console.log(`  mov $${node.numberValue}, %rax`);
             return;
         }
@@ -19,11 +21,13 @@ function generateExpression(node: ASTNode): void {
                 throw new Error('invalid negation');
             }
             generateExpression(node.leftNode);
+            generated.push(`  neg %rax`);
             console.log(`  neg %rax`);
             return;
         }
         case ASTNodeKind.Variable: {
             generateAddress(node);
+            generated.push(`  mov (%rax), %rax`);
             console.log(`  mov (%rax), %rax`);
             return;
         }
@@ -36,6 +40,7 @@ function generateExpression(node: ASTNode): void {
             pushToStack();
             generateExpression(node.rightNode);
             popFromStack('%rdi');
+            generated.push(`  mov %rax, (%rdi)`);
             console.log(`  mov %rax, (%rdi)`);
             return;
         }
@@ -52,18 +57,22 @@ function generateExpression(node: ASTNode): void {
 
     switch (node.nodeKind) {
         case ASTNodeKind.Addition: {
+            generated.push(`  add %rdi, %rax`);
             console.log(`  add %rdi, %rax`);
             return;
         }
         case ASTNodeKind.Subtraction: {
+            generated.push(`  sub %rdi, %rax`);
             console.log(`  sub %rdi, %rax`);
             return;
         }
         case ASTNodeKind.Multiplication: {
+            generated.push(`  imul %rdi, %rax`);
             console.log(`  imul %rdi, %rax`);
             return;
         }
         case ASTNodeKind.Division: {
+            generated.push(`  cqo`, `  idiv %rdi`);
             console.log(`  cqo`);
             console.log(`  idiv %rdi`);
             return;
@@ -72,26 +81,32 @@ function generateExpression(node: ASTNode): void {
         case ASTNodeKind.Inequality:
         case ASTNodeKind.LessThan:
         case ASTNodeKind.LessThanOrEqual: {
+            generated.push(`  cmp %rdi, %rax`);
             console.log(`  cmp %rdi, %rax`);
             switch (node.nodeKind) {
                 case ASTNodeKind.Equality: {
+                    generated.push(`  sete %al`);
                     console.log(`  sete %al`);
                     break;
                 }
                 case ASTNodeKind.Inequality: {
+                    generated.push(`  setne %al`);
                     console.log(`  setne %al`);
                     break;
                 }
                 case ASTNodeKind.LessThan: {
+                    generated.push(`  setl %al`);
                     console.log(`  setl %al`);
                     break;
                 }
                 case ASTNodeKind.LessThanOrEqual: {
+                    generated.push(`  setle %al`);
                     console.log(`  setle %al`);
                     break;
                 }
                 // No default
             }
+            generated.push(`  movzb %al, %rax`);
             console.log(`  movzb %al, %rax`);
 
             return;
@@ -112,6 +127,7 @@ function generateStatement(node: ASTNode): void {
             }
 
             generateExpression(node.leftNode);
+            generated.push(`  jmp .L.return`);
             console.log(`  jmp .L.return`);
             return;
         }
@@ -152,11 +168,12 @@ export function generateCode(prog: FunctionNode): void {
 
     console.log(`  .globl main`);
     console.log(`main:`);
-
     // Prologue
     console.log(`  push %rbp`);
     console.log(`  mov %rsp, %rbp`);
     console.log(`  sub $${prog.stackSize}, %rsp`);
+
+    generated.push(`  .globl main`, `main:`, `  push %rbp`, `  mov %rsp, %rbp`, `  sub $${prog.stackSize}, %rsp`);
 
     if (prog.body === undefined) {
         logMessage('error', 'Body is undefined', { position: generateCode });
@@ -173,15 +190,18 @@ export function generateCode(prog: FunctionNode): void {
     console.log(`  mov %rbp, %rsp`);
     console.log(`  pop %rbp`);
     console.log(`  ret`);
+    generated.push(`.L.return:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
 }
 
 function pushToStack(): void {
     console.log('  push %rax');
+    generated.push('  push %rax');
     depth++;
 }
 
 function popFromStack(argument: string): void {
     console.log(`  pop ${argument}`);
+    generated.push(`  pop ${argument}`);
     depth--;
 }
 
@@ -192,8 +212,13 @@ function alignToNearest(n: number, align: number): number {
 function generateAddress(node: ASTNode): void {
     if (node.nodeKind === ASTNodeKind.Variable && node.localVar !== undefined) {
         console.log(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
+        generated.push(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         return;
     }
     logMessage('error', 'Not an lvalue', { node, position: generateAddress });
     throw new Error('not an lvalue');
+}
+
+export function getGenerated(): string[] {
+    return generated;
 }
