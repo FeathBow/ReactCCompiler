@@ -1,13 +1,13 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
-import App from './App';
+import App from './app';
 import axios from 'axios';
+
 if (module?.hot) {
     module.hot.accept();
 }
 
 // axios test using public api
-
 axios
     .get('https://jsonplaceholder.typicode.com/posts')
     .then((response) => {
@@ -17,4 +17,4 @@ axios
         console.log(error);
     });
 
-ReactDOM.render(<App name='2153302' age={20} />, document.querySelector('#root'));
+ReactDOM.render(<App />, document.querySelector('#root'));

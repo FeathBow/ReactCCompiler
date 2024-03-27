@@ -31,6 +31,6 @@
         "allowSyntheticDefaultImports": true, // allow default imports from modules with no default export
         "noEmit": true // do not emit output files
     },
-    "include": [".eslintrc.js"],
+    "include": [".eslintrc.js", "src/**/*", "scripts/**/*"],
     "exclude": ["node_modules"]
 }

@@ -80,6 +80,7 @@
         "stylelint-config-standard": "^36.0.0",
         "stylelint-declaration-block-no-ignored-properties": "^2.8.0",
         "stylelint-order": "^6.0.4",
+        "ts-node": "^10.9.2",
         "typescript": "^5.4.3",
         "url-loader": "^4.1.1",
         "webpack": "^5.91.0",
@@ -116,6 +117,8 @@
         "@babel/runtime-corejs3": "^7.24.1",
         "axios": "^1.6.8",
         "react": "^18.2.0",
-        "react-dom": "^18.2.0"
+        "react-dom": "^18.2.0",
+        "winston": "^3.13.0",
+        "winston-daily-rotate-file": "^5.0.0"
     }
 }
