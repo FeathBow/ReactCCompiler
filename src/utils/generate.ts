@@ -2,7 +2,7 @@ import { type ASTNode, ASTNodeKind, type LocalVariable, type FunctionNode } from
 import { logMessage } from './logger';
 
 let depth: number = 0;
-const generated: string[] = [];
+let generated: string[] = [];
 
 function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
@@ -140,6 +140,19 @@ function generateStatement(node: ASTNode): void {
             generateExpression(node.leftNode);
             return;
         }
+        case ASTNodeKind.Block: {
+            if (node.blockBody === undefined) {
+                logMessage('error', 'Invalid block', { node, position: generateStatement });
+                throw new Error('invalid block');
+            }
+
+            let blockNode: ASTNode | undefined = node.blockBody;
+            while (blockNode !== undefined) {
+                generateStatement(blockNode);
+                blockNode = blockNode.nextNode;
+            }
+            return;
+        }
     }
     logMessage('error', 'Invalid statement', { node, position: generateStatement });
     throw new Error('invalid statement');
@@ -164,6 +177,9 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
 }
 
 export function generateCode(prog: FunctionNode): void {
+    depth = 0;
+    generated = [];
+
     assignLocalVariableOffsets(prog);
 
     console.log(`  .globl main`);
@@ -179,12 +195,14 @@ export function generateCode(prog: FunctionNode): void {
         logMessage('error', 'Body is undefined', { position: generateCode });
         throw new Error('body is undefined');
     }
-    let node: ASTNode | undefined = prog.body;
-    while (node !== undefined) {
-        generateStatement(node);
-        console.assert(depth === 0);
-        node = node.nextNode;
-    }
+    // let node: ASTNode | undefined = prog.body;
+    // while (node !== undefined) {
+    //     generateStatement(node);
+    //     console.assert(depth === 0);
+    //     node = node.nextNode;
+    // }
+    generateStatement(prog.body);
+    console.assert(depth === 0);
 
     console.log(`.L.return:`);
     console.log(`  mov %rbp, %rsp`);

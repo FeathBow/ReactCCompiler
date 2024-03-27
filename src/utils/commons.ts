@@ -42,6 +42,7 @@ export enum ASTNodeKind {
     ExpressionStatement, // 表达式语句
     Variable, // 变量
     Number, // 数字
+    Block, // 语句块
 }
 
 export class ASTNode {
@@ -51,4 +52,5 @@ export class ASTNode {
     rightNode?: ASTNode;
     localVar?: LocalVariable;
     numberValue?: number;
+    blockBody?: ASTNode;
 }

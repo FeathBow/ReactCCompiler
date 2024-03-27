@@ -71,26 +71,54 @@ function newLocalVariable(name: string): LocalVariable {
 // statement ::= expressionStatement | returnStatement(return expression ';')
 // function statement(rest: Token[], token: Token): ASTNode {
 function statement(token: Token): ASTNode {
-    if (token.location !== undefined && token.location !== '' && token.location.slice(0, 6) === 'return') {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: statement });
-            throw new Error('Unexpected end of input');
+    if (token.location !== undefined && token.location !== '') {
+        if (token.location.slice(0, 6) === 'return') {
+            if (token.next === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            // const node = newUnary(ASTNodeKind.Return, expression(rest, token.next));
+            const node = newUnary(ASTNodeKind.Return, expression(token.next));
+            token = nowToken;
+            const nextToken = skipToken(token, ';');
+            if (nextToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            nowToken = nextToken;
+            // rest[0] = nextToken;
+            return node;
+        } else if (token.location.slice(0, 1) === '{') {
+            if (token.next === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            // const node =
+            // nowToken = token.next;
+            return blockStatement(token.next);
         }
-        // const node = newUnary(ASTNodeKind.Return, expression(rest, token.next));
-        const node = newUnary(ASTNodeKind.Return, expression(token.next));
-        token = nowToken;
-        const nextToken = skipToken(token, ';');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: statement });
-            throw new Error('Unexpected end of input');
-        }
-        nowToken = nextToken;
-        // rest[0] = nextToken;
-        return node;
     }
 
     // return expressionStatement(rest, token);
     return expressionStatement(token);
+}
+
+function blockStatement(token: Token): ASTNode {
+    const head: ASTNode = { nodeKind: ASTNodeKind.Return };
+    let current: ASTNode = head;
+    // nowToken = token;
+    while (!isEqual(token, '}')) {
+        current = current.nextNode = statement(token);
+        token = nowToken;
+    }
+    const node = newNode(ASTNodeKind.Block);
+    node.blockBody = head.nextNode;
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: blockStatement });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = token.next;
+    return node;
 }
 
 // expressionStatement ::= expression ';'
@@ -386,21 +414,20 @@ function primary(token: Token): ASTNode {
 
 // program ::= statement*
 export function parse(tokens: Token[]): FunctionNode {
-    const head: ASTNode = { nodeKind: ASTNodeKind.Return };
-    let current: ASTNode = head;
-
-    nowToken = tokens[0];
-
-    // while (tokens[0].kind !== TokenType.EndOfFile) {
-    //     current = current.nextNode = statement(tokens, tokens[0]);
+    locals = undefined;
+    const nextToken = skipToken(tokens[0], '{');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token: tokens[0], position: parse });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = nextToken;
+    // while (nowToken.kind !== TokenType.EndOfFile) {
+    //     current = current.nextNode = statement(nowToken);
     // }
 
-    while (nowToken.kind !== TokenType.EndOfFile) {
-        current = current.nextNode = statement(nowToken);
-    }
-
     const program = new FunctionNode();
-    program.body = head.nextNode;
+    // program.body = head.nextNode;
+    program.body = blockStatement(nowToken);
     program.locals = locals;
     return program;
 }

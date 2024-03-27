@@ -37,11 +37,11 @@ function App(): JSX.Element {
     );
 }
 
-interface OutputProperties {
+interface OutputProps {
     output: string[];
 }
 
-function OutputComponent({ output }: OutputProperties): JSX.Element {
+function OutputComponent({ output }: OutputProps): JSX.Element {
     return (
         <div>
             {output.map((line, index) => (
