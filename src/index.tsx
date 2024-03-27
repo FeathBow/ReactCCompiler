@@ -2,7 +2,6 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import App from './app';
 import axios from 'axios';
-
 if (module?.hot) {
     module.hot.accept();
 }

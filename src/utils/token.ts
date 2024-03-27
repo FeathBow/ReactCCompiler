@@ -1,38 +1,24 @@
 import { TokenType, Token } from './commons';
-
-// 错误处理函数
-function reportError(format: string, ...arguments_: unknown[]): never {
-    console.error(format, ...arguments_);
-    throw new Error('An error occurred');
-}
-
-function reportErrorAt(location: string, format: string, ...arguments_: unknown[]): never {
-    const pos = location.length;
-    console.error(location);
-    console.error(' '.repeat(pos) + '^ ');
-    console.error(format, ...arguments_);
-    throw new Error('An error occurred');
-}
-
-function reportErrorForToken(token: Token, format: string, ...arguments_: unknown[]): never {
-    return token.location !== undefined && token.location !== null
-        ? reportErrorAt(token.location, format, ...arguments_)
-        : reportError('Token location is undefined');
-}
+import { logMessage } from './logger';
 
 // 其他函数
 export function isEqual(token: Token, operator: string): boolean {
     if (token.location !== undefined && token.location !== null && token.length !== undefined) {
         return token.location.slice(0, token.length) === operator && operator.length === token.length;
     } else {
-        reportError('Token location or length is undefined');
+        logMessage('error', 'Token location or length is undefined', { token, operator, position: isEqual });
         return false;
     }
 }
 
 export function skipToken(token: Token, operator: string): Token | undefined {
     if (!isEqual(token, operator)) {
-        reportErrorForToken(token, `expected '${operator}'`);
+        const location = token.location === undefined ? 'undefined' : token.location.slice(0, token.length);
+        logMessage('error', `Unexpected token: ${location}. Expected: ${operator}`, {
+            token: location,
+            operator,
+            position: skipToken,
+        });
     }
     return token.next;
 }
@@ -123,7 +109,7 @@ export function tokenize(p: string): Token[] {
             p = p.slice(current.length);
             continue;
         }
-
+        logMessage('error', `Invalid token at ${p}`, { position: tokenize });
         throw new Error(`Invalid token at ${p}`);
     }
 

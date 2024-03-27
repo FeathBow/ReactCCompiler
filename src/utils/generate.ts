@@ -1,4 +1,5 @@
 import { type ASTNode, ASTNodeKind, type LocalVariable, type FunctionNode } from './commons';
+import { logMessage } from './logger';
 
 let depth: number = 0;
 
@@ -6,6 +7,7 @@ function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Number: {
             if (node.numberValue === undefined) {
+                logMessage('error', 'Invalid number', { node, position: generateExpression });
                 throw new Error('invalid number');
             }
             console.log(`  mov $${node.numberValue}, %rax`);
@@ -13,6 +15,7 @@ function generateExpression(node: ASTNode): void {
         }
         case ASTNodeKind.Negation: {
             if (node.leftNode === undefined) {
+                logMessage('error', 'Invalid negation', { node, position: generateExpression });
                 throw new Error('invalid negation');
             }
             generateExpression(node.leftNode);
@@ -26,6 +29,7 @@ function generateExpression(node: ASTNode): void {
         }
         case ASTNodeKind.Assignment: {
             if (node.leftNode === undefined || node.rightNode === undefined) {
+                logMessage('error', 'Invalid assignment', { node, position: generateExpression });
                 throw new Error('invalid assignment');
             }
             generateAddress(node.leftNode);
@@ -38,6 +42,7 @@ function generateExpression(node: ASTNode): void {
         // TODO: Add other cases
     }
     if (node.leftNode === undefined || node.rightNode === undefined) {
+        logMessage('error', 'Invalid binary expression', { node, position: generateExpression });
         throw new Error('invalid binary expression');
     }
     generateExpression(node.rightNode);
@@ -93,7 +98,7 @@ function generateExpression(node: ASTNode): void {
         }
         // No default
     }
-
+    logMessage('error', 'Invalid expression', { node, position: generateExpression });
     throw new Error('invalid expression');
     // TODO: Add other cases
 }
@@ -102,6 +107,7 @@ function generateStatement(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Return: {
             if (node.leftNode === undefined) {
+                logMessage('error', 'Invalid return', { node, position: generateStatement });
                 throw new Error('invalid return');
             }
 
@@ -111,6 +117,7 @@ function generateStatement(node: ASTNode): void {
         }
         case ASTNodeKind.ExpressionStatement: {
             if (node.leftNode === undefined) {
+                logMessage('error', 'Invalid expression statement', { node, position: generateStatement });
                 throw new Error('invalid expression statement');
             }
 
@@ -118,15 +125,16 @@ function generateStatement(node: ASTNode): void {
             return;
         }
     }
-
+    logMessage('error', 'Invalid statement', { node, position: generateStatement });
     throw new Error('invalid statement');
 }
 
 function assignLocalVariableOffsets(prog: FunctionNode): void {
     let offset = 0;
-    if (prog.locals === undefined) {
-        throw new Error('locals is undefined');
-    }
+    // if (prog.locals === undefined) {
+    //     logMessage('error', 'Locals is undefined', { position: assignLocalVariableOffsets });
+    //     throw new Error('locals is undefined');
+    // }
 
     let localVariable: LocalVariable | undefined = prog.locals;
     while (localVariable !== undefined) {
@@ -151,6 +159,7 @@ export function generateCode(prog: FunctionNode): void {
     console.log(`  sub $${prog.stackSize}, %rsp`);
 
     if (prog.body === undefined) {
+        logMessage('error', 'Body is undefined', { position: generateCode });
         throw new Error('body is undefined');
     }
     let node: ASTNode | undefined = prog.body;
@@ -185,6 +194,6 @@ function generateAddress(node: ASTNode): void {
         console.log(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         return;
     }
-
+    logMessage('error', 'Not an lvalue', { node, position: generateAddress });
     throw new Error('not an lvalue');
 }

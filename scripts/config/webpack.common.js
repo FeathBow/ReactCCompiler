@@ -1,3 +1,5 @@
+/* eslint-disable unicorn/prefer-module */
+/* eslint-disable @typescript-eslint/no-var-requires */
 const { resolve } = require('node:path');
 const { isDev, PROJECT_PATH } = require('../constant');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
@@ -193,3 +195,5 @@ module.exports = {
         'react-dom': 'ReactDOM',
     },
 };
+/* eslint-enable unicorn/prefer-module */
+/* eslint-enable @typescript-eslint/no-var-requires */
