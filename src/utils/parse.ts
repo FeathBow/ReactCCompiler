@@ -8,6 +8,8 @@ import {
     addType,
     isInteger,
     intTypeDefinition,
+    type TypeDefinition,
+    pointerTo,
 } from './commons';
 import { logMessage } from './logger';
 import { skipToken, isEqual } from './token';
@@ -15,6 +17,30 @@ import { skipToken, isEqual } from './token';
 let locals: LocalVariable | undefined;
 
 let nowToken: Token;
+
+/**
+ * 消费一个令牌，如果令牌的值与给定的字符串匹配。
+ * @param token 当前的令牌。
+ * @param tokenName 要匹配的字符串。
+ * @returns 如果令牌的值与给定的字符串匹配，则返回true并将nowToken设置为下一个令牌，否则返回false并将nowToken设置为当前令牌。
+ *
+ * Consumes a token if the token's value matches the given string.
+ * @param token The current token.
+ * @param tokenName The string to match.
+ * @returns True if the token's value matches the given string and sets nowToken to the next token, false otherwise and sets nowToken to the current token.
+ */
+function consumeToken(token: Token, tokenName: string): boolean {
+    if (isEqual(token, tokenName)) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: consumeToken });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = token.next;
+        return true;
+    }
+    nowToken = token;
+    return false;
+}
 
 /**
  * 在当前的局部变量列表中查找一个变量。
@@ -131,17 +157,20 @@ function newVariableNode(variableNode: LocalVariable): ASTNode {
 /**
  * 创建一个新的局部变量。
  * @param name 变量名。
+ * @param type 变量类型。
  * @returns 新创建的局部变量。
  *
  * Create a new local variable.
  * @param name The name of the variable.
+ * @param type The type of the variable.
  * @returns The newly created local variable.
  */
-function newLocalVariable(name: string): LocalVariable {
+function newLocalVariable(name: string, type : TypeDefinition): LocalVariable {
     const localVariable: LocalVariable = {
         varName: name,
         nextVar: locals,
         offsetFromRBP: 0,
+        varType: type,
     };
     locals = localVariable;
     return localVariable;
@@ -290,6 +319,137 @@ function statement(token: Token): ASTNode {
 }
 
 /**
+ * 获取标识符。
+ * @param token 代表标识符的令牌。
+ * @returns 标识符的字符串表示。
+ *
+ * Get an identifier.
+ * @param token The token representing the identifier.
+ * @returns The string representation of the identifier.
+ */
+function getIdentifier(token: Token): string {
+    if (token.kind !== TokenType.Identifier) {
+        logMessage('error', 'Expected an identifier', { token, position: getIdentifier });
+        throw new Error('Expected an identifier');
+    }
+    if (token.location === undefined || token.length === undefined) {
+        logMessage('error', 'Token location or length is undefined', { token, position: getIdentifier });
+        throw new Error('Token location or length is undefined');
+    }
+    return token.location.slice(0, Math.max(0, token.length));
+}
+
+/**
+ * 声明类型。
+ * @param token 代表类型的令牌。
+ * @returns 类型定义。
+ *
+ * Declare a type.
+ * @param token The token representing the type.
+ * @returns The type definition.
+ */
+export function declareType(token: Token): TypeDefinition {
+    const nextToken = skipToken(token, 'int');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: declareType });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = nextToken;
+    return intTypeDefinition;
+}
+
+/**
+ * 声明。
+ * @param token 代表声明的令牌。
+ * @param type 类型定义。
+ * @returns 类型定义。
+ *
+ * Declare.
+ * @param token The token representing the declaration.
+ * @param type The type definition.
+ * @returns The type definition.
+ */
+export function declare(token: Token, type: TypeDefinition): TypeDefinition {
+    while (consumeToken(token, '*')) {
+        token = nowToken;
+        type = pointerTo(type);
+    }
+
+    if (token.kind !== TokenType.Identifier) {
+        logMessage('error', 'Expected an identifier', { token, position: declare });
+        throw new Error('Expected an identifier');
+    }
+
+    type.tokens = token;
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: declare });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = token.next;
+    return type;
+}
+
+/**
+ * 解析声明。
+ * @param token 代表声明的令牌。
+ * @returns 代表声明的抽象语法树节点。
+ *
+ * Parse a declaration.
+ * @param token The token representing the declaration.
+ * @returns The abstract syntax tree node representing the declaration.
+ */
+function parseDeclaration(token: Token): ASTNode {
+    const baseType = declareType(token);
+    token = nowToken;
+
+    const head: ASTNode = { nodeKind: ASTNodeKind.Return };
+    let current: ASTNode = head;
+    let parseCount = 0;
+
+    while (!isEqual(token, ';')) {
+        if (parseCount++ > 0) {
+            const nextToken = skipToken(token, ',');
+            if (nextToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
+                throw new Error('Unexpected end of input');
+            }
+            token = nextToken;
+        }
+
+        const type = declare(token, baseType);
+        token = nowToken;
+        if (type.tokens === undefined) {
+            logMessage('error', 'Token is undefined', { token, position: parseDeclaration });
+            throw new Error('Token is undefined');
+        }
+        const variable = newLocalVariable(getIdentifier(type.tokens), type);
+
+        if (!isEqual(token, '=')) {
+            continue;
+        }
+
+        const leftNode = newVariableNode(variable);
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
+            throw new Error('Unexpected end of input');
+        }
+        const rightNode = assign(token.next);
+        token = nowToken;
+        const node = newBinary(ASTNodeKind.Assignment, leftNode, rightNode);
+        current = current.nextNode = newUnary(ASTNodeKind.ExpressionStatement, node);
+    }
+
+    const node = newNode(ASTNodeKind.Block);
+    node.blockBody = head.nextNode;
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = token.next;
+    return node;
+}
+
+/**
  * 解析一个块语句。
  * 产生式为：块语句 ::= '{' 语句* '}'
  * @param token 代表块语句的令牌。
@@ -305,7 +465,7 @@ function blockStatement(token: Token): ASTNode {
     let current: ASTNode = head;
     // nowToken = token;
     while (!isEqual(token, '}')) {
-        current = current.nextNode = statement(token);
+        current = current.nextNode = isEqual(token, 'int') ? parseDeclaration(token) : statement(token);
         token = nowToken;
         addType(current);
     }
@@ -699,10 +859,10 @@ function primary(token: Token): ASTNode {
     }
 
     if (token.kind === TokenType.Identifier) {
-        let variableNode = findVariable(token);
+        const variableNode = findVariable(token);
         if (variableNode === undefined && token.location !== undefined && token.length !== undefined) {
-            const tokenText = token.location.slice(0, Math.max(0, token.length));
-            variableNode = newLocalVariable(tokenText);
+            logMessage('error', 'Variable not defined', { token, position: primary });
+            throw new Error('Variable not defined');
         }
         if (token.next !== undefined) {
             nowToken = token.next;

@@ -30,6 +30,7 @@ export class LocalVariable {
     nextVar?: LocalVariable;
     varName: string = ''; // 变量名
     offsetFromRBP: number = 0; // RBP的偏移量
+    varType?: TypeDefinition; // 变量类型
 }
 
 /**
@@ -102,6 +103,7 @@ export enum Keywords {
     Else = 'else',
     For = 'for',
     While = 'while',
+    Int = 'int',
 }
 
 /**
@@ -120,10 +122,11 @@ export enum ASTNodeType {
 export class TypeDefinition {
     type?: ASTNodeType;
     ptr?: TypeDefinition;
-
-    constructor(type: ASTNodeType, ptr?: TypeDefinition) {
+    tokens?: Token;
+    constructor(type: ASTNodeType, ptr?: TypeDefinition, tokens?: Token) {
         this.type = type;
         this.ptr = ptr;
+        this.tokens = tokens;
     }
 }
 
@@ -199,9 +202,12 @@ export function addType(node: ASTNode | undefined): void {
         case ASTNodeKind.Inequality:
         case ASTNodeKind.LessThan:
         case ASTNodeKind.LessThanOrEqual:
-        case ASTNodeKind.Variable:
         case ASTNodeKind.Number: {
             node.typeDef = intTypeDefinition;
+            return;
+        }
+        case ASTNodeKind.Variable: {
+            node.typeDef = node.localVar?.varType;
             return;
         }
         case ASTNodeKind.AddressOf: {
@@ -211,8 +217,10 @@ export function addType(node: ASTNode | undefined): void {
             return;
         }
         case ASTNodeKind.Dereference: {
-            node.typeDef =
-                node.leftNode?.typeDef?.type === ASTNodeType.Pointer ? node.leftNode.typeDef.ptr : intTypeDefinition;
+            if (node.leftNode?.typeDef?.type !== ASTNodeType.Pointer) {
+                throw new Error('Invalid pointer dereference');
+            }
+            node.typeDef = node.leftNode.typeDef.ptr;
         }
     }
 }
