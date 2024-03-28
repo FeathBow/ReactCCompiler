@@ -37,6 +37,7 @@
         "out": "docs",
         "exclude": ["node_modules"],
         "entryPoints": ["src/utils"],
+        "name": "ReactCComplier",
         //"plugin": ["typedoc-plugin-markdown"],
         "hideGenerator": true,
         "plugin": ["typedoc-material-theme"],

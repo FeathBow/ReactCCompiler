@@ -97,4 +97,5 @@ export enum Keywords {
     If = 'if',
     Else = 'else',
     For = 'for',
+    While = 'while',
 }

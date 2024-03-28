@@ -144,6 +144,7 @@ function newLocalVariable(name: string): LocalVariable {
  * - 块语句
  * - if语句('if' '(' 表达式 ')' 语句 ('else' 语句)?)
  * - for语句('for' '(' 表达式? ';' 表达式? ';' 表达式? ')' 语句)
+ * - while语句('while' '(' 表达式 ')' 语句)
  *
  * @param token 代表语句的令牌。
  * @returns 代表语句的抽象语法树节点。
@@ -153,6 +154,8 @@ function newLocalVariable(name: string): LocalVariable {
  * - Return statement ('return' expression ';')
  * - Block statement
  * - If statement ('if' '(' expression ')' statement ('else' statement)?)
+ * - For statement ('for' '(' expression? ';' expression? ';' expression? ')' statement)
+ * - While statement ('while' '(' expression ')' statement)
  *
  * @param token The token representing the statement.
  * @returns The abstract syntax tree node representing the statement.
@@ -161,33 +164,33 @@ function statement(token: Token): ASTNode {
     if (token.location !== undefined && token.location !== '') {
         if (token.location.slice(0, 6) === 'return') {
             if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'return' });
                 throw new Error('Unexpected end of input');
             }
             const node = newUnary(ASTNodeKind.Return, expression(token.next));
             token = nowToken;
             const nextToken = skipToken(token, ';');
             if (nextToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'return' });
                 throw new Error('Unexpected end of input');
             }
             nowToken = nextToken;
             return node;
         } else if (token.location.slice(0, 1) === '{') {
             if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'block' });
                 throw new Error('Unexpected end of input');
             }
             return blockStatement(token.next);
         } else if (token.location.slice(0, 2) === 'if') {
             const node = newNode(ASTNodeKind.If);
             if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
                 throw new Error('Unexpected end of input');
             }
             const trueToken = skipToken(token.next, ';');
             if (trueToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
                 throw new Error('Unexpected end of input');
             }
             node.condition = expression(trueToken);
@@ -195,7 +198,7 @@ function statement(token: Token): ASTNode {
 
             const elseToken = skipToken(token, ')');
             if (elseToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
                 throw new Error('Unexpected end of input');
             }
             node.trueBody = statement(elseToken);
@@ -203,7 +206,7 @@ function statement(token: Token): ASTNode {
 
             if (isEqual(token, 'else')) {
                 if (token.next === undefined) {
-                    logMessage('error', 'Unexpected end of input', { token, position: statement });
+                    logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'else' });
                     throw new Error('Unexpected end of input');
                 }
 
@@ -215,12 +218,12 @@ function statement(token: Token): ASTNode {
         } else if (token.location.slice(0, 3) === 'for') {
             const node = newNode(ASTNodeKind.For);
             if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
                 throw new Error('Unexpected end of input');
             }
             const initToken = skipToken(token.next, '(');
             if (initToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
                 throw new Error('Unexpected end of input');
             }
             node.initBody = expressionStatement(initToken);
@@ -233,7 +236,7 @@ function statement(token: Token): ASTNode {
 
             let conditionToken = skipToken(token, ';');
             if (conditionToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
                 throw new Error('Unexpected end of input');
             }
 
@@ -245,7 +248,28 @@ function statement(token: Token): ASTNode {
 
             const outToken = skipToken(conditionToken, ')');
             if (outToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { conditionToken, position: statement });
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
+                throw new Error('Unexpected end of input');
+            }
+            node.trueBody = statement(outToken);
+            return node;
+        } else if (token.location.slice(0, 5) === 'while') {
+            const node = newNode(ASTNodeKind.For);
+            if (token.next === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
+                throw new Error('Unexpected end of input');
+            }
+            const conditionToken = skipToken(token.next, '(');
+            if (conditionToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
+                throw new Error('Unexpected end of input');
+            }
+            node.condition = expression(conditionToken);
+            token = nowToken;
+
+            const outToken = skipToken(token, ')');
+            if (outToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
                 throw new Error('Unexpected end of input');
             }
             node.trueBody = statement(outToken);
@@ -296,7 +320,6 @@ function blockStatement(token: Token): ASTNode {
  * @returns The abstract syntax tree node representing the expression statement.
  */
 function expressionStatement(token: Token): ASTNode {
-    // const node = newUnary(ASTNodeKind.ExpressionStatement, expression(rest, token));4
     let node: ASTNode;
     if (isEqual(token, ';')) {
         node = newNode(ASTNodeKind.Block);
@@ -310,7 +333,6 @@ function expressionStatement(token: Token): ASTNode {
         throw new Error('Unexpected end of input');
     }
     nowToken = nextToken;
-    // rest[0] = nextToken;
     return node;
 }
 
@@ -342,7 +364,6 @@ function expression(token: Token): ASTNode {
  * @returns The abstract syntax tree node representing the assignment expression.
  */
 function assign(token: Token): ASTNode {
-    // let node = equality(rest, token);
     let node = equality(token);
     token = nowToken;
 
@@ -351,7 +372,6 @@ function assign(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: assign });
             throw new Error('Unexpected end of input');
         }
-        // node = newBinary(ASTNodeKind.Assignment, node, assign(rest, token.next));
         node = newBinary(ASTNodeKind.Assignment, node, assign(token.next));
         token = nowToken;
     }
@@ -359,7 +379,6 @@ function assign(token: Token): ASTNode {
         logMessage('error', 'Unexpected end of input', { token, position: assign });
         throw new Error('Unexpected end of input');
     }
-    // rest[0] = token;
     nowToken = token;
     return node;
 }
@@ -376,7 +395,6 @@ function assign(token: Token): ASTNode {
  * @returns The abstract syntax tree node representing the equality.
  */
 function equality(token: Token): ASTNode {
-    // let node = relational(rest, token);
     let node = relational(token);
     token = nowToken;
     while (true) {
@@ -385,7 +403,6 @@ function equality(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: equality });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.Equality, node, relational(rest, token.next));
             node = newBinary(ASTNodeKind.Equality, node, relational(token.next));
             token = nowToken;
             continue;
@@ -396,13 +413,11 @@ function equality(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: equality });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.Negation, node, relational(rest, token.next));
             node = newBinary(ASTNodeKind.Negation, node, relational(token.next));
             token = nowToken;
             continue;
         }
         nowToken = token;
-        // rest[0] = token;
         return node;
     }
 }
@@ -419,7 +434,6 @@ function equality(token: Token): ASTNode {
  * @returns The abstract syntax tree node representing the relational expression.
  */
 function relational(token: Token): ASTNode {
-    // let node = add(rest, token);
     let node = add(token);
     token = nowToken;
 
@@ -429,7 +443,6 @@ function relational(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: relational });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.LessThan, node, add(rest, token.next));
             node = newBinary(ASTNodeKind.LessThan, node, add(token.next));
             token = nowToken;
             continue;
@@ -440,7 +453,6 @@ function relational(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: relational });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.LessThanOrEqual, node, add(rest, token.next));
             node = newBinary(ASTNodeKind.LessThanOrEqual, node, add(token.next));
             token = nowToken;
             continue;
@@ -451,7 +463,6 @@ function relational(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: relational });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.LessThan, add(rest, token.next), node);
             node = newBinary(ASTNodeKind.LessThan, add(token.next), node);
             token = nowToken;
             continue;
@@ -462,13 +473,11 @@ function relational(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: relational });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.LessThanOrEqual, add(rest, token.next), node);
             node = newBinary(ASTNodeKind.LessThanOrEqual, add(token.next), node);
             token = nowToken;
             continue;
         }
         nowToken = token;
-        // rest[0] = token;
         return node;
     }
 }
@@ -485,7 +494,6 @@ function relational(token: Token): ASTNode {
  * @returns The abstract syntax tree node representing the addition expression.
  */
 function add(token: Token): ASTNode {
-    // let node = mul(rest, token);
     let node = mul(token);
     token = nowToken;
     while (true) {
@@ -494,7 +502,6 @@ function add(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: add });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.Addition, node, mul(rest, token.next));
             node = newBinary(ASTNodeKind.Addition, node, mul(token.next));
             token = nowToken;
             continue;
@@ -505,13 +512,11 @@ function add(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: add });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.Subtraction, node, mul(rest, token.next));
             node = newBinary(ASTNodeKind.Subtraction, node, mul(token.next));
             token = nowToken;
             continue;
         }
         nowToken = token;
-        // rest[0] = token;
         return node;
     }
 }
@@ -528,7 +533,6 @@ function add(token: Token): ASTNode {
  * @returns The abstract syntax tree node representing the multiplication expression.
  */
 function mul(token: Token): ASTNode {
-    // let node = unary(rest, token);
     let node = unary(token);
     token = nowToken;
     while (true) {
@@ -537,7 +541,6 @@ function mul(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: mul });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.Multiplication, node, unary(rest, token.next));
             node = newBinary(ASTNodeKind.Multiplication, node, unary(token.next));
             token = nowToken;
             continue;
@@ -548,13 +551,11 @@ function mul(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: mul });
                 throw new Error('Unexpected end of input');
             }
-            // node = newBinary(ASTNodeKind.Division, node, unary(rest, token.next));
             node = newBinary(ASTNodeKind.Division, node, unary(token.next));
             token = nowToken;
             continue;
         }
         nowToken = token;
-        // rest[0] = token;
         return node;
     }
 }
@@ -576,7 +577,6 @@ function unary(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: unary });
             throw new Error('Unexpected end of input');
         }
-        // return unary(rest, token.next);
         return unary(token.next);
     }
 
@@ -585,11 +585,9 @@ function unary(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: unary });
             throw new Error('Unexpected end of input');
         }
-        // return newUnary(ASTNodeKind.Negation, unary(rest, token.next));
         return newUnary(ASTNodeKind.Negation, unary(token.next));
     }
 
-    // return primary(rest, token);
     return primary(token);
 }
 
@@ -610,7 +608,6 @@ function primary(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: primary });
             throw new Error('Unexpected end of input');
         }
-        // const node = expression(rest, token.next);
         const node = expression(token.next);
         token = nowToken;
         const nextToken = skipToken(token, ')');
@@ -619,7 +616,6 @@ function primary(token: Token): ASTNode {
             throw new Error('Unexpected end of input');
         }
         nowToken = nextToken;
-        // rest[0] = nextToken;
         return node;
     }
 
@@ -629,11 +625,7 @@ function primary(token: Token): ASTNode {
             const tokenText = token.location.slice(0, Math.max(0, token.length));
             variableNode = newLocalVariable(tokenText);
         }
-        // if (token.next === undefined) {
-        //     throw new Error('Unexpected end of input');
-        // }
         if (token.next !== undefined) {
-            // rest[0] = token.next;
             nowToken = token.next;
         }
         if (variableNode === undefined) {
@@ -653,7 +645,6 @@ function primary(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: primary });
             throw new Error('Unexpected end of input');
         }
-        // rest[0] = token.next;
         nowToken = token.next;
         return node;
     }
@@ -678,12 +669,7 @@ export function parse(tokens: Token[]): FunctionNode {
         throw new Error('Unexpected end of input');
     }
     nowToken = nextToken;
-    // while (nowToken.kind !== TokenType.EndOfFile) {
-    //     current = current.nextNode = statement(nowToken);
-    // }
-
     const program = new FunctionNode();
-    // program.body = head.nextNode;
     program.body = blockStatement(nowToken);
     program.locals = locals;
     return program;

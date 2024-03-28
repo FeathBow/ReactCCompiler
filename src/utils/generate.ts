@@ -212,11 +212,13 @@ function generateStatement(node: ASTNode): void {
         }
         case ASTNodeKind.For: {
             const c = addCount();
-            if (node.initBody === undefined || node.trueBody === undefined) {
+            if (node.trueBody === undefined) {
                 logMessage('error', 'Invalid for', { node, position: generateStatement });
                 throw new Error('invalid for');
             }
-            generateStatement(node.initBody);
+            if (node.initBody !== undefined) {
+                generateStatement(node.initBody);
+            }
             console.log(`.L.begin.${c}:`);
             generated.push(`.L.begin.${c}:`);
             if (node.condition !== undefined) {
@@ -248,14 +250,9 @@ function generateStatement(node: ASTNode): void {
  */
 function assignLocalVariableOffsets(prog: FunctionNode): void {
     let offset = 0;
-    // if (prog.locals === undefined) {
-    //     logMessage('error', 'Locals is undefined', { position: assignLocalVariableOffsets });
-    //     throw new Error('locals is undefined');
-    // }
 
     let localVariable: LocalVariable | undefined = prog.locals;
     while (localVariable !== undefined) {
-        // do something with localVar
         offset += 8;
         localVariable.offsetFromRBP = -offset;
         localVariable = localVariable.nextVar;
@@ -279,7 +276,6 @@ export function generateCode(prog: FunctionNode): void {
 
     console.log(`  .globl main`);
     console.log(`main:`);
-    // Prologue
     console.log(`  push %rbp`);
     console.log(`  mov %rsp, %rbp`);
     console.log(`  sub $${prog.stackSize}, %rsp`);
@@ -290,12 +286,6 @@ export function generateCode(prog: FunctionNode): void {
         logMessage('error', 'Body is undefined', { position: generateCode });
         throw new Error('body is undefined');
     }
-    // let node: ASTNode | undefined = prog.body;
-    // while (node !== undefined) {
-    //     generateStatement(node);
-    //     console.assert(depth === 0);
-    //     node = node.nextNode;
-    // }
     generateStatement(prog.body);
     console.assert(depth === 0);
 
