@@ -1,14 +1,41 @@
 import { type ASTNode, ASTNodeKind, type LocalVariable, type FunctionNode } from './commons';
 import { logMessage } from './logger';
 
+/**
+ * 用于追踪当前的嵌套深度。
+ * Used to track the current nesting depth.
+ */
 let depth: number = 0;
+
+/**
+ * 存储生成的代码行。
+ * Stores the generated lines of code.
+ */
 let generated: string[] = [];
 
+/**
+ * 用于计数的变量。
+ * A variable used for counting.
+ */
 let count: number = 0;
+
+/**
+ * 增加计数并返回新的计数值。
+ * @returns 返回新的计数值。
+ *
+ * Increases the count and returns the new count value.
+ * @returns Returns the new count value.
+ */
 function addCount(): number {
     return ++count;
 }
-
+/**
+ * 生成给定抽象语法树节点的汇编代码。
+ * @param node 要生成代码的抽象语法树节点。
+ *
+ * Generate assembly code for the given abstract syntax tree node.
+ * @param node The abstract syntax tree node to generate code for.
+ */
 function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Number: {
@@ -123,6 +150,13 @@ function generateExpression(node: ASTNode): void {
     // TODO: Add other cases
 }
 
+/**
+ * 生成给定抽象语法树节点的汇编代码。
+ * @param node 要生成代码的抽象语法树节点。
+ *
+ * Generate assembly code for the given abstract syntax tree node.
+ * @param node The abstract syntax tree node to generate code for.
+ */
 function generateStatement(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Return: {
@@ -181,6 +215,13 @@ function generateStatement(node: ASTNode): void {
     throw new Error('invalid statement');
 }
 
+/**
+ * 为函数中的局部变量分配偏移量。
+ * @param prog 要处理的函数节点。
+ *
+ * Assign offsets to local variables in a function.
+ * @param prog The function node to process.
+ */
 function assignLocalVariableOffsets(prog: FunctionNode): void {
     let offset = 0;
     // if (prog.locals === undefined) {
@@ -199,6 +240,13 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
     prog.stackSize = alignToNearest(offset, 16);
 }
 
+/**
+ * 生成给定函数节点的汇编代码。
+ * @param prog 要生成代码的函数节点。
+ *
+ * Generate assembly code for the given function node.
+ * @param prog The function node to generate code for.
+ */
 export function generateCode(prog: FunctionNode): void {
     depth = 0;
     generated = [];
@@ -234,22 +282,52 @@ export function generateCode(prog: FunctionNode): void {
     generated.push(`.L.return:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
 }
 
+/**
+ * 将当前结果推入堆栈。
+ *
+ * Push the current result onto the stack.
+ */
 function pushToStack(): void {
     console.log('  push %rax');
     generated.push('  push %rax');
     depth++;
 }
 
+/**
+ * 从堆栈中弹出一个元素。
+ * @param argument 要弹出的元素的名称。
+ *
+ * Pop an element from the stack.
+ * @param argument The name of the element to pop.
+ */
 function popFromStack(argument: string): void {
     console.log(`  pop ${argument}`);
     generated.push(`  pop ${argument}`);
     depth--;
 }
 
+/**
+ * 将给定的数字向上舍入到最接近的对齐值。
+ * @param n 要舍入的数字。
+ * @param align 对齐值。
+ * @returns 舍入后的数字。
+ *
+ * Rounds up the given number to the nearest alignment value.
+ * @param n The number to round up.
+ * @param align The alignment value.
+ * @returns The rounded number.
+ */
 function alignToNearest(n: number, align: number): number {
     return Math.floor((n + align - 1) / align) * align;
 }
 
+/**
+ * 生成给定抽象语法树节点的地址。
+ * @param node 要生成地址的抽象语法树节点。
+ *
+ * Generate the address for the given abstract syntax tree node.
+ * @param node The abstract syntax tree node to generate the address for.
+ */
 function generateAddress(node: ASTNode): void {
     if (node.nodeKind === ASTNodeKind.Variable && node.localVar !== undefined) {
         console.log(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
@@ -260,6 +338,13 @@ function generateAddress(node: ASTNode): void {
     throw new Error('not an lvalue');
 }
 
+/**
+ * 获取生成的代码行。
+ * @returns 生成的代码行数组。
+ *
+ * Get the generated lines of code.
+ * @returns The array of generated lines of code.
+ */
 export function getGenerated(): string[] {
     return generated;
 }

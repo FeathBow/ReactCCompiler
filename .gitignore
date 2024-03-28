@@ -183,3 +183,6 @@ $RECYCLE.BIN/
 .nfs*
 
 .husky
+
+# typedoc
+docs

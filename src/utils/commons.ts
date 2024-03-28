@@ -1,3 +1,7 @@
+/**
+ * 定义了词法单元的类型。
+ * Defination of token type.
+ */
 export enum TokenType {
     Identifier, // 标识符
     Punctuator, // 标点符号
@@ -6,7 +10,10 @@ export enum TokenType {
     EndOfFile, // 文件结束标记
 }
 
-// 代表一个词法单元的类
+/**
+ * 代表一个词法单元的类。
+ * Token class.
+ */
 export class Token {
     kind: TokenType = TokenType.EndOfFile; // 词法单元的类型
     next?: Token; // 下一个词法单元
@@ -15,18 +22,30 @@ export class Token {
     length?: number; // 词法单元的长度
 }
 
+/**
+ * 代表一个局部变量的类。
+ * Local variable class.
+ */
 export class LocalVariable {
     nextVar?: LocalVariable;
     varName: string = ''; // 变量名
     offsetFromRBP: number = 0; // RBP的偏移量
 }
 
+/**
+ * 代表一个函数节点的类。
+ * Function node class.
+ */
 export class FunctionNode {
     body?: ASTNode;
     locals?: LocalVariable;
     stackSize: number = 0;
 }
 
+/**
+ * 定义了抽象语法树节点的类型。
+ * AST node type.
+ */
 export enum ASTNodeKind {
     Addition, // 加法
     Subtraction, // 减法
@@ -46,6 +65,10 @@ export enum ASTNodeKind {
     If, // If语句
 }
 
+/**
+ * 代表一个抽象语法树节点的类。
+ * AST node class.
+ */
 export class ASTNode {
     nodeKind: ASTNodeKind = ASTNodeKind.Addition;
     nextNode?: ASTNode;
@@ -61,6 +84,10 @@ export class ASTNode {
     elseBody?: ASTNode;
 }
 
+/**
+ * 定义了关键字的类型。
+ * Defination of keywords.
+ */
 export enum Keywords {
     Return = 'return',
     If = 'if',

@@ -32,5 +32,15 @@
         "noEmit": true // do not emit output files
     },
     "include": [".eslintrc.js", "src/**/*", "scripts/**/*"],
-    "exclude": ["node_modules"]
+    "exclude": ["node_modules"],
+    "typedocOptions": {
+        "out": "docs",
+        "exclude": ["node_modules"],
+        "entryPoints": ["src/utils"],
+        //"plugin": ["typedoc-plugin-markdown"],
+        "hideGenerator": true,
+        "plugin": ["typedoc-material-theme"],
+        "themeColor": "#cb9820",
+        "entryPointStrategy": "expand"
+    }
 }

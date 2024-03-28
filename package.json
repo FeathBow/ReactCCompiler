@@ -10,7 +10,8 @@
         "changelog": "conventional-changelog -p angular -i CHANGELOG.md -s",
         "prepare": "husky install",
         "start": "cross-env NODE_ENV=development webpack-dev-server --config ./scripts/config/webpack.development.js",
-        "build": "cross-env NODE_ENV=production webpack --config ./scripts/config/webpack.production.js"
+        "build": "cross-env NODE_ENV=production webpack --config ./scripts/config/webpack.production.js",
+        "docs": "typedoc"
     },
     "repository": {
         "type": "git",
@@ -84,6 +85,9 @@
         "stylelint-declaration-block-no-ignored-properties": "^2.8.0",
         "stylelint-order": "^6.0.4",
         "ts-node": "^10.9.2",
+        "typedoc": "^0.25.12",
+        "typedoc-github-wiki-theme": "^1.1.0",
+        "typedoc-plugin-markdown": "^3.17.1",
         "typescript": "^5.4.3",
         "url-loader": "^4.1.1",
         "webpack": "^5.91.0",
@@ -122,6 +126,7 @@
         "react": "^18.2.0",
         "react-dom": "^18.2.0",
         "react-native-fs": "^2.20.0",
-        "react-native-logs": "^5.1.0"
+        "react-native-logs": "^5.1.0",
+        "typedoc-material-theme": "^1.0.2"
     }
 }
