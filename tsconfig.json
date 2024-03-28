@@ -31,7 +31,7 @@
         "allowSyntheticDefaultImports": true, // allow default imports from modules with no default export
         "noEmit": true // do not emit output files
     },
-    "include": [".eslintrc.js", "src/**/*", "scripts/**/*"],
+    "include": [".eslintrc.js", "commitlint.config.js", "src/**/*", "scripts/**/*"],
     "exclude": ["node_modules"],
     "typedocOptions": {
         "out": "docs",

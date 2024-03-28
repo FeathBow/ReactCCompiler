@@ -140,9 +140,10 @@ function newLocalVariable(name: string): LocalVariable {
 /**
  * 解析一个语句。语句可以是多种类型之一：
  * - 表达式语句
- * - 返回语句（'return' 表达式 ';'）
+ * - 返回语句('return' 表达式 ';')
  * - 块语句
- * - if语句（'if' '(' 表达式 ')' 语句 ('else' 语句)?）
+ * - if语句('if' '(' 表达式 ')' 语句 ('else' 语句)?)
+ * - for语句('for' '(' 表达式? ';' 表达式? ';' 表达式? ')' 语句)
  *
  * @param token 代表语句的令牌。
  * @returns 代表语句的抽象语法树节点。
@@ -163,7 +164,6 @@ function statement(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: statement });
                 throw new Error('Unexpected end of input');
             }
-            // const node = newUnary(ASTNodeKind.Return, expression(rest, token.next));
             const node = newUnary(ASTNodeKind.Return, expression(token.next));
             token = nowToken;
             const nextToken = skipToken(token, ';');
@@ -172,15 +172,12 @@ function statement(token: Token): ASTNode {
                 throw new Error('Unexpected end of input');
             }
             nowToken = nextToken;
-            // rest[0] = nextToken;
             return node;
         } else if (token.location.slice(0, 1) === '{') {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: statement });
                 throw new Error('Unexpected end of input');
             }
-            // const node =
-            // nowToken = token.next;
             return blockStatement(token.next);
         } else if (token.location.slice(0, 2) === 'if') {
             const node = newNode(ASTNodeKind.If);
@@ -215,10 +212,46 @@ function statement(token: Token): ASTNode {
             }
             nowToken = token;
             return node;
+        } else if (token.location.slice(0, 3) === 'for') {
+            const node = newNode(ASTNodeKind.For);
+            if (token.next === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            const initToken = skipToken(token.next, '(');
+            if (initToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            node.initBody = expressionStatement(initToken);
+            token = nowToken;
+
+            if (!isEqual(token, ';')) {
+                node.condition = expression(token);
+                token = nowToken;
+            }
+
+            let conditionToken = skipToken(token, ';');
+            if (conditionToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+
+            if (!isEqual(conditionToken, ')')) {
+                node.incrementBody = expression(conditionToken);
+                token = nowToken;
+                conditionToken = nowToken;
+            }
+
+            const outToken = skipToken(conditionToken, ')');
+            if (outToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { conditionToken, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            node.trueBody = statement(outToken);
+            return node;
         }
     }
-
-    // return expressionStatement(rest, token);
     return expressionStatement(token);
 }
 

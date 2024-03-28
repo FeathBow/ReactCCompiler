@@ -210,6 +210,30 @@ function generateStatement(node: ASTNode): void {
             generated.push(`.L.end.${c}:`);
             return;
         }
+        case ASTNodeKind.For: {
+            const c = addCount();
+            if (node.initBody === undefined || node.trueBody === undefined) {
+                logMessage('error', 'Invalid for', { node, position: generateStatement });
+                throw new Error('invalid for');
+            }
+            generateStatement(node.initBody);
+            console.log(`.L.begin.${c}:`);
+            generated.push(`.L.begin.${c}:`);
+            if (node.condition !== undefined) {
+                generateExpression(node.condition);
+                console.log(`  cmp $0, %rax`);
+                console.log(`  je  .L.end.${c}`);
+                generated.push(`  cmp $0, %rax`, `  je  .L.end.${c}`);
+            }
+            generateStatement(node.trueBody);
+            if (node.incrementBody !== undefined) {
+                generateExpression(node.incrementBody);
+            }
+            console.log(`  jmp .L.begin.${c}`);
+            console.log(`.L.end.${c}:`);
+            generated.push(`  jmp .L.begin.${c}`, `.L.end.${c}:`);
+            return;
+        }
     }
     logMessage('error', 'Invalid statement', { node, position: generateStatement });
     throw new Error('invalid statement');

@@ -63,6 +63,7 @@ export enum ASTNodeKind {
     Number, // 数字
     Block, // 语句块
     If, // If语句
+    For, // For语句
 }
 
 /**
@@ -82,6 +83,9 @@ export class ASTNode {
     condition?: ASTNode;
     trueBody?: ASTNode;
     elseBody?: ASTNode;
+
+    initBody?: ASTNode;
+    incrementBody?: ASTNode;
 }
 
 /**
@@ -92,4 +96,5 @@ export enum Keywords {
     Return = 'return',
     If = 'if',
     Else = 'else',
+    For = 'for',
 }
