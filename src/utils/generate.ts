@@ -40,7 +40,7 @@ function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Number: {
             if (node.numberValue === undefined) {
-                logMessage('error', 'Invalid number', { node, position: generateExpression });
+                logMessage('error', 'Invalid number', { node, position: generateExpression, case: ASTNodeKind.Number });
                 throw new Error('invalid number');
             }
             generated.push(`  mov $${node.numberValue}, %rax`);
@@ -49,12 +49,42 @@ function generateExpression(node: ASTNode): void {
         }
         case ASTNodeKind.Negation: {
             if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid negation', { node, position: generateExpression });
+                logMessage('error', 'Invalid negation', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.Negation,
+                });
                 throw new Error('invalid negation');
             }
             generateExpression(node.leftNode);
             generated.push(`  neg %rax`);
             console.log(`  neg %rax`);
+            return;
+        }
+        case ASTNodeKind.Dereference: {
+            if (node.leftNode === undefined) {
+                logMessage('error', 'Invalid dereference', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.Dereference,
+                });
+                throw new Error('invalid dereference');
+            }
+            generateExpression(node.leftNode);
+            generated.push(`  mov (%rax), %rax`);
+            console.log(`  mov (%rax), %rax`);
+            return;
+        }
+        case ASTNodeKind.AddressOf: {
+            if (node.leftNode === undefined) {
+                logMessage('error', 'Invalid address', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.AddressOf,
+                });
+                throw new Error('invalid address');
+            }
+            generateAddress(node.leftNode);
             return;
         }
         case ASTNodeKind.Variable: {
@@ -65,7 +95,11 @@ function generateExpression(node: ASTNode): void {
         }
         case ASTNodeKind.Assignment: {
             if (node.leftNode === undefined || node.rightNode === undefined) {
-                logMessage('error', 'Invalid assignment', { node, position: generateExpression });
+                logMessage('error', 'Invalid assignment', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.Assignment,
+                });
                 throw new Error('invalid assignment');
             }
             generateAddress(node.leftNode);
@@ -79,7 +113,11 @@ function generateExpression(node: ASTNode): void {
         // TODO: Add other cases
     }
     if (node.leftNode === undefined || node.rightNode === undefined) {
-        logMessage('error', 'Invalid binary expression', { node, position: generateExpression });
+        logMessage('error', 'Invalid binary expression', {
+            node,
+            position: generateExpression,
+            case: ASTNodeKind.Addition,
+        });
         throw new Error('invalid binary expression');
     }
     generateExpression(node.rightNode);
@@ -161,7 +199,7 @@ function generateStatement(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Return: {
             if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid return', { node, position: generateStatement });
+                logMessage('error', 'Invalid return', { node, position: generateStatement, case: ASTNodeKind.Return });
                 throw new Error('invalid return');
             }
 
@@ -172,7 +210,11 @@ function generateStatement(node: ASTNode): void {
         }
         case ASTNodeKind.ExpressionStatement: {
             if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid expression statement', { node, position: generateStatement });
+                logMessage('error', 'Invalid expression statement', {
+                    node,
+                    position: generateStatement,
+                    case: ASTNodeKind.ExpressionStatement,
+                });
                 throw new Error('invalid expression statement');
             }
 
@@ -192,7 +234,7 @@ function generateStatement(node: ASTNode): void {
         case ASTNodeKind.If: {
             const c = addCount();
             if (node.condition === undefined || node.trueBody === undefined) {
-                logMessage('error', 'Invalid if', { node, position: generateExpression });
+                logMessage('error', 'Invalid if', { node, position: generateExpression, case: ASTNodeKind.If });
                 throw new Error('invalid if');
             }
             generateExpression(node.condition);
@@ -213,7 +255,7 @@ function generateStatement(node: ASTNode): void {
         case ASTNodeKind.For: {
             const c = addCount();
             if (node.trueBody === undefined) {
-                logMessage('error', 'Invalid for', { node, position: generateStatement });
+                logMessage('error', 'Invalid for', { node, position: generateStatement, case: ASTNodeKind.For });
                 throw new Error('invalid for');
             }
             if (node.initBody !== undefined) {
@@ -347,7 +389,15 @@ function generateAddress(node: ASTNode): void {
         console.log(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         generated.push(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         return;
+    } else if (node.nodeKind === ASTNodeKind.Dereference) {
+        if (node.leftNode === undefined) {
+            logMessage('error', 'Invalid dereference', { node, position: generateAddress });
+            throw new Error('invalid dereference');
+        }
+        generateExpression(node.leftNode);
+        return;
     }
+
     logMessage('error', 'Not an lvalue', { node, position: generateAddress });
     throw new Error('not an lvalue');
 }

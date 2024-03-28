@@ -1,4 +1,14 @@
-import { FunctionNode, type Token, type LocalVariable, type ASTNode, ASTNodeKind, TokenType } from './commons';
+import {
+    FunctionNode,
+    type Token,
+    type LocalVariable,
+    type ASTNode,
+    ASTNodeKind,
+    TokenType,
+    addType,
+    isInteger,
+    intTypeDefinition,
+} from './commons';
 import { logMessage } from './logger';
 import { skipToken, isEqual } from './token';
 
@@ -297,6 +307,7 @@ function blockStatement(token: Token): ASTNode {
     while (!isEqual(token, '}')) {
         current = current.nextNode = statement(token);
         token = nowToken;
+        addType(current);
     }
     const node = newNode(ASTNodeKind.Block);
     node.blockBody = head.nextNode;
@@ -502,7 +513,7 @@ function add(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: add });
                 throw new Error('Unexpected end of input');
             }
-            node = newBinary(ASTNodeKind.Addition, node, mul(token.next));
+            node = ptrAdd(node, mul(token.next));
             token = nowToken;
             continue;
         }
@@ -512,7 +523,7 @@ function add(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: add });
                 throw new Error('Unexpected end of input');
             }
-            node = newBinary(ASTNodeKind.Subtraction, node, mul(token.next));
+            node = ptrSub(node, mul(token.next));
             token = nowToken;
             continue;
         }
@@ -560,14 +571,66 @@ function mul(token: Token): ASTNode {
     }
 }
 
+function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
+    addType(leftNode);
+    addType(rightNode);
+
+    if (leftNode.typeDef === undefined || rightNode.typeDef === undefined) {
+        throw new Error('TypeDefinition is undefined');
+    }
+
+    if (isInteger(leftNode.typeDef) && isInteger(rightNode.typeDef)) {
+        return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
+    }
+    if (leftNode.typeDef.ptr !== undefined && rightNode.typeDef.ptr !== undefined) {
+        logMessage('error', 'Invalid operands', { leftNode, rightNode, position: ptrAdd });
+        throw new Error('Invalid operands');
+    }
+    if (leftNode.typeDef.ptr === undefined && rightNode.typeDef.ptr !== undefined) {
+        [leftNode, rightNode] = [rightNode, leftNode];
+    }
+
+    rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(8));
+    return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
+}
+
+function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
+    addType(leftNode);
+    addType(rightNode);
+
+    if (leftNode.typeDef === undefined || rightNode.typeDef === undefined) {
+        throw new Error('TypeDefinition is undefined');
+    }
+
+    if (isInteger(leftNode.typeDef) && isInteger(rightNode.typeDef)) {
+        return newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
+    }
+
+    if (leftNode.typeDef.ptr !== undefined && isInteger(rightNode.typeDef)) {
+        rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(8));
+        addType(rightNode);
+        const node = newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
+        node.typeDef = leftNode.typeDef;
+        return node;
+    }
+
+    if (leftNode.typeDef.ptr !== undefined && rightNode.typeDef.ptr !== undefined) {
+        const node = newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
+        node.typeDef = intTypeDefinition;
+        return newBinary(ASTNodeKind.Division, node, newNumber(8));
+    }
+
+    throw new Error('Invalid operands');
+}
+
 /**
  * 解析一个一元表达式。
- * 产生式为：一元 ::= '+' 一元 | '-' 一元 | 主表达式
+ * 产生式为：一元 ::= '+' 一元 | '-' 一元 | '&' 一元 | '*' 一元 | 主表达式
  * @param token 代表一元表达式的令牌。
  * @returns 代表一元表达式的抽象语法树节点。
  *
  * Parse a unary expression.
- * Production rule: unary ::= '+' unary | '-' unary | primary
+ * Production rule: unary ::= '+' unary | '-' unary | '&' unary | '*' unary | primary
  * @param token The token representing the unary expression.
  * @returns The abstract syntax tree node representing the unary expression.
  */
@@ -586,6 +649,22 @@ function unary(token: Token): ASTNode {
             throw new Error('Unexpected end of input');
         }
         return newUnary(ASTNodeKind.Negation, unary(token.next));
+    }
+
+    if (isEqual(token, '&')) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: unary });
+            throw new Error('Unexpected end of input');
+        }
+        return newUnary(ASTNodeKind.AddressOf, unary(token.next));
+    }
+
+    if (isEqual(token, '*')) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: unary });
+            throw new Error('Unexpected end of input');
+        }
+        return newUnary(ASTNodeKind.Dereference, unary(token.next));
     }
 
     return primary(token);
