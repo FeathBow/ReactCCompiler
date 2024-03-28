@@ -69,6 +69,7 @@ function newLocalVariable(name: string): LocalVariable {
 }
 
 // statement ::= expressionStatement | returnStatement(return expression ';')
+// | blockStatement | ifStatement(if '(' expression ')' statement (else statement)?)
 // function statement(rest: Token[], token: Token): ASTNode {
 function statement(token: Token): ASTNode {
     if (token.location !== undefined && token.location !== '') {
@@ -96,6 +97,39 @@ function statement(token: Token): ASTNode {
             // const node =
             // nowToken = token.next;
             return blockStatement(token.next);
+        } else if (token.location.slice(0, 2) === 'if') {
+            const node = newNode(ASTNodeKind.If);
+            if (token.next === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            const trueToken = skipToken(token.next, ';');
+            if (trueToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            node.condition = expression(trueToken);
+            token = nowToken;
+
+            const elseToken = skipToken(token, ')');
+            if (elseToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: statement });
+                throw new Error('Unexpected end of input');
+            }
+            node.trueBody = statement(elseToken);
+            token = nowToken;
+
+            if (isEqual(token, 'else')) {
+                if (token.next === undefined) {
+                    logMessage('error', 'Unexpected end of input', { token, position: statement });
+                    throw new Error('Unexpected end of input');
+                }
+
+                node.elseBody = statement(token.next);
+                token = nowToken;
+            }
+            nowToken = token;
+            return node;
         }
     }
 
@@ -121,12 +155,17 @@ function blockStatement(token: Token): ASTNode {
     return node;
 }
 
-// expressionStatement ::= expression ';'
+// expressionStatement ::= expression? ';'
 // function expressionStatement(rest: Token[], token: Token): ASTNode {
 function expressionStatement(token: Token): ASTNode {
-    // const node = newUnary(ASTNodeKind.ExpressionStatement, expression(rest, token));
-    const node = newUnary(ASTNodeKind.ExpressionStatement, expression(token));
-    token = nowToken;
+    // const node = newUnary(ASTNodeKind.ExpressionStatement, expression(rest, token));4
+    let node: ASTNode;
+    if (isEqual(token, ';')) {
+        node = newNode(ASTNodeKind.Block);
+    } else {
+        node = newUnary(ASTNodeKind.ExpressionStatement, expression(token));
+        token = nowToken;
+    }
     const nextToken = skipToken(token, ';');
     if (nextToken === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: expressionStatement });

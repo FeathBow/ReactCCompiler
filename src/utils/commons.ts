@@ -43,6 +43,7 @@ export enum ASTNodeKind {
     Variable, // 变量
     Number, // 数字
     Block, // 语句块
+    If, // If语句
 }
 
 export class ASTNode {
@@ -52,5 +53,16 @@ export class ASTNode {
     rightNode?: ASTNode;
     localVar?: LocalVariable;
     numberValue?: number;
+
     blockBody?: ASTNode;
+
+    condition?: ASTNode;
+    trueBody?: ASTNode;
+    elseBody?: ASTNode;
+}
+
+export enum Keywords {
+    Return = 'return',
+    If = 'if',
+    Else = 'else',
 }

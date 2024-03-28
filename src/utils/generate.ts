@@ -4,6 +4,11 @@ import { logMessage } from './logger';
 let depth: number = 0;
 let generated: string[] = [];
 
+let count: number = 0;
+function addCount(): number {
+    return ++count;
+}
+
 function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Number: {
@@ -141,16 +146,34 @@ function generateStatement(node: ASTNode): void {
             return;
         }
         case ASTNodeKind.Block: {
-            if (node.blockBody === undefined) {
-                logMessage('error', 'Invalid block', { node, position: generateStatement });
-                throw new Error('invalid block');
+            if (node.blockBody !== undefined) {
+                let blockNode: ASTNode | undefined = node.blockBody;
+                while (blockNode !== undefined) {
+                    generateStatement(blockNode);
+                    blockNode = blockNode.nextNode;
+                }
             }
-
-            let blockNode: ASTNode | undefined = node.blockBody;
-            while (blockNode !== undefined) {
-                generateStatement(blockNode);
-                blockNode = blockNode.nextNode;
+            return;
+        }
+        case ASTNodeKind.If: {
+            const c = addCount();
+            if (node.condition === undefined || node.trueBody === undefined) {
+                logMessage('error', 'Invalid if', { node, position: generateExpression });
+                throw new Error('invalid if');
             }
+            generateExpression(node.condition);
+            console.log(`  cmp $0, %%rax`);
+            console.log(`  je  .L.else.${c}`);
+            generated.push(`  cmp $0, %rax`, `  je  .L.else.${c}`);
+            generateStatement(node.trueBody);
+            console.log(`  jmp .L.end.${c}`);
+            console.log(`.L.else.${c}:`);
+            generated.push(`  jmp .L.end.${c}`, `.L.else.${c}:`);
+            if (node.elseBody !== undefined) {
+                generateStatement(node.elseBody);
+            }
+            console.log(`.L.end.${c}:`);
+            generated.push(`.L.end.${c}:`);
             return;
         }
     }

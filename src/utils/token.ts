@@ -1,7 +1,17 @@
-import { TokenType, Token } from './commons';
+import { TokenType, Token, Keywords } from './commons';
 import { logMessage } from './logger';
 
-// 其他函数
+// judge whether the token is a keyword
+function isKeyword(token: Token): boolean {
+    const keywords: string[] = Object.values(Keywords);
+    if (token.location === undefined || token.length === undefined) {
+        logMessage('error', 'Token location or length is undefined', { token, position: isKeyword });
+        return false;
+    }
+    return keywords.includes(token.location.slice(0, token.length));
+}
+
+// judge whether the token is equal to the operator
 export function isEqual(token: Token, operator: string): boolean {
     if (token.location !== undefined && token.location !== null && token.length !== undefined) {
         return token.location.slice(0, token.length) === operator && operator.length === token.length;
@@ -11,6 +21,7 @@ export function isEqual(token: Token, operator: string): boolean {
     }
 }
 
+// skip the token
 export function skipToken(token: Token, operator: string): Token | undefined {
     if (!isEqual(token, operator)) {
         const location = token.location === undefined ? 'undefined' : token.location.slice(0, token.length);
@@ -23,21 +34,22 @@ export function skipToken(token: Token, operator: string): Token | undefined {
     return token.next;
 }
 
+// judge whether the string starts with another string
 function startsWith(p: string, q: string): boolean {
     return p.startsWith(q);
 }
 
-// 判断字符是否可以作为标识符的第一个字符
+// judge whether the character is a valid first character of an identifier
 function isValidFirstCharOfIdentifier(c: string): boolean {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c === '_';
 }
 
-// 判断字符是否可以作为标识符的非第一个字符
+// judge whether the character is a valid non-first character of an identifier
 function isValidNonFirstCharOfIdentifier(c: string): boolean {
     return isValidFirstCharOfIdentifier(c) || (c >= '0' && c <= '9');
 }
 
-// 从字符串中读取标点符号，并返回其长度
+// read punctuation
 function readPunctuation(p: string): number {
     if (startsWith(p, '==') || startsWith(p, '!=') || startsWith(p, '<=') || startsWith(p, '>=')) {
         return 2;
@@ -46,7 +58,7 @@ function readPunctuation(p: string): number {
     return isPunctuation(p.charAt(0)) ? 1 : 0;
 }
 
-// 判断字符是否是标点符号
+// judge whether the character is a punctuation
 function isPunctuation(c: string): boolean {
     const punctuations = '!"#$%&\'()*+,-./:;<=>?@[]^_`{|}~';
     return punctuations.includes(c);
@@ -56,7 +68,7 @@ function isPunctuation(c: string): boolean {
 
 function convertKeywords(tokens: Token[]): void {
     for (const t of tokens) {
-        if (t.location !== undefined && t.location !== '' && t.location.slice(0, 6) === 'return') {
+        if (isKeyword(t)) {
             t.kind = TokenType.Keyword;
         }
     }
