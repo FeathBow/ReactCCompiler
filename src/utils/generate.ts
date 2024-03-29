@@ -1,4 +1,11 @@
-import { type ASTNode, ASTNodeKind, type LocalVariable, type FunctionNode } from './commons';
+import {
+    type ASTNode,
+    ASTNodeKind,
+    type LocalVariable,
+    type FunctionNode,
+    type TypeDefinition,
+    ASTNodeType,
+} from './commons';
 import { logMessage } from './logger';
 
 /**
@@ -41,6 +48,20 @@ let nowFunction: FunctionNode | undefined;
 function addCount(): number {
     return ++count;
 }
+
+function load(type: TypeDefinition): void {
+    if (type.type !== ASTNodeType.Array) {
+        console.log('  mov (%rax), %rax');
+        generated.push('  mov (%rax), %rax');
+    }
+}
+
+function store(): void {
+    popFromStack('%rdi');
+    console.log('  mov %rax, (%rdi)');
+    generated.push('  mov %rax, (%rdi)');
+}
+
 /**
  * 生成给定抽象语法树节点的汇编代码。
  * @param node 要生成代码的抽象语法树节点。
@@ -83,8 +104,15 @@ function generateExpression(node: ASTNode): void {
                 throw new Error('invalid dereference');
             }
             generateExpression(node.leftNode);
-            generated.push(`  mov (%rax), %rax`);
-            console.log(`  mov (%rax), %rax`);
+            if (node.typeDef === undefined) {
+                logMessage('error', 'Invalid variable', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.Variable,
+                });
+                throw new Error('invalid variable');
+            }
+            load(node.typeDef);
             return;
         }
         case ASTNodeKind.AddressOf: {
@@ -101,8 +129,15 @@ function generateExpression(node: ASTNode): void {
         }
         case ASTNodeKind.Variable: {
             generateAddress(node);
-            generated.push(`  mov (%rax), %rax`);
-            console.log(`  mov (%rax), %rax`);
+            if (node.typeDef === undefined) {
+                logMessage('error', 'Invalid variable', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.Variable,
+                });
+                throw new Error('invalid variable');
+            }
+            load(node.typeDef);
             return;
         }
         case ASTNodeKind.Assignment: {
@@ -117,9 +152,7 @@ function generateExpression(node: ASTNode): void {
             generateAddress(node.leftNode);
             pushToStack();
             generateExpression(node.rightNode);
-            popFromStack('%rdi');
-            generated.push(`  mov %rax, (%rdi)`);
-            console.log(`  mov %rax, (%rdi)`);
+            store();
             return;
         }
         case ASTNodeKind.FunctionCall: {
@@ -335,7 +368,15 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
         let offset = 0;
         let localVariable: LocalVariable | undefined = localFunction.locals;
         while (localVariable !== undefined) {
-            offset += 8;
+            if (localVariable?.varType?.size === undefined) {
+                logMessage('error', 'Invalid variable type', {
+                    position: assignLocalVariableOffsets,
+                    function: localFunction,
+                    variable: localVariable,
+                });
+                throw new Error('invalid variable type');
+            }
+            offset += localVariable.varType?.size;
             localVariable.offsetFromRBP = -offset;
             localVariable = localVariable.nextVar;
         }

@@ -1,3 +1,5 @@
+import { logMessage } from './logger';
+
 /**
  * 定义了词法单元的类型。
  * Defination of token type.
@@ -179,6 +181,8 @@ export enum ASTNodeType {
     Pointer = 'Ptr',
     /** 函数。Function. */
     Function = 'Func',
+    /** 数组。Array. */
+    Array = 'Array',
 }
 
 /**
@@ -198,15 +202,21 @@ export class TypeDefinition {
     parameters?: TypeDefinition;
     /** 下一个参数 */
     nextParameters?: TypeDefinition;
+    /** 数组长度 */
+    arrayLength?: number;
+    /** 变量大小 */
+    size?: number;
 
     /**
      * 类构造函数。
-     * @param type - 变量类型。.
+     * @param type - 变量类型。
      * @param ptr - 指针。
      * @param tokens - 词法单元。
      * @param functionType - 函数类型。
      * @param parameters - 函数参数。
      * @param nextParameters - 下一个参数。
+     * @param arrayLength - 数组长度。
+     *
      * @returns 类实例。
      *
      * Class constructor
@@ -216,21 +226,27 @@ export class TypeDefinition {
      * @param functionType - Function type.
      * @param parameters - Function parameters.
      * @param nextParameters - Next parameters.
+     * @param arrayLength - Array length.
+     * @returns Class instance.
      */
     constructor(
         type: ASTNodeType,
+        size: number,
         ptr?: TypeDefinition,
         tokens?: Token,
         functionType?: TypeDefinition,
         parameters?: TypeDefinition,
         nextParameters?: TypeDefinition,
+        arrayLength?: number,
     ) {
         this.type = type;
+        this.size = size;
         this.ptr = ptr;
         this.tokens = tokens;
         this.functionType = functionType;
         this.parameters = parameters;
         this.nextParameters = nextParameters;
+        this.arrayLength = arrayLength;
     }
 }
 
@@ -238,7 +254,7 @@ export class TypeDefinition {
  * 定义了整数类型的变量。
  * Defination of integer type variable.
  */
-export const intTypeDefinition = new TypeDefinition(ASTNodeType.Integer);
+export const intTypeDefinition = new TypeDefinition(ASTNodeType.Integer, 8);
 
 /**
  * 判断一个变量类型是否是整数类型。
@@ -259,7 +275,10 @@ export function isInteger(type: TypeDefinition): boolean {
  * @param ptr - The type to point to.
  */
 export function pointerTo(ptr: TypeDefinition): TypeDefinition {
-    return new TypeDefinition(ASTNodeType.Pointer, ptr);
+    const pointer = new TypeDefinition(ASTNodeType.Pointer, 8);
+    pointer.ptr = ptr;
+    pointer.type = ASTNodeType.Pointer;
+    return pointer;
 }
 
 /**
@@ -304,8 +323,15 @@ export function addType(node: ASTNode | undefined): void {
         case ASTNodeKind.Subtraction:
         case ASTNodeKind.Multiplication:
         case ASTNodeKind.Division:
-        case ASTNodeKind.Negation:
+        case ASTNodeKind.Negation: {
+            node.typeDef = node.leftNode?.typeDef;
+            return;
+        }
         case ASTNodeKind.Assignment: {
+            if (node.leftNode?.typeDef?.type === ASTNodeType.Array) {
+                logMessage('error', 'Not an lvalue', { token: node.leftNode.localVar?.varName });
+                throw new Error('Not an lvalue');
+            }
             node.typeDef = node.leftNode?.typeDef;
             return;
         }
@@ -323,13 +349,19 @@ export function addType(node: ASTNode | undefined): void {
             return;
         }
         case ASTNodeKind.AddressOf: {
-            if (node.leftNode?.typeDef !== undefined) {
-                node.typeDef = pointerTo(node.leftNode.typeDef);
+            if (node.leftNode?.typeDef?.type === ASTNodeType.Array) {
+                if (node.leftNode.typeDef.ptr === undefined) {
+                    logMessage('error', 'Invalid array address', { token: node.leftNode.localVar?.varName });
+                    throw new Error('Invalid array address');
+                }
+                node.typeDef = pointerTo(node.leftNode.typeDef.ptr);
+            } else if (node.leftNode?.typeDef !== undefined) {
+                node.typeDef = pointerTo(node.leftNode?.typeDef);
             }
             return;
         }
         case ASTNodeKind.Dereference: {
-            if (node.leftNode?.typeDef?.type !== ASTNodeType.Pointer) {
+            if (node.leftNode?.typeDef?.ptr === undefined) {
                 throw new Error('Invalid pointer dereference');
             }
             node.typeDef = node.leftNode.typeDef.ptr;
@@ -347,7 +379,18 @@ export function addType(node: ASTNode | undefined): void {
  * @returns New function type.
  */
 export function addFunctionType(type: TypeDefinition): TypeDefinition {
-    const nowType = new TypeDefinition(ASTNodeType.Function);
+    const nowType = new TypeDefinition(ASTNodeType.Function, 8);
     nowType.functionType = type;
     return nowType;
+}
+
+export function addArray(type: TypeDefinition, length: number): TypeDefinition {
+    if (type.size === undefined) {
+        logMessage('error', 'Array type must have size', { type });
+        throw new Error('Array type must have size');
+    }
+    const arrayType = new TypeDefinition(ASTNodeType.Array, type.size * length);
+    arrayType.ptr = type;
+    arrayType.arrayLength = length;
+    return arrayType;
 }

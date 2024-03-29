@@ -11,6 +11,7 @@ import {
     type TypeDefinition,
     pointerTo,
     addFunctionType,
+    addArray,
 } from './commons';
 import { logMessage } from './logger';
 import { skipToken, isEqual } from './token';
@@ -342,10 +343,12 @@ function getIdentifier(token: Token): string {
 
 /**
  * 声明类型。
+ * 产生式为：类型定义 ::= 'int'
  * @param token 代表类型的令牌。
  * @returns 类型定义。
  *
  * Declare a type.
+ * Production rule: typeDefinition ::= 'int'
  * @param token The token representing the type.
  * @returns The type definition.
  */
@@ -385,7 +388,7 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
         logMessage('error', 'Unexpected end of input', { token, position: declare });
         throw new Error('Unexpected end of input');
     }
-    type = checkTypeFunction(token.next, type);
+    type = checkTypeSuffix(token.next, type);
     type.tokens = token;
     if (token.next === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: declare });
@@ -396,10 +399,12 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
 
 /**
  * 解析声明。
+ * 产生式为：声明 ::= 类型标识符 ('*' 类型标识符)* 变量名 ('=' 表达式)?
  * @param token 代表声明的令牌。
  * @returns 代表声明的抽象语法树节点。
  *
  * Parse a declaration.
+ * Production rule: declaration ::= type identifier ('*' type identifier)* identifier ('=' expression)?
  * @param token The token representing the declaration.
  * @returns The abstract syntax tree node representing the declaration.
  */
@@ -765,9 +770,12 @@ function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     if (leftNode.typeDef.ptr === undefined && rightNode.typeDef.ptr !== undefined) {
         [leftNode, rightNode] = [rightNode, leftNode];
     }
-
-    rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(8));
-    return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
+    if (leftNode.typeDef?.ptr?.size !== undefined) {
+        rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(leftNode.typeDef.ptr.size));
+        return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
+    }
+    logMessage('error', 'Invalid operands', { leftNode, rightNode, position: ptrAdd });
+    throw new Error('Invalid operands');
 }
 
 /**
@@ -792,31 +800,64 @@ function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
         return newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
     }
 
-    if (leftNode.typeDef.ptr !== undefined && isInteger(rightNode.typeDef)) {
-        rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(8));
+    if (leftNode.typeDef.ptr?.size !== undefined && isInteger(rightNode.typeDef)) {
+        rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(leftNode.typeDef.ptr.size));
         addType(rightNode);
         const node = newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
         node.typeDef = leftNode.typeDef;
         return node;
     }
 
-    if (leftNode.typeDef.ptr !== undefined && rightNode.typeDef.ptr !== undefined) {
+    if (leftNode.typeDef.ptr?.size !== undefined && rightNode.typeDef.ptr?.size !== undefined) {
         const node = newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
         node.typeDef = intTypeDefinition;
-        return newBinary(ASTNodeKind.Division, node, newNumber(8));
+        return newBinary(ASTNodeKind.Division, node, newNumber(leftNode.typeDef.ptr.size));
     }
 
     throw new Error('Invalid operands');
 }
 
 /**
+ * 解析数组访问表达式。
+ * 产生式为：数组访问表达式 ::= 主表达式 ('[' 表达式 ']')*
+ * @param tokens 要解析的令牌列表。
+ * @returns 表示解析后表达式的节点。
+ *
+ * Parses array access expression.
+ * Production rule: arrayAccess ::= primary ('[' expression ']')*
+ * @param tokens The list of tokens to parse.
+ * @returns A Node representing the parsed expression.
+ */
+function parseArrayAccess(token: Token): ASTNode {
+    let node = primary(token);
+    token = nowToken;
+    while (isEqual(token, '[')) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: parseArrayAccess });
+            throw new Error('Unexpected end of input');
+        }
+        const nowNode = expression(token.next);
+        token = nowToken;
+        const nextToken = skipToken(token, ']');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: parseArrayAccess });
+            throw new Error('Unexpected end of input');
+        }
+        token = nextToken;
+        node = newUnary(ASTNodeKind.Dereference, ptrAdd(node, nowNode));
+    }
+    nowToken = token;
+    return node;
+}
+
+/**
  * 解析一个一元表达式。
- * 产生式为：一元 ::= '+' 一元 | '-' 一元 | '&' 一元 | '*' 一元 | 主表达式
+ * 产生式为：一元 ::= '+' 一元 | '-' 一元 | '&' 一元 | '*' 一元 | 数组访问表达式
  * @param token 代表一元表达式的令牌。
  * @returns 代表一元表达式的抽象语法树节点。
  *
  * Parse a unary expression.
- * Production rule: unary ::= '+' unary | '-' unary | '&' unary | '*' unary | primary
+ * Production rule: unary ::= '+' unary | '-' unary | '&' unary | '*' unary | arrayAccess
  * @param token The token representing the unary expression.
  * @returns The abstract syntax tree node representing the unary expression.
  */
@@ -853,55 +894,100 @@ function unary(token: Token): ASTNode {
         return newUnary(ASTNodeKind.Dereference, unary(token.next));
     }
 
-    return primary(token);
+    return parseArrayAccess(token);
 }
 
 /**
- * 检查类型存在函数参数列表，则将类型转换为函数类型。
+ * 解析函数参数列表，将类型转换为函数类型。
  * 函数参数列表 ::= '(' (类型声明 (',' 类型声明)*)? ')'
+ * @param token 当前的令牌。
+ * @param type 当前的类型。
+ * @returns 存在函数参数列表，返回函数类型。
+ *
+ * Parse the function parameter list and convert the type to a function type.
+ * Function parameter list ::= '(' (declaration (',' declaration)*)? ')'
+ * @param token The current token.
+ * @param type The current type.
+ * @returns If there is a function parameter list, return the function type.
+ */
+function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
+    const head: TypeDefinition = {};
+    let current: TypeDefinition = head;
+    while (!isEqual(token, ')')) {
+        if (current !== head) {
+            const nextToken = skipToken(token, ',');
+            if (nextToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: checkTypeSuffix });
+                throw new Error('Unexpected end of input');
+            }
+            token = nextToken;
+        }
+        let nowType = declareType(token);
+        token = nowToken;
+        nowType = declare(token, nowType);
+        token = nowToken;
+        current = current.nextParameters = JSON.parse(JSON.stringify(nowType));
+    }
+
+    type = addFunctionType(type);
+    type.parameters = head.nextParameters;
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: checkTypeSuffix });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = token.next;
+    return type;
+}
+/**
+ * 检查类型后缀参数列表，若为函数参数列表则将类型转换为函数类型，若为数组则将类型转换为数组类型。
+ * 函数参数列表 ::= '(' (类型声明 (',' 类型声明)*)? ')'
+ * 数组 ::= '[' 数字 ']'
  * @param token 当前的令牌。
  * @param type 当前的类型。
  * @returns 如果存在函数参数列表，则返回函数类型，否则返回原始类型。
  *
- * Check if the type has a function parameter list, then convert the type to a function type.
+ * Check if the type has a function parameter list, then convert the type to a function type. If it is an array, convert the type to an array type.
  * Function parameter list ::= '(' (declaration (',' declaration)*)? ')'
+ * Array ::= '[' number ']'
  * @param token The current token.
  * @param type The current type.
  * @returns If there is a function parameter list, return the function type, otherwise return the original type.
  */
-function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
+function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
     if (isEqual(token, '(')) {
         if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: checkTypeFunction });
+            logMessage('error', 'Unexpected end of input', { token, position: checkTypeSuffix });
             throw new Error('Unexpected end of input');
         }
-        const head: TypeDefinition = {};
-        let current: TypeDefinition = head;
-        token = token.next;
-        while (!isEqual(token, ')')) {
-            if (current !== head) {
-                const nextToken = skipToken(token, ',');
-                if (nextToken === undefined) {
-                    logMessage('error', 'Unexpected end of input', { token, position: checkTypeFunction });
-                    throw new Error('Unexpected end of input');
-                }
-                token = nextToken;
-            }
-            let nowType = declareType(token);
-            token = nowToken;
-            nowType = declare(token, nowType);
-            token = nowToken;
-            current = current.nextParameters = JSON.parse(JSON.stringify(nowType));
-        }
+        return checkTypeFunction(token.next, type);
+    }
 
-        type = addFunctionType(type);
-        type.parameters = head.nextParameters;
+    if (isEqual(token, '[')) {
         if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: checkTypeFunction });
+            logMessage('error', 'Unexpected end of input', { token, position: checkTypeSuffix });
             throw new Error('Unexpected end of input');
         }
-        nowToken = token.next;
-        return type;
+        if (token.next.kind !== TokenType.NumericLiteral) {
+            logMessage('error', 'Invalid array size', { token, position: checkTypeSuffix });
+            throw new Error('Invalid array size');
+        }
+        const number_ = token.next.value;
+        if (number_ === undefined) {
+            logMessage('error', 'Number is undefined', { token, position: checkTypeSuffix });
+            throw new Error('Number is undefined');
+        }
+        if (token.next.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: checkTypeSuffix });
+            throw new Error('Unexpected end of input');
+        }
+        const nextToken = skipToken(token.next.next, ']');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: checkTypeSuffix });
+            throw new Error('Unexpected end of input');
+        }
+        token = nextToken;
+        type = checkTypeSuffix(token, type);
+        return addArray(type, number_);
     }
     nowToken = token;
     return type;
