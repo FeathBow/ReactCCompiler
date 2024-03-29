@@ -3,44 +3,66 @@
  * Defination of token type.
  */
 export enum TokenType {
-    Identifier, // 标识符
-    Punctuator, // 标点符号
-    Keyword, // 关键字
-    NumericLiteral, // 数字字面量
-    EndOfFile, // 文件结束标记
+    /** 标识符 Identifier */
+    Identifier,
+    /** 标点符号 Punctuator */
+    Punctuator,
+    /** 关键字 Keyword */
+    Keyword,
+    /** 数字字面量 Numeric Literal */
+    NumericLiteral,
+    /** 文件结束标记 End of File */
+    EndOfFile,
 }
-
 /**
  * 代表一个词法单元的类。
  * Token class.
  */
 export class Token {
-    kind: TokenType = TokenType.EndOfFile; // 词法单元的类型
-    next?: Token; // 下一个词法单元
-    value?: number; // 如果类型是 NumericLiteral，这是它的值
-    location?: string; // 词法单元的位置
-    length?: number; // 词法单元的长度
+    /** 词法单元的类型。The type of the token. */
+    kind: TokenType = TokenType.EndOfFile;
+    /** 下一个词法单元。The next token. */
+    next?: Token;
+    /** 如果类型是 NumericLiteral，这是它的值。The value if the type is NumericLiteral. */
+    value?: number;
+    /** 词法单元的位置。The location of the token. */
+    location?: string;
+    /** 词法单元的长度。The length of the token. */
+    length?: number;
 }
 
 /**
  * 代表一个局部变量的类。
- * Local variable class.
+ * Class representing a local variable.
  */
 export class LocalVariable {
+    /** 下一个局部变量。The next local variable. */
     nextVar?: LocalVariable;
-    varName: string = ''; // 变量名
-    offsetFromRBP: number = 0; // RBP的偏移量
-    varType?: TypeDefinition; // 变量类型
+    /** 变量名。Variable name. */
+    varName: string = '';
+    /** RBP的偏移量。Offset from RBP. */
+    offsetFromRBP: number = 0;
+    /** 变量类型。Variable type. */
+    varType?: TypeDefinition;
 }
 
 /**
  * 代表一个函数节点的类。
- * Function node class.
+ * Class representing a function node.
  */
 export class FunctionNode {
+    /** 函数体。Function body. */
     body?: ASTNode;
+    /** 局部变量。Local variables. */
     locals?: LocalVariable;
+    /** 栈大小。Stack size. */
     stackSize: number = 0;
+    /** 函数名。Function name. */
+    funcName: string = '';
+    /** 调用返回 Function call return */
+    returnFunc?: FunctionNode;
+    /** 参数。Arguments. */
+    Arguments?: LocalVariable;
 }
 
 /**
@@ -48,25 +70,46 @@ export class FunctionNode {
  * AST node type.
  */
 export enum ASTNodeKind {
-    Addition, // 加法
-    Subtraction, // 减法
-    Multiplication, // 乘法
-    Division, // 除法
-    Negation, // 取反
-    Equality, // 等于
-    Inequality, // 不等于
-    LessThan, // 小于
-    LessThanOrEqual, // 小于等于
-    Assignment, // 赋值
-    Return, // 返回
-    ExpressionStatement, // 表达式语句
-    Variable, // 变量
-    Number, // 数字
-    Block, // 语句块
-    If, // If语句
-    For, // For语句
-    AddressOf, // 取地址
-    Dereference, // 解引用
+    /** 加法。Addition. */
+    Addition,
+    /** 减法。Subtraction. */
+    Subtraction,
+    /** 乘法。Multiplication. */
+    Multiplication,
+    /** 除法。Division. */
+    Division,
+    /** 取反。Negation. */
+    Negation,
+    /** 等于。Equality. */
+    Equality,
+    /** 不等于。Inequality. */
+    Inequality,
+    /** 小于。Less than. */
+    LessThan,
+    /** 小于等于。Less than or equal. */
+    LessThanOrEqual,
+    /** 赋值。Assignment. */
+    Assignment,
+    /** 返回。Return. */
+    Return,
+    /** 表达式语句。Expression statement. */
+    ExpressionStatement,
+    /** 变量。Variable. */
+    Variable,
+    /** 数字。Number. */
+    Number,
+    /** 语句块。Block. */
+    Block,
+    /** If语句。If statement. */
+    If,
+    /** For语句。For statement. */
+    For,
+    /** 取地址。Address of. */
+    AddressOf,
+    /** 解引用。Dereference. */
+    Dereference,
+    /** 函数调用。Function call. */
+    FunctionCall,
 }
 
 /**
@@ -74,23 +117,36 @@ export enum ASTNodeKind {
  * AST node class.
  */
 export class ASTNode {
+    /** 节点类型。Node kind. */
     nodeKind: ASTNodeKind = ASTNodeKind.Addition;
+    /** 下一个节点。Next node. */
     nextNode?: ASTNode;
+    /** 左节点。Left node. */
     leftNode?: ASTNode;
+    /** 右节点。Right node. */
     rightNode?: ASTNode;
+    /** 局部变量。Local variable. */
     localVar?: LocalVariable;
+    /** 数字值。Number value. */
     numberValue?: number;
-
+    /** 语句块体。Block body. */
     blockBody?: ASTNode;
-
+    /** 条件。Condition. */
     condition?: ASTNode;
+    /** 真体。True body. */
     trueBody?: ASTNode;
+    /** 否体。Else body. */
     elseBody?: ASTNode;
-
+    /** 初始化体。Init body. */
     initBody?: ASTNode;
+    /** 增量体。Increment body. */
     incrementBody?: ASTNode;
-
+    /** 类型定义。Type definition. */
     typeDef?: TypeDefinition;
+    /** 函数定义。Function definition. */
+    functionDef?: string;
+    /** 函数参数。Function arguments. */
+    functionArgs?: ASTNode;
 }
 
 /**
@@ -98,11 +154,17 @@ export class ASTNode {
  * Defination of keywords.
  */
 export enum Keywords {
+    /** 返回。Return. */
     Return = 'return',
+    /** 如果。If. */
     If = 'if',
+    /** 否则。Else. */
     Else = 'else',
+    /** For 循环。For. */
     For = 'for',
+    /** While 循环。While. */
     While = 'while',
+    /** 整型。Int. */
     Int = 'int',
 }
 
@@ -111,8 +173,12 @@ export enum Keywords {
  * Defination of AST node variable type.
  */
 export enum ASTNodeType {
+    /** 整型。Integer. */
     Integer = 'Int',
+    /** 指针。Pointer. */
     Pointer = 'Ptr',
+    /** 函数。Function. */
+    Function = 'Func',
 }
 
 /**
@@ -120,13 +186,51 @@ export enum ASTNodeType {
  * Defination of variable type class.
  */
 export class TypeDefinition {
+    /** 变量类型。Variable type. */
     type?: ASTNodeType;
+    /** 指针。Pointer. */
     ptr?: TypeDefinition;
+    /** 词法单元。Tokens. */
     tokens?: Token;
-    constructor(type: ASTNodeType, ptr?: TypeDefinition, tokens?: Token) {
+    /** 函数类型 */
+    functionType?: TypeDefinition;
+    /** 函数参数 */
+    parameters?: TypeDefinition;
+    /** 下一个参数 */
+    nextParameters?: TypeDefinition;
+
+    /**
+     * 类构造函数。
+     * @param type - 变量类型。.
+     * @param ptr - 指针。
+     * @param tokens - 词法单元。
+     * @param functionType - 函数类型。
+     * @param parameters - 函数参数。
+     * @param nextParameters - 下一个参数。
+     * @returns 类实例。
+     *
+     * Class constructor
+     * @param type - Variable type.
+     * @param ptr - Pointer.
+     * @param tokens - Tokens.
+     * @param functionType - Function type.
+     * @param parameters - Function parameters.
+     * @param nextParameters - Next parameters.
+     */
+    constructor(
+        type: ASTNodeType,
+        ptr?: TypeDefinition,
+        tokens?: Token,
+        functionType?: TypeDefinition,
+        parameters?: TypeDefinition,
+        nextParameters?: TypeDefinition,
+    ) {
         this.type = type;
         this.ptr = ptr;
         this.tokens = tokens;
+        this.functionType = functionType;
+        this.parameters = parameters;
+        this.nextParameters = nextParameters;
     }
 }
 
@@ -174,6 +278,7 @@ export function addType(node: ASTNode | undefined): void {
         const nodeProperty = node[key as keyof ASTNode];
         if (
             typeof nodeProperty === 'number' ||
+            typeof nodeProperty === 'string' ||
             nodeProperty instanceof LocalVariable ||
             nodeProperty instanceof FunctionNode ||
             nodeProperty instanceof TypeDefinition
@@ -187,6 +292,12 @@ export function addType(node: ASTNode | undefined): void {
     while (block !== undefined) {
         addType(block);
         block = block.nextNode;
+    }
+
+    let arguments_ = node.functionArgs;
+    while (arguments_ !== undefined) {
+        addType(arguments_);
+        arguments_ = arguments_.nextNode;
     }
     switch (node.nodeKind) {
         case ASTNodeKind.Addition:
@@ -202,6 +313,7 @@ export function addType(node: ASTNode | undefined): void {
         case ASTNodeKind.Inequality:
         case ASTNodeKind.LessThan:
         case ASTNodeKind.LessThanOrEqual:
+        case ASTNodeKind.FunctionCall:
         case ASTNodeKind.Number: {
             node.typeDef = intTypeDefinition;
             return;
@@ -223,4 +335,19 @@ export function addType(node: ASTNode | undefined): void {
             node.typeDef = node.leftNode.typeDef.ptr;
         }
     }
+}
+
+/**
+ * 创建一个新的函数类型。
+ * @param type 返回类型。
+ * @returns 新的函数类型。
+ *
+ * Create a new function type.
+ * @param type Return type.
+ * @returns New function type.
+ */
+export function addFunctionType(type: TypeDefinition): TypeDefinition {
+    const nowType = new TypeDefinition(ASTNodeType.Function);
+    nowType.functionType = type;
+    return nowType;
 }

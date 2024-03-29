@@ -10,6 +10,7 @@ import {
     intTypeDefinition,
     type TypeDefinition,
     pointerTo,
+    addFunctionType,
 } from './commons';
 import { logMessage } from './logger';
 import { skipToken, isEqual } from './token';
@@ -165,7 +166,7 @@ function newVariableNode(variableNode: LocalVariable): ASTNode {
  * @param type The type of the variable.
  * @returns The newly created local variable.
  */
-function newLocalVariable(name: string, type : TypeDefinition): LocalVariable {
+function newLocalVariable(name: string, type: TypeDefinition): LocalVariable {
     const localVariable: LocalVariable = {
         varName: name,
         nextVar: locals,
@@ -380,12 +381,16 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
         throw new Error('Expected an identifier');
     }
 
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: declare });
+        throw new Error('Unexpected end of input');
+    }
+    type = checkTypeFunction(token.next, type);
     type.tokens = token;
     if (token.next === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: declare });
         throw new Error('Unexpected end of input');
     }
-    nowToken = token.next;
     return type;
 }
 
@@ -404,10 +409,10 @@ function parseDeclaration(token: Token): ASTNode {
 
     const head: ASTNode = { nodeKind: ASTNodeKind.Return };
     let current: ASTNode = head;
-    let parseCount = 0;
+    let parseFirst = false;
 
     while (!isEqual(token, ';')) {
-        if (parseCount++ > 0) {
+        if (parseFirst) {
             const nextToken = skipToken(token, ',');
             if (nextToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
@@ -415,7 +420,7 @@ function parseDeclaration(token: Token): ASTNode {
             }
             token = nextToken;
         }
-
+        parseFirst = true;
         const type = declare(token, baseType);
         token = nowToken;
         if (type.tokens === undefined) {
@@ -731,6 +736,17 @@ function mul(token: Token): ASTNode {
     }
 }
 
+/**
+ * 处理指针加法。
+ * @param leftNode 左节点
+ * @param rightNode 右节点
+ * @returns 代表指针加法的抽象语法树节点。
+ *
+ * Handle pointer addition.
+ * @param leftNode The left node.
+ * @param rightNode The right node.
+ * @returns The abstract syntax tree node representing the pointer addition.
+ */
 function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     addType(leftNode);
     addType(rightNode);
@@ -754,6 +770,16 @@ function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
 }
 
+/**
+ * 处理指针减法。
+ * @param leftNode 左节点
+ * @param rightNode 右节点
+ * @returns 代表指针减法的抽象语法树节点。
+ *
+ * Handle pointer subtraction.
+ * @param leftNode The left node.
+ * @param rightNode The right node.
+ */
 function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     addType(leftNode);
     addType(rightNode);
@@ -831,13 +857,163 @@ function unary(token: Token): ASTNode {
 }
 
 /**
+ * 检查类型存在函数参数列表，则将类型转换为函数类型。
+ * 函数参数列表 ::= '(' (类型声明 (',' 类型声明)*)? ')'
+ * @param token 当前的令牌。
+ * @param type 当前的类型。
+ * @returns 如果存在函数参数列表，则返回函数类型，否则返回原始类型。
+ *
+ * Check if the type has a function parameter list, then convert the type to a function type.
+ * Function parameter list ::= '(' (declaration (',' declaration)*)? ')'
+ * @param token The current token.
+ * @param type The current type.
+ * @returns If there is a function parameter list, return the function type, otherwise return the original type.
+ */
+function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
+    if (isEqual(token, '(')) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: checkTypeFunction });
+            throw new Error('Unexpected end of input');
+        }
+        const head: TypeDefinition = {};
+        let current: TypeDefinition = head;
+        token = token.next;
+        while (!isEqual(token, ')')) {
+            if (current !== head) {
+                const nextToken = skipToken(token, ',');
+                if (nextToken === undefined) {
+                    logMessage('error', 'Unexpected end of input', { token, position: checkTypeFunction });
+                    throw new Error('Unexpected end of input');
+                }
+                token = nextToken;
+            }
+            let nowType = declareType(token);
+            token = nowToken;
+            nowType = declare(token, nowType);
+            token = nowToken;
+            current = current.nextParameters = JSON.parse(JSON.stringify(nowType));
+        }
+
+        type = addFunctionType(type);
+        type.parameters = head.nextParameters;
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: checkTypeFunction });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = token.next;
+        return type;
+    }
+    nowToken = token;
+    return type;
+}
+
+/**
+ * 为函数参数创建局部变量。
+ * @param param 函数参数类型。
+ *
+ * Create local variables for function parameters.
+ * @param param The function parameter type.
+ */
+function createLocalVariablesForParameters(type: TypeDefinition | undefined): void {
+    if (type !== undefined) {
+        createLocalVariablesForParameters(type.nextParameters);
+        if (type.tokens === undefined) {
+            logMessage('error', 'Token is undefined', { position: createLocalVariablesForParameters });
+            throw new Error('Token is undefined');
+        }
+        newLocalVariable(getIdentifier(type.tokens), type);
+    }
+}
+
+/**
+ * 解析函数定义。
+ * @param token 当前的令牌。
+ * @returns 解析出的函数定义。
+ */
+function parseFunction(token: Token): FunctionNode {
+    let type = declareType(token);
+    token = nowToken;
+    type = declare(token, type);
+    token = nowToken;
+    locals = undefined;
+
+    const functionNode = new FunctionNode();
+
+    if (type.tokens === undefined) {
+        logMessage('error', 'Token is undefined', { token, position: parseFunction });
+        throw new Error('Token is undefined');
+    }
+    functionNode.funcName = getIdentifier(type.tokens);
+
+    createLocalVariablesForParameters(type.parameters);
+    functionNode.Arguments = locals;
+
+    const nextToken = skipToken(token, '{');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parseFunction });
+        throw new Error('Unexpected end of input');
+    }
+    token = nextToken;
+    functionNode.body = blockStatement(token);
+    functionNode.locals = locals;
+    return functionNode;
+}
+
+/**
+ *  解析一个函数调用。
+ * 产生式为：函数调用 ::= 标识符 '(' (表达式 (',' 表达式)*)? ')'
+ * @param token 代表函数调用的令牌。
+ * @returns 代表函数调用的抽象语法树节点。
+ *
+ * Parse a function call.
+ * Production rule: functionCall ::= Identifier '(' (expression (',' expression)*)? ')'
+ * @param token The token representing the function call.
+ * @returns The abstract syntax tree node representing the function call.
+ */
+function functionCall(token: Token): ASTNode {
+    if (token?.next?.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: functionCall });
+        throw new Error('Unexpected end of input');
+    }
+    let startToken = token.next.next;
+
+    const head: ASTNode = { nodeKind: ASTNodeKind.Return };
+    let current: ASTNode = head;
+
+    while (!isEqual(startToken, ')')) {
+        if (current !== head) {
+            const nextToken = skipToken(startToken, ',');
+            if (nextToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: functionCall });
+                throw new Error('Unexpected end of input');
+            }
+            startToken = nextToken;
+        }
+        current = current.nextNode = assign(startToken);
+
+        startToken = nowToken;
+    }
+    const nextToken = skipToken(startToken, ')');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: functionCall });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = nextToken;
+
+    const node = newNode(ASTNodeKind.FunctionCall);
+    node.functionDef = getIdentifier(token);
+    node.functionArgs = head.nextNode;
+    return node;
+}
+
+/**
  * 解析一个主表达式。
- * 产生式为：主表达式 ::= '(' 表达式 ')' | 标识符 | 数字字面量
+ * 产生式为：主表达式 ::= '(' 表达式 ')' | 标识符 | 数字字面量 | 函数调用
  * @param token 代表主表达式的令牌。
  * @returns 代表主表达式的抽象语法树节点。
  *
  * Parse a primary expression.
- * Production rule: primary ::= '(' expression ')' | Identifier | NumericLiteral
+ * Production rule: primary ::= '(' expression ')' | Identifier | NumericLiteral | functionCall
  * @param token The token representing the primary expression.
  * @returns The abstract syntax tree node representing the primary expression.
  */
@@ -859,6 +1035,10 @@ function primary(token: Token): ASTNode {
     }
 
     if (token.kind === TokenType.Identifier) {
+        if (token.next !== undefined && isEqual(token.next, '(')) {
+            return functionCall(token);
+        }
+
         const variableNode = findVariable(token);
         if (variableNode === undefined && token.location !== undefined && token.length !== undefined) {
             logMessage('error', 'Variable not defined', { token, position: primary });
@@ -902,14 +1082,17 @@ function primary(token: Token): ASTNode {
  */
 export function parse(tokens: Token[]): FunctionNode {
     locals = undefined;
-    const nextToken = skipToken(tokens[0], '{');
-    if (nextToken === undefined) {
-        logMessage('error', 'Unexpected end of input', { token: tokens[0], position: parse });
+    const head: FunctionNode = { stackSize: 0, funcName: '' };
+    let current: FunctionNode = head;
+
+    let token = tokens[0];
+    while (token !== undefined && token.kind !== TokenType.EndOfFile) {
+        current = current.returnFunc = parseFunction(token);
+        token = nowToken;
+    }
+    if (head.returnFunc === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parse });
         throw new Error('Unexpected end of input');
     }
-    nowToken = nextToken;
-    const program = new FunctionNode();
-    program.body = blockStatement(nowToken);
-    program.locals = locals;
-    return program;
+    return head.returnFunc;
 }

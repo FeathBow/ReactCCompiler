@@ -20,6 +20,18 @@ let generated: string[] = [];
 let count: number = 0;
 
 /**
+ * 用于存储寄存器参数的数组。
+ * An array used to store register arguments.
+ */
+const regForArguments: string[] = ['%rdi', '%rsi', '%rdx', '%rcx', '%r8', '%r9'];
+
+/**
+ * 用于存储当前函数的变量。
+ * A variable used to store the current function.
+ */
+let nowFunction: FunctionNode | undefined;
+
+/**
  * 增加计数并返回新的计数值。
  * @returns 返回新的计数值。
  *
@@ -108,6 +120,33 @@ function generateExpression(node: ASTNode): void {
             popFromStack('%rdi');
             generated.push(`  mov %rax, (%rdi)`);
             console.log(`  mov %rax, (%rdi)`);
+            return;
+        }
+        case ASTNodeKind.FunctionCall: {
+            if (node.functionDef === undefined) {
+                logMessage('error', 'Invalid function call', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.FunctionCall,
+                });
+                throw new Error('invalid function call');
+            }
+            let nowArgument = node.functionArgs;
+            let argumentNumber = -1;
+            while (nowArgument !== undefined) {
+                generateExpression(nowArgument);
+                pushToStack();
+                nowArgument = nowArgument.nextNode;
+                argumentNumber++;
+            }
+
+            while (argumentNumber >= 0) {
+                popFromStack(regForArguments[argumentNumber]);
+                argumentNumber--;
+            }
+            console.log(`  mov $0, %rax`);
+            console.log(`  call ${node.functionDef}`);
+            generated.push(`  mov $0, %rax`, `  call ${node.functionDef}`);
             return;
         }
         // TODO: Add other cases
@@ -204,8 +243,8 @@ function generateStatement(node: ASTNode): void {
             }
 
             generateExpression(node.leftNode);
-            generated.push(`  jmp .L.return`);
-            console.log(`  jmp .L.return`);
+            console.log(`  jmp .L.return.${nowFunction?.funcName}`);
+            generated.push(`  jmp .L.return.${nowFunction?.funcName}`);
             return;
         }
         case ASTNodeKind.ExpressionStatement: {
@@ -291,16 +330,18 @@ function generateStatement(node: ASTNode): void {
  * @param prog The function node to process.
  */
 function assignLocalVariableOffsets(prog: FunctionNode): void {
-    let offset = 0;
-
-    let localVariable: LocalVariable | undefined = prog.locals;
-    while (localVariable !== undefined) {
-        offset += 8;
-        localVariable.offsetFromRBP = -offset;
-        localVariable = localVariable.nextVar;
+    let localFunction: FunctionNode | undefined = prog;
+    while (localFunction !== undefined) {
+        let offset = 0;
+        let localVariable: LocalVariable | undefined = localFunction.locals;
+        while (localVariable !== undefined) {
+            offset += 8;
+            localVariable.offsetFromRBP = -offset;
+            localVariable = localVariable.nextVar;
+        }
+        localFunction.stackSize = alignToNearest(offset, 16);
+        localFunction = localFunction.returnFunc;
     }
-
-    prog.stackSize = alignToNearest(offset, 16);
 }
 
 /**
@@ -313,29 +354,58 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
 export function generateCode(prog: FunctionNode): void {
     depth = 0;
     generated = [];
+    count = 0;
+    nowFunction = undefined;
 
     assignLocalVariableOffsets(prog);
 
-    console.log(`  .globl main`);
-    console.log(`main:`);
-    console.log(`  push %rbp`);
-    console.log(`  mov %rsp, %rbp`);
-    console.log(`  sub $${prog.stackSize}, %rsp`);
+    let localFunction: FunctionNode | undefined = prog;
+    while (localFunction !== undefined) {
+        console.log(`  .globl ${localFunction.funcName}`);
+        console.log(`${localFunction.funcName}:`);
 
-    generated.push(`  .globl main`, `main:`, `  push %rbp`, `  mov %rsp, %rbp`, `  sub $${prog.stackSize}, %rsp`);
+        nowFunction = localFunction;
 
-    if (prog.body === undefined) {
-        logMessage('error', 'Body is undefined', { position: generateCode });
-        throw new Error('body is undefined');
+        console.log(`  push %rbp`);
+        console.log(`  mov %rsp, %rbp`);
+        console.log(`  sub $${localFunction.stackSize}, %rsp`);
+
+        generated.push(
+            `  .globl ${localFunction.funcName}`,
+            `${localFunction.funcName}:`,
+            `  push %rbp`,
+            `  mov %rsp, %rbp`,
+            `  sub $${localFunction.stackSize}, %rsp`,
+        );
+
+        if (localFunction.body === undefined) {
+            logMessage('error', 'Body is undefined', { position: generateCode, function: localFunction });
+            throw new Error('body is undefined');
+        }
+
+        let nowArgument = localFunction.Arguments;
+        if (nowArgument !== undefined) {
+            let argumentNumber = 0;
+            while (nowArgument !== undefined) {
+                console.log(`  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+                generated.push(`  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+                nowArgument = nowArgument.nextVar;
+                argumentNumber++;
+            }
+        }
+
+        generateStatement(localFunction.body);
+        console.assert(depth === 0);
+
+        console.log(`.L.return.${localFunction.funcName}:`);
+        console.log(`  mov %rbp, %rsp`);
+        console.log(`  pop %rbp`);
+        console.log(`  ret`);
+
+        generated.push(`.L.return.${localFunction.funcName}:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
+
+        localFunction = localFunction.returnFunc;
     }
-    generateStatement(prog.body);
-    console.assert(depth === 0);
-
-    console.log(`.L.return:`);
-    console.log(`  mov %rbp, %rsp`);
-    console.log(`  pop %rbp`);
-    console.log(`  ret`);
-    generated.push(`.L.return:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
 }
 
 /**

@@ -12,6 +12,7 @@ import { logMessage } from './logger';
  */
 function isKeyword(token: Token): boolean {
     const keywords: string[] = Object.values(Keywords);
+    if (token.kind === TokenType.EndOfFile) return false;
     if (token.location === undefined || token.length === undefined) {
         logMessage('error', 'Token location or length is undefined', { token, position: isKeyword });
         return false;
