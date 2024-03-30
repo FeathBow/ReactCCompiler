@@ -968,11 +968,17 @@ function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
             }
             token = nextToken;
         }
-        let nowType = declareType(token);
-        token = nowToken;
-        nowType = declare(token, nowType);
-        token = nowToken;
-        current = current.nextParameters = JSON.parse(JSON.stringify(nowType));
+
+        if (isEqual(token, 'void') && token.next !== undefined && isEqual(token.next, ')')) {
+            token = token.next;
+        } else {
+            let nowType = declareType(token);
+            token = nowToken;
+
+            nowType = declare(token, nowType);
+            token = nowToken;
+            current = current.nextParameters = JSON.parse(JSON.stringify(nowType));
+        }
     }
 
     type = addFunctionType(type);

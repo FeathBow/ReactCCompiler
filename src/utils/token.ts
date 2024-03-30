@@ -181,6 +181,21 @@ export function tokenize(p: string): Token[] {
     const tokens: Token[] = [];
 
     while (p.length > 0) {
+        // Skip line comments.
+        while (p.startsWith('//')) {
+            p = p.slice(p.indexOf('\n') + 1);
+        }
+
+        // Skip block comments.
+        while (p.startsWith('/*')) {
+            const end = p.indexOf('*/', 2);
+            if (end === -1) {
+                logMessage('error', 'Unclosed block comment', { position: tokenize });
+                throw new Error('Unclosed block comment');
+            }
+            p = p.slice(end + 2);
+        }
+
         // Skip whitespace characters.
         if (p.charAt(0).trim() === '') {
             p = p.slice(1);
