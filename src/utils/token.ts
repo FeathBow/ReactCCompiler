@@ -1,4 +1,4 @@
-import { TokenType, Token, Keywords } from './commons';
+import { TokenType, Token, Keywords, VariableTypeDefinition } from './commons';
 import { logMessage } from './logger';
 
 /**
@@ -18,6 +18,24 @@ function isKeyword(token: Token): boolean {
         return false;
     }
     return keywords.includes(token.location.slice(0, token.length));
+}
+
+/**
+ * 判断给定的 token 是否是一个变量类型定义。
+ * @param token - 需要判断的 token。
+ * @returns 如果 token 是一个变量类型定义，返回 true，否则返回 false。
+ *
+ * Evaluate if the given token is a variable type definition.
+ * @param token - Determine if the given token is a variable type definition.
+ * @returns If the token is a variable type definition, return true, otherwise return false.
+ */
+export function isVariableTypeDefinition(token: Token): boolean {
+    const variableTypeDefinition: string[] = Object.values(VariableTypeDefinition);
+    if (token.location === undefined || token.length === undefined) {
+        logMessage('error', 'Token location or length is undefined', { token, position: isVariableTypeDefinition });
+        return false;
+    }
+    return variableTypeDefinition.includes(token.location.slice(0, token.length));
 }
 
 /**

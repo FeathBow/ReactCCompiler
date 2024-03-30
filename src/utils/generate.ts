@@ -27,10 +27,13 @@ let generated: string[] = [];
 let count: number = 0;
 
 /**
- * 用于存储寄存器参数的数组。
- * An array used to store register arguments.
+ * 用于存储参数的寄存器。
+ * Registers used to store arguments.
  */
-const regForArguments: string[] = ['%rdi', '%rsi', '%rdx', '%rcx', '%r8', '%r9'];
+const reg64ForArguments: string[] = ['%rdi', '%rsi', '%rdx', '%rcx', '%r8', '%r9'];
+const reg32ForArguments: string[] = ['%edi', '%esi', '%edx', '%ecx', '%r8d', '%r9d'];
+const reg16ForArguments: string[] = ['%di', '%si', '%dx', '%cx', '%r8w', '%r9w'];
+const reg8ForArguments: string[] = ['%dil', '%sil', '%dl', '%cl', '%r8b', '%r9b'];
 
 /**
  * 用于存储当前函数的变量。
@@ -51,15 +54,59 @@ function addCount(): number {
 
 function load(type: TypeDefinition): void {
     if (type.type !== ASTNodeType.Array) {
-        console.log('  mov (%rax), %rax');
-        generated.push('  mov (%rax), %rax');
+        switch (type.size) {
+            case 1: {
+                console.log('  movsbq (%rax), %rax');
+                generated.push('  movsbq (%rax), %rax');
+
+                break;
+            }
+            case 4: {
+                console.log('  movsxd (%rax), %rax');
+                generated.push('  movsxd (%rax), %rax');
+
+                break;
+            }
+            case 2: {
+                console.log('  movswq (%rax), %rax');
+                generated.push('  movswq (%rax), %rax');
+
+                break;
+            }
+            default: {
+                console.log('  mov (%rax), %rax');
+                generated.push('  mov (%rax), %rax');
+            }
+        }
     }
 }
 
-function store(): void {
+function store(type: TypeDefinition): void {
     popFromStack('%rdi');
-    console.log('  mov %rax, (%rdi)');
-    generated.push('  mov %rax, (%rdi)');
+    switch (type.size) {
+        case 1: {
+            console.log('  mov %al, (%rdi)');
+            generated.push('  mov %al, (%rdi)');
+
+            break;
+        }
+        case 4: {
+            console.log('  mov %eax, (%rdi)');
+            generated.push('  mov %eax, (%rdi)');
+
+            break;
+        }
+        case 2: {
+            console.log('  mov %ax, (%rdi)');
+            generated.push('  mov %ax, (%rdi)');
+
+            break;
+        }
+        default: {
+            console.log('  mov %rax, (%rdi)');
+            generated.push('  mov %rax, (%rdi)');
+        }
+    }
 }
 
 /**
@@ -152,7 +199,15 @@ function generateExpression(node: ASTNode): void {
             generateAddress(node.leftNode);
             pushToStack();
             generateExpression(node.rightNode);
-            store();
+            if (node.typeDef === undefined) {
+                logMessage('error', 'Invalid variable', {
+                    node,
+                    position: generateExpression,
+                    case: ASTNodeKind.Variable,
+                });
+                throw new Error('invalid variable');
+            }
+            store(node.typeDef);
             return;
         }
         case ASTNodeKind.FunctionCall: {
@@ -174,7 +229,7 @@ function generateExpression(node: ASTNode): void {
             }
 
             while (argumentNumber >= 0) {
-                popFromStack(regForArguments[argumentNumber]);
+                popFromStack(reg64ForArguments[argumentNumber]);
                 argumentNumber--;
             }
             console.log(`  mov $0, %rax`);
@@ -428,8 +483,44 @@ export function generateCode(prog: FunctionNode): void {
         if (nowArgument !== undefined) {
             let argumentNumber = 0;
             while (nowArgument !== undefined) {
-                console.log(`  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
-                generated.push(`  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+                if (nowArgument?.varType?.size === undefined) {
+                    logMessage('error', 'Invalid variable type', {
+                        position: generateCode,
+                        function: localFunction,
+                        variable: nowArgument,
+                    });
+                    throw new Error('invalid variable type');
+                }
+                switch (nowArgument.varType.size) {
+                    case 1: {
+                        console.log(`  mov ${reg8ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+                        generated.push(`  mov ${reg8ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+
+                        break;
+                    }
+                    case 4: {
+                        console.log(`  mov ${reg32ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+                        generated.push(
+                            `  mov ${reg32ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`,
+                        );
+
+                        break;
+                    }
+                    case 2: {
+                        console.log(`  mov ${reg16ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+                        generated.push(
+                            `  mov ${reg16ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`,
+                        );
+
+                        break;
+                    }
+                    default: {
+                        console.log(`  mov ${reg64ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
+                        generated.push(
+                            `  mov ${reg64ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`,
+                        );
+                    }
+                }
                 nowArgument = nowArgument.nextVar;
                 argumentNumber++;
             }

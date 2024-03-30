@@ -6,15 +6,20 @@ import {
     ASTNodeKind,
     TokenType,
     addType,
-    isInteger,
+    isNumberType,
     intTypeDefinition,
     type TypeDefinition,
     pointerTo,
     addFunctionType,
     addArray,
+    voidTypeDefinition,
+    charTypeDefinition,
+    int64TypeDefinition,
+    shortTypeDefinition,
+    ASTNodeType,
 } from './commons';
 import { logMessage } from './logger';
-import { skipToken, isEqual } from './token';
+import { skipToken, isEqual, isVariableTypeDefinition } from './token';
 
 let locals: LocalVariable | undefined;
 
@@ -343,23 +348,61 @@ function getIdentifier(token: Token): string {
 
 /**
  * 声明类型。
- * 产生式为：类型定义 ::= 'int'
+ * 产生式为：类型定义 ::= 'int' | 'void' | 'char' | 'i64' | 'short'
  * @param token 代表类型的令牌。
  * @returns 类型定义。
  *
  * Declare a type.
- * Production rule: typeDefinition ::= 'int'
+ * Production rule: typeDefinition ::= 'int' | 'void' | 'char' | 'i64' | 'short'
  * @param token The token representing the type.
  * @returns The type definition.
  */
 export function declareType(token: Token): TypeDefinition {
-    const nextToken = skipToken(token, 'int');
-    if (nextToken === undefined) {
-        logMessage('error', 'Unexpected end of input', { token, position: declareType });
-        throw new Error('Unexpected end of input');
+    if (isEqual(token, 'int')) {
+        const nextToken = skipToken(token, 'int');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declareType });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = nextToken;
+        return intTypeDefinition;
+    } else if (isEqual(token, 'void')) {
+        const nextToken = skipToken(token, 'void');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declareType });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = nextToken;
+        return voidTypeDefinition;
+    } else if (isEqual(token, 'char')) {
+        const nextToken = skipToken(token, 'char');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declareType });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = nextToken;
+        return charTypeDefinition;
+    } else if (isEqual(token, 'i64')) {
+        const nextToken = skipToken(token, 'i64');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declareType });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = nextToken;
+        return int64TypeDefinition;
+    } else if (isEqual(token, 'short')) {
+        const nextToken = skipToken(token, 'short');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declareType });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = nextToken;
+        return shortTypeDefinition;
     }
-    nowToken = nextToken;
-    return intTypeDefinition;
+    else {
+        logMessage('error', 'Unknown type', { token, position: declareType });
+        throw new Error('Unknown type');
+    }
 }
 
 /**
@@ -427,6 +470,10 @@ function parseDeclaration(token: Token): ASTNode {
         }
         parseFirst = true;
         const type = declare(token, baseType);
+        if (type.type === ASTNodeType.Void) {
+            logMessage('error', 'Variable cannot be of type void', { token, position: parseDeclaration });
+            throw new Error('Variable cannot be of type void');
+        }
         token = nowToken;
         if (type.tokens === undefined) {
             logMessage('error', 'Token is undefined', { token, position: parseDeclaration });
@@ -475,7 +522,7 @@ function blockStatement(token: Token): ASTNode {
     let current: ASTNode = head;
     // nowToken = token;
     while (!isEqual(token, '}')) {
-        current = current.nextNode = isEqual(token, 'int') ? parseDeclaration(token) : statement(token);
+        current = current.nextNode = isVariableTypeDefinition(token) ? parseDeclaration(token) : statement(token);
         token = nowToken;
         addType(current);
     }
@@ -760,7 +807,7 @@ function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
         throw new Error('TypeDefinition is undefined');
     }
 
-    if (isInteger(leftNode.typeDef) && isInteger(rightNode.typeDef)) {
+    if (isNumberType(leftNode.typeDef) && isNumberType(rightNode.typeDef)) {
         return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
     }
     if (leftNode.typeDef.ptr !== undefined && rightNode.typeDef.ptr !== undefined) {
@@ -796,11 +843,11 @@ function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
         throw new Error('TypeDefinition is undefined');
     }
 
-    if (isInteger(leftNode.typeDef) && isInteger(rightNode.typeDef)) {
+    if (isNumberType(leftNode.typeDef) && isNumberType(rightNode.typeDef)) {
         return newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
     }
 
-    if (leftNode.typeDef.ptr?.size !== undefined && isInteger(rightNode.typeDef)) {
+    if (leftNode.typeDef.ptr?.size !== undefined && isNumberType(rightNode.typeDef)) {
         rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(leftNode.typeDef.ptr.size));
         addType(rightNode);
         const node = newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);

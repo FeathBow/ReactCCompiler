@@ -168,6 +168,31 @@ export enum Keywords {
     While = 'while',
     /** 整型。Int. */
     Int = 'int',
+    /** 空。Void. */
+    Void = 'void',
+    /** 字符。char */
+    Char = 'char',
+    /** 长整形 i64(long long) */
+    Int64 = 'i64',
+    /** 短整型。short */
+    Short = 'short',
+}
+
+/**
+ * 定义了变量类型的关键字。
+ * Defination of variable type keywords.
+ */
+export enum VariableTypeDefinition {
+    /** 整型。Int. */
+    Int = 'int',
+    /** 空。Void. */
+    Void = 'void',
+    /** 字符。char */
+    Char = 'char',
+    /** 长整形 i64(long long) */
+    Int64 = 'i64',
+    /** 短整型。short */
+    Short = 'short',
 }
 
 /**
@@ -183,6 +208,14 @@ export enum ASTNodeType {
     Function = 'Func',
     /** 数组。Array. */
     Array = 'Array',
+    /** 空。Void. */
+    Void = 'Void',
+    /** 字符。Char */
+    Char = 'Char',
+    /** 长整形 i64(long long) */
+    Int64 = 'Int64',
+    /** 短整型。Short */
+    Short = 'Short',
 }
 
 /**
@@ -254,17 +287,46 @@ export class TypeDefinition {
  * 定义了整数类型的变量。
  * Defination of integer type variable.
  */
-export const intTypeDefinition = new TypeDefinition(ASTNodeType.Integer, 8);
+export const intTypeDefinition = new TypeDefinition(ASTNodeType.Integer, 4);
 
 /**
- * 判断一个变量类型是否是整数类型。
+ * 定义了空类型的变量。
+ * Defination of void type variable.
+ */
+export const voidTypeDefinition = new TypeDefinition(ASTNodeType.Void, 1);
+
+/**
+ * 定义了字符类型的变量。
+ * Defination of char type variable.
+ */
+export const charTypeDefinition = new TypeDefinition(ASTNodeType.Char, 1);
+
+/**
+ * 定义了长整型类型的变量。
+ * Defination of long long type variable.
+ */
+export const int64TypeDefinition = new TypeDefinition(ASTNodeType.Int64, 8);
+
+/**
+ * 定义了短整型类型的变量。
+ * Defination of short type variable.
+ */
+export const shortTypeDefinition = new TypeDefinition(ASTNodeType.Short, 2);
+
+/**
+ * 判断一个变量类型是否是数类型。
  * @param type - 要判断的变量类型。
  *
- * Evaluate if a variable type is an integer type.
+ * Evaluate if a variable type is a number type.
  * @param type - The variable type to evaluate.
  */
-export function isInteger(type: TypeDefinition): boolean {
-    return type.type === ASTNodeType.Integer;
+export function isNumberType(type: TypeDefinition): boolean {
+    return (
+        type.type === ASTNodeType.Integer ||
+        type.type === ASTNodeType.Char ||
+        type.type === ASTNodeType.Int64 ||
+        type.type === ASTNodeType.Short
+    );
 }
 
 /**
@@ -341,7 +403,7 @@ export function addType(node: ASTNode | undefined): void {
         case ASTNodeKind.LessThanOrEqual:
         case ASTNodeKind.FunctionCall:
         case ASTNodeKind.Number: {
-            node.typeDef = intTypeDefinition;
+            node.typeDef = int64TypeDefinition;
             return;
         }
         case ASTNodeKind.Variable: {
@@ -362,6 +424,11 @@ export function addType(node: ASTNode | undefined): void {
         }
         case ASTNodeKind.Dereference: {
             if (node.leftNode?.typeDef?.ptr === undefined) {
+                logMessage('error', 'Invalid pointer dereference', { token: node.leftNode?.localVar?.varName });
+                throw new Error('Invalid pointer dereference');
+            }
+            if (node.leftNode.typeDef.ptr.type === ASTNodeType.Void) {
+                logMessage('error', 'Invalid pointer dereference', { token: node.leftNode.localVar?.varName });
                 throw new Error('Invalid pointer dereference');
             }
             node.typeDef = node.leftNode.typeDef.ptr;
