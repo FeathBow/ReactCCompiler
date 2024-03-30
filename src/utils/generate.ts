@@ -432,6 +432,15 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
                 throw new Error('invalid variable type');
             }
             offset += localVariable.varType?.size;
+            if (localVariable.varType.alignment === undefined) {
+                logMessage('error', 'Invalid variable type', {
+                    position: assignLocalVariableOffsets,
+                    function: localFunction,
+                    variable: localVariable,
+                });
+                throw new Error('invalid variable type');
+            }
+            offset = alignToNearest(offset, localVariable.varType.alignment);
             localVariable.offsetFromRBP = -offset;
             localVariable = localVariable.nextVar;
         }

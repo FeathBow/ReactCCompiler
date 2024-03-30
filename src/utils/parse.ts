@@ -1067,6 +1067,10 @@ function createLocalVariablesForParameters(type: TypeDefinition | undefined): vo
  * 解析函数定义。
  * @param token 当前的令牌。
  * @returns 解析出的函数定义。
+ *
+ * Parse a function definition.
+ * @param token The current token.
+ * @returns The parsed function definition.
  */
 function parseFunction(token: Token): FunctionNode {
     let type = declareType(token);
@@ -1145,6 +1149,68 @@ function functionCall(token: Token): ASTNode {
 }
 
 /**
+ * 解析抽象声明符。
+ * 抽象声明符用于描述一个类型而不需要给出具体的变量名。在函数声明中，我们可以使用抽象声明符来描述函数的参数类型。
+ * 产生式为：抽象声明符 ::= ('*' 抽象声明符)? 类型后缀
+ * @param tokens 代表抽象声明符的令牌序列。
+ * @param type 初始类型。
+ * @returns 解析得到的类型。
+ *
+ * Parse an abstract declarator.
+ * An abstract declarator is used to describe a type without giving a specific variable name. In function declarations, we can use an abstract declarator to describe the parameter types of a function.
+ * Production rule: abstractDeclarator ::= ('*' abstractDeclarator)? typeSuffix
+ * @param tokens The token sequence representing the abstract declarator.
+ * @param type The initial type.
+ * @returns The parsed type.
+ */
+function parseAbstractDeclarator(token: Token, type: TypeDefinition): TypeDefinition {
+    while (isEqual(token, '*')) {
+        type = pointerTo(type);
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: parseAbstractDeclarator });
+            throw new Error('Unexpected end of input');
+        }
+        token = token.next;
+    }
+
+    if (isEqual(token, '(')) {
+        const nextToken = token.next;
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: parseAbstractDeclarator });
+            throw new Error('Unexpected end of input');
+        }
+        parseAbstractDeclarator(nextToken, type);
+        token = nowToken;
+        const outToken = skipToken(token, ')');
+        if (outToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: parseAbstractDeclarator });
+            throw new Error('Unexpected end of input');
+        }
+        token = outToken;
+        type = checkTypeSuffix(token, type);
+        return parseAbstractDeclarator(nextToken, type);
+    }
+    return checkTypeSuffix(token, type);
+}
+
+/**
+ * 解析类型。
+ * 产生式为：类型 ::= 类型标识符 ('*' 类型标识符)*
+ * @param token 代表类型的令牌。
+ * @returns 代表类型的抽象语法树节点。
+ *
+ * Parse a type.
+ * Production rule: type ::= typeIdentifier ('*' typeIdentifier)*
+ * @param token The token representing the type.
+ * @returns The abstract syntax tree node representing the type.
+ */
+function parseType(token: Token): TypeDefinition {
+    const type: TypeDefinition = declareType(token);
+    token = nowToken;
+    return parseAbstractDeclarator(token, type);
+}
+
+/**
  * 解析一个主表达式。
  * 产生式为：主表达式 ::= '(' 表达式 ')' | 标识符 | 数字字面量 | 函数调用
  * @param token 代表主表达式的令牌。
@@ -1176,13 +1242,29 @@ function primary(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: primary });
             throw new Error('Unexpected end of input');
         }
-        const node = unary(token.next);
-        addType(node);
-        if (node?.typeDef?.size === undefined) {
-            logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
-            throw new Error('TypeDefinition is undefined');
+        if (isEqual(token.next, '(') && token.next.next !== undefined && isVariableTypeDefinition(token.next.next)) {
+            const type = parseType(token.next.next);
+            token = nowToken;
+            const nextToken = skipToken(token, ')');
+            if (nextToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: primary });
+                throw new Error('Unexpected end of input');
+            }
+            nowToken = nextToken;
+            if (type.size === undefined) {
+                logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
+                throw new Error('TypeDefinition is undefined');
+            }
+            return newNumber(type.size);
+        } else {
+            const node = unary(token.next);
+            addType(node);
+            if (node?.typeDef?.size === undefined) {
+                logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
+                throw new Error('TypeDefinition is undefined');
+            }
+            return newNumber(node.typeDef.size);
         }
-        return newNumber(node.typeDef.size);
     }
 
     if (token.kind === TokenType.Identifier) {

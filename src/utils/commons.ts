@@ -241,22 +241,25 @@ export class TypeDefinition {
     arrayLength?: number;
     /** 变量大小 */
     size?: number;
+    /** 内存对齐 */
+    alignment?: number;
 
     /**
      * 类构造函数。
      * @param type - 变量类型。
      * @param ptr - 指针。
+     * @param alignment - 内存对齐。
      * @param tokens - 词法单元。
      * @param functionType - 函数类型。
      * @param parameters - 函数参数。
      * @param nextParameters - 下一个参数。
      * @param arrayLength - 数组长度。
-     *
      * @returns 类实例。
      *
      * Class constructor
      * @param type - Variable type.
      * @param ptr - Pointer.
+     * @param alignment - Memory alignment.
      * @param tokens - Tokens.
      * @param functionType - Function type.
      * @param parameters - Function parameters.
@@ -267,6 +270,7 @@ export class TypeDefinition {
     constructor(
         type: ASTNodeType,
         size: number,
+        alignment: number,
         ptr?: TypeDefinition,
         tokens?: Token,
         functionType?: TypeDefinition,
@@ -276,6 +280,7 @@ export class TypeDefinition {
     ) {
         this.type = type;
         this.size = size;
+        this.alignment = alignment;
         this.ptr = ptr;
         this.tokens = tokens;
         this.functionType = functionType;
@@ -289,31 +294,31 @@ export class TypeDefinition {
  * 定义了整数类型的变量。
  * Defination of integer type variable.
  */
-export const intTypeDefinition = new TypeDefinition(ASTNodeType.Integer, 4);
+export const intTypeDefinition = new TypeDefinition(ASTNodeType.Integer, 4, 4);
 
 /**
  * 定义了空类型的变量。
  * Defination of void type variable.
  */
-export const voidTypeDefinition = new TypeDefinition(ASTNodeType.Void, 1);
+export const voidTypeDefinition = new TypeDefinition(ASTNodeType.Void, 1, 1);
 
 /**
  * 定义了字符类型的变量。
  * Defination of char type variable.
  */
-export const charTypeDefinition = new TypeDefinition(ASTNodeType.Char, 1);
+export const charTypeDefinition = new TypeDefinition(ASTNodeType.Char, 1, 1);
 
 /**
  * 定义了长整型类型的变量。
  * Defination of long long type variable.
  */
-export const int64TypeDefinition = new TypeDefinition(ASTNodeType.Int64, 8);
+export const int64TypeDefinition = new TypeDefinition(ASTNodeType.Int64, 8, 8);
 
 /**
  * 定义了短整型类型的变量。
  * Defination of short type variable.
  */
-export const shortTypeDefinition = new TypeDefinition(ASTNodeType.Short, 2);
+export const shortTypeDefinition = new TypeDefinition(ASTNodeType.Short, 2, 2);
 
 /**
  * 判断一个变量类型是否是数类型。
@@ -339,7 +344,7 @@ export function isNumberType(type: TypeDefinition): boolean {
  * @param ptr - The type to point to.
  */
 export function pointerTo(ptr: TypeDefinition): TypeDefinition {
-    const pointer = new TypeDefinition(ASTNodeType.Pointer, 8);
+    const pointer = new TypeDefinition(ASTNodeType.Pointer, 8, 8);
     pointer.ptr = ptr;
     pointer.type = ASTNodeType.Pointer;
     return pointer;
@@ -448,7 +453,7 @@ export function addType(node: ASTNode | undefined): void {
  * @returns New function type.
  */
 export function addFunctionType(type: TypeDefinition): TypeDefinition {
-    const nowType = new TypeDefinition(ASTNodeType.Function, 8);
+    const nowType = new TypeDefinition(ASTNodeType.Function, 8, 8);
     nowType.functionType = type;
     return nowType;
 }
@@ -458,7 +463,11 @@ export function addArray(type: TypeDefinition, length: number): TypeDefinition {
         logMessage('error', 'Array type must have size', { type });
         throw new Error('Array type must have size');
     }
-    const arrayType = new TypeDefinition(ASTNodeType.Array, type.size * length);
+    if (type.alignment === undefined) {
+        logMessage('error', 'Array type must have alignment', { type });
+        throw new Error('Array type must have alignment');
+    }
+    const arrayType = new TypeDefinition(ASTNodeType.Array, type.size * length, type.alignment);
     arrayType.ptr = type;
     arrayType.arrayLength = length;
     return arrayType;
