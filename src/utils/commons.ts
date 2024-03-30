@@ -176,6 +176,8 @@ export enum Keywords {
     Int64 = 'i64',
     /** 短整型。short */
     Short = 'short',
+    /** 操作数大小。Sizeof. */
+    Sizeof = 'sizeof',
 }
 
 /**

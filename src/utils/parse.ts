@@ -398,8 +398,7 @@ export function declareType(token: Token): TypeDefinition {
         }
         nowToken = nextToken;
         return shortTypeDefinition;
-    }
-    else {
+    } else {
         logMessage('error', 'Unknown type', { token, position: declareType });
         throw new Error('Unknown type');
     }
@@ -1165,6 +1164,19 @@ function primary(token: Token): ASTNode {
         }
         nowToken = nextToken;
         return node;
+    }
+    if (isEqual(token, 'sizeof')) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: primary });
+            throw new Error('Unexpected end of input');
+        }
+        const node = unary(token.next);
+        addType(node);
+        if (node?.typeDef?.size === undefined) {
+            logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
+            throw new Error('TypeDefinition is undefined');
+        }
+        return newNumber(node.typeDef.size);
     }
 
     if (token.kind === TokenType.Identifier) {
