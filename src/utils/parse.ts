@@ -420,7 +420,26 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
         token = nowToken;
         type = pointerTo(type);
     }
-
+    if (isEqual(token, '(')) {
+        const returnToken = skipToken(token, '(');
+        if (returnToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declare });
+            throw new Error('Unexpected end of input');
+        }
+        declare(returnToken, type);
+        token = nowToken;
+        let nextToken = skipToken(token, ')');
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declare });
+            throw new Error('Unexpected end of input');
+        }
+        token = nextToken;
+        type = checkTypeSuffix(token, type)
+        nextToken = nowToken;
+        type = declare(returnToken, type);
+        nowToken = nextToken;
+        return type;
+    }
     if (token.kind !== TokenType.Identifier) {
         logMessage('error', 'Expected an identifier', { token, position: declare });
         throw new Error('Expected an identifier');
