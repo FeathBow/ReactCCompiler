@@ -40,18 +40,11 @@ const log = logger.createLogger(config);
 
 /**
  * 记录一条消息。
- * @param level 日志级别。
- * @param message 要记录的消息。
- * @param context 上下文对象。
- * @param error 可选的错误对象。
- * @param namespace 日志的命名空间。
- *
- * Log a message.
- * @param level The log level.
- * @param message The message to log.
- * @param context The context object.
- * @param error An optional error object.
- * @param namespace The namespace for the log.
+ * @param {LogLevel} level 日志级别。The log level.
+ * @param {string} message 要记录的消息。The message to log.
+ * @param {object} context 上下文对象。The context object.
+ * @param {Error | undefined} error 可选的错误对象。An optional error object.
+ * @param {string} namespace 日志的命名空间。The namespace for the log.
  */
 export function logMessage(
     level: LogLevel,
@@ -69,22 +62,17 @@ export function logMessage(
 }
 
 /**
- * 启用指定命名空间的日志记录。
- * @param namespace 要启用的日志的命名空间。
- *
- * Enable logging for the specified namespace.
- * @param namespace The namespace for the log to enable.
+ * 启用指定命名空间的日志记录。enable logging for the specified namespace.
+ * @param {string} namespace 要启用的日志的命名空间。 The namespace for the log to enable.
+ * @returns {void} 无返回值。No return value.
  */
 export function enableLogger(namespace: string): void {
     log.enable(namespace);
 }
 
 /**
- * 禁用指定命名空间的日志记录。
- * @param namespace 要禁用的日志的命名空间。
- *
- * Disable logging for the specified namespace.
- * @param namespace The namespace for the log to disable.
+ * 禁用指定命名空间的日志记录。disable logging for the specified namespace.
+ * @param {string} namespace 要禁用的日志的命名空间。The namespace for the log to disable.
  */
 export function disableLogger(namespace: string): void {
     log.disable(namespace);

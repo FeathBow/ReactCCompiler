@@ -42,16 +42,17 @@ const reg8ForArguments: string[] = ['%dil', '%sil', '%dl', '%cl', '%r8b', '%r9b'
 let nowFunction: FunctionNode | undefined;
 
 /**
- * 增加计数并返回新的计数值。
- * @returns 返回新的计数值。
- *
- * Increases the count and returns the new count value.
- * @returns Returns the new count value.
+ * 增加计数并返回新的计数值。Add to the count and return the new count value.
+ * @returns {number} 返回新的计数值。Returns the new count value.
  */
 function addCount(): number {
     return ++count;
 }
 
+/**
+ * 根据给定的类型定义，将值加载到寄存器中。Load a value into a register based on the given type definition.
+ * @param {TypeDefinition} type 要加载的值的类型定义。The type definition of the value to load.
+ */
 function load(type: TypeDefinition): void {
     if (type.type !== ASTNodeType.Array) {
         switch (type.size) {
@@ -81,6 +82,10 @@ function load(type: TypeDefinition): void {
     }
 }
 
+/**
+ * 根据给定的类型定义，将值存储到内存中。Store a value into memory based on the given type definition.
+ * @param {TypeDefinition} type 要存储的值的类型定义。The type definition of the value to store.
+ */
 function store(type: TypeDefinition): void {
     popFromStack('%rdi');
     switch (type.size) {
@@ -110,11 +115,8 @@ function store(type: TypeDefinition): void {
 }
 
 /**
- * 生成给定抽象语法树节点的汇编代码。
- * @param node 要生成代码的抽象语法树节点。
- *
- * Generate assembly code for the given abstract syntax tree node.
- * @param node The abstract syntax tree node to generate code for.
+ * 根据给定的 AST 节点生成表达式。Generate an expression based on the given AST node.
+ * @param {ASTNode} node 要生成表达式的 AST 节点。The AST node to generate the expression for.
  */
 function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
@@ -316,11 +318,8 @@ function generateExpression(node: ASTNode): void {
 }
 
 /**
- * 生成给定抽象语法树节点的汇编代码。
- * @param node 要生成代码的抽象语法树节点。
- *
- * Generate assembly code for the given abstract syntax tree node.
- * @param node The abstract syntax tree node to generate code for.
+ * 生成给定抽象语法树节点的语句。Generate a statement for the given abstract syntax tree node.
+ * @param {ASTNode} node 要生成语句的抽象语法树节点。The abstract syntax tree node to generate the statement for.
  */
 function generateStatement(node: ASTNode): void {
     switch (node.nodeKind) {
@@ -411,11 +410,8 @@ function generateStatement(node: ASTNode): void {
 }
 
 /**
- * 为函数中的局部变量分配偏移量。
- * @param prog 要处理的函数节点。
- *
- * Assign offsets to local variables in a function.
- * @param prog The function node to process.
+ * 为函数中的局部变量分配偏移量。Assign offsets for local variables in functions.
+ * @param {FunctionNode} prog 要处理的函数节点。The function node to process.
  */
 function assignLocalVariableOffsets(prog: FunctionNode): void {
     let localFunction: FunctionNode | undefined = prog;
@@ -450,11 +446,8 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
 }
 
 /**
- * 生成给定函数节点的汇编代码。
- * @param prog 要生成代码的函数节点。
- *
- * Generate assembly code for the given function node.
- * @param prog The function node to generate code for.
+ * 生成给定函数节点的汇编代码。Generate assembly code for the given function node.
+ * @param {FunctionNode} prog 要生成代码的函数节点。The function node to generate code for.
  */
 export function generateCode(prog: FunctionNode): void {
     depth = 0;
@@ -550,9 +543,7 @@ export function generateCode(prog: FunctionNode): void {
 }
 
 /**
- * 将当前结果推入堆栈。
- *
- * Push the current result onto the stack.
+ * 从堆栈中弹出一个元素。Pop an element from the stack.
  */
 function pushToStack(): void {
     console.log('  push %rax');
@@ -561,11 +552,8 @@ function pushToStack(): void {
 }
 
 /**
- * 从堆栈中弹出一个元素。
- * @param argument 要弹出的元素的名称。
- *
- * Pop an element from the stack.
- * @param argument The name of the element to pop.
+ * 从堆栈中弹出一个元素。Pop an element from the stack.
+ * @param {string} argument 要弹出的元素的名称。The name of the element to pop.
  */
 function popFromStack(argument: string): void {
     console.log(`  pop ${argument}`);
@@ -574,26 +562,18 @@ function popFromStack(argument: string): void {
 }
 
 /**
- * 将给定的数字向上舍入到最接近的对齐值。
- * @param n 要舍入的数字。
- * @param align 对齐值。
- * @returns 舍入后的数字。
- *
- * Rounds up the given number to the nearest alignment value.
- * @param n The number to round up.
- * @param align The alignment value.
- * @returns The rounded number.
+ * 将给定的数字向上舍入到最接近的对齐值。Round the given number up to the nearest alignment value.
+ * @param {number} n 要舍入的数字。The number to round.
+ * @param {number} align 对齐值。The alignment value.
+ * @returns {number} 舍入后的数字。The rounded number.
  */
 function alignToNearest(n: number, align: number): number {
     return Math.floor((n + align - 1) / align) * align;
 }
 
 /**
- * 生成给定抽象语法树节点的地址。
- * @param node 要生成地址的抽象语法树节点。
- *
- * Generate the address for the given abstract syntax tree node.
- * @param node The abstract syntax tree node to generate the address for.
+ * 生成给定抽象语法树节点的地址。Generate the address of the given abstract syntax tree node.
+ * @param {ASTNode} node 要生成地址的抽象语法树节点。The abstract syntax tree node to generate the address for.
  */
 function generateAddress(node: ASTNode): void {
     if (node.nodeKind === ASTNodeKind.Variable && node.localVar !== undefined) {
@@ -614,11 +594,8 @@ function generateAddress(node: ASTNode): void {
 }
 
 /**
- * 获取生成的代码行。
- * @returns 生成的代码行数组。
- *
- * Get the generated lines of code.
- * @returns The array of generated lines of code.
+ * 获取生成的代码行。Get the generated lines of code.
+ * @returns {string[]} 生成的代码行数组。The array of generated lines of code.
  */
 export function getGenerated(): string[] {
     return generated;

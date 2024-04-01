@@ -246,26 +246,16 @@ export class TypeDefinition {
 
     /**
      * 类构造函数。
-     * @param type - 变量类型。
-     * @param ptr - 指针。
-     * @param alignment - 内存对齐。
-     * @param tokens - 词法单元。
-     * @param functionType - 函数类型。
-     * @param parameters - 函数参数。
-     * @param nextParameters - 下一个参数。
-     * @param arrayLength - 数组长度。
-     * @returns 类实例。
-     *
-     * Class constructor
-     * @param type - Variable type.
-     * @param ptr - Pointer.
-     * @param alignment - Memory alignment.
-     * @param tokens - Tokens.
-     * @param functionType - Function type.
-     * @param parameters - Function parameters.
-     * @param nextParameters - Next parameters.
-     * @param arrayLength - Array length.
-     * @returns Class instance.
+     * @param {ASTNodeType} type - 变量类型（Variable type）。
+     * @param {number} size - 变量大小（Variable size）。
+     * @param {number} alignment - 内存对齐（Memory alignment）。
+     * @param {TypeDefinition} ptr - 指针（Pointer）。
+     * @param {Token} tokens - 词法单元（Tokens）。
+     * @param {TypeDefinition} functionType - 函数类型（Function type）。
+     * @param {TypeDefinition} parameters - 函数参数（Function parameters）。
+     * @param {TypeDefinition} nextParameters - 下一个参数（Next parameters）。
+     * @param {number} arrayLength - 数组长度（Array length）。
+     * @returns {TypeDefinition} 类实例（Class instance）。
      */
     constructor(
         type: ASTNodeType,
@@ -321,11 +311,9 @@ export const int64TypeDefinition = new TypeDefinition(ASTNodeType.Int64, 8, 8);
 export const shortTypeDefinition = new TypeDefinition(ASTNodeType.Short, 2, 2);
 
 /**
- * 判断一个变量类型是否是数类型。
- * @param type - 要判断的变量类型。
- *
- * Evaluate if a variable type is a number type.
- * @param type - The variable type to evaluate.
+ * 判断一个变量类型是否是数类型。Judge if a variable type is a number type.
+ * @param {TypeDefinition} type - 要判断的变量类型（The variable type to evaluate）。
+ * @returns {boolean} 如果变量类型是数类型，返回 true，否则返回 false（Return true if the variable type is a number type, otherwise return false）。
  */
 export function isNumberType(type: TypeDefinition): boolean {
     return (
@@ -338,10 +326,8 @@ export function isNumberType(type: TypeDefinition): boolean {
 
 /**
  * 创建一个指向指定类型的指针。
- * @param ptr - 要指向的类型。
- *
- * Create a pointer to the specified type.
- * @param ptr - The type to point to.
+ * @param {TypeDefinition} ptr - 要指向的类型（The type to point to）。
+ * @returns {TypeDefinition} 指向指定类型的指针（A pointer to the specified type）。
  */
 export function pointerTo(ptr: TypeDefinition): TypeDefinition {
     const pointer = new TypeDefinition(ASTNodeType.Pointer, 8, 8);
@@ -352,10 +338,7 @@ export function pointerTo(ptr: TypeDefinition): TypeDefinition {
 
 /**
  * 为一个节点添加类型。
- * @param node - 要添加类型的节点。
- *
- * Add type to a node.
- * @param node - The node to add type.
+ * @param {ASTNode | undefined} node - 要添加类型的节点（The node to add type）。
  */
 export function addType(node: ASTNode | undefined): void {
     if (node === undefined || node.typeDef !== undefined) {
@@ -445,12 +428,8 @@ export function addType(node: ASTNode | undefined): void {
 
 /**
  * 创建一个新的函数类型。
- * @param type 返回类型。
- * @returns 新的函数类型。
- *
- * Create a new function type.
- * @param type Return type.
- * @returns New function type.
+ * @param {TypeDefinition} type - 返回类型（Return type）。
+ * @returns {TypeDefinition} 新的函数类型（New function type）。
  */
 export function addFunctionType(type: TypeDefinition): TypeDefinition {
     const nowType = new TypeDefinition(ASTNodeType.Function, 8, 8);
@@ -458,6 +437,12 @@ export function addFunctionType(type: TypeDefinition): TypeDefinition {
     return nowType;
 }
 
+/**
+ * 创建一个新的数组类型。
+ * @param {TypeDefinition} type - 数组元素的类型。
+ * @param {number} length - 数组的长度。
+ * @returns {TypeDefinition} 新的数组类型。
+ */
 export function addArray(type: TypeDefinition, length: number): TypeDefinition {
     if (type.size === undefined) {
         logMessage('error', 'Array type must have size', { type });

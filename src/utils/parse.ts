@@ -27,14 +27,11 @@ let nowToken: Token;
 
 /**
  * 消费一个令牌，如果令牌的值与给定的字符串匹配。
- * @param token 当前的令牌。
- * @param tokenName 要匹配的字符串。
- * @returns 如果令牌的值与给定的字符串匹配，则返回true并将nowToken设置为下一个令牌，否则返回false并将nowToken设置为当前令牌。
- *
  * Consumes a token if the token's value matches the given string.
- * @param token The current token.
- * @param tokenName The string to match.
- * @returns True if the token's value matches the given string and sets nowToken to the next token, false otherwise and sets nowToken to the current token.
+ * @param {Token} token 当前的令牌。The current token.
+ * @param {string} tokenName 要匹配的字符串。The string to match.
+ * @returns {boolean} 如果令牌的值与给定的字符串匹配，则返回true并将nowToken设置为下一个令牌，否则返回false并将nowToken设置为当前令牌。
+ * True if the token's value matches the given string and sets nowToken to the next token, false otherwise and sets nowToken to the current token.
  */
 function consumeToken(token: Token, tokenName: string): boolean {
     if (isEqual(token, tokenName)) {
@@ -50,13 +47,9 @@ function consumeToken(token: Token, tokenName: string): boolean {
 }
 
 /**
- * 在当前的局部变量列表中查找一个变量。
- * @param token 代表变量的令牌。
- * @returns 如果找到了变量，则返回该变量的节点，否则返回undefined。
- *
- * Find a variable in the current list of local variables.
- * @param token The token representing the variable.
- * @returns The node of the variable if found, otherwise undefined.
+ * 在当前的局部变量列表中查找一个变量。Find a variable in the current list of local variables.
+ * @param {Token} token 代表变量的令牌。The token representing the variable.
+ * @returns {LocalVariable | undefined} 如果找到了变量，则返回该变量的节点，否则返回undefined。The node of the variable if found, otherwise undefined.
  */
 function findVariable(token: Token): LocalVariable | undefined {
     let variableNode = locals;
@@ -76,13 +69,9 @@ function findVariable(token: Token): LocalVariable | undefined {
 }
 
 /**
- * 创建一个新的抽象语法树节点。
- * @param kind 节点的类型。
- * @returns 新创建的抽象语法树节点。
- *
- * Create a new abstract syntax tree node.
- * @param kind The kind of the node.
- * @returns The newly created abstract syntax tree node.
+ * 创建一个新的抽象语法树节点。Create a new abstract syntax tree node.
+ * @param {ASTNodeKind} kind 节点的类型。The kind of the node.
+ * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
  */
 function newNode(kind: ASTNodeKind): ASTNode {
     return {
@@ -91,17 +80,11 @@ function newNode(kind: ASTNodeKind): ASTNode {
 }
 
 /**
- * 创建一个新的二元操作符节点。
- * @param kind 节点的类型。
- * @param lhs 左操作数。
- * @param rhs 右操作数。
- * @returns 新创建的抽象语法树节点。
- *
- * Create a new binary operator node.
- * @param kind The kind of the node.
- * @param lhs The left operand.
- * @param rhs The right operand.
- * @returns The newly created abstract syntax tree node.
+ * 创建一个新的二元操作符节点。Create a new binary operator node.
+ * @param {ASTNodeKind} kind 节点的类型。The kind of the node.
+ * @param {ASTNode} lhs 左操作数。The left operand.
+ * @param {ASTNode} rhs 右操作数。The right operand.
+ * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
  */
 function newBinary(kind: ASTNodeKind, lhs: ASTNode, rhs: ASTNode): ASTNode {
     return {
@@ -112,15 +95,10 @@ function newBinary(kind: ASTNodeKind, lhs: ASTNode, rhs: ASTNode): ASTNode {
 }
 
 /**
- * 创建一个新的一元操作符节点。
- * @param kind 节点的类型。
- * @param expr 操作数。
- * @returns 新创建的抽象语法树节点。
- *
- * Create a new unary operator node.
- * @param kind The kind of the node.
- * @param expr The operand.
- * @returns The newly created abstract syntax tree node.
+ * 创建一个新的一元操作符节点。Create a new unary operator node.
+ * @param {ASTNodeKind} kind 节点的类型。The kind of the node.
+ * @param {ASTNode} expr 操作数。The operand.
+ * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
  */
 function newUnary(kind: ASTNodeKind, expr: ASTNode): ASTNode {
     return {
@@ -130,13 +108,9 @@ function newUnary(kind: ASTNodeKind, expr: ASTNode): ASTNode {
 }
 
 /**
- * 创建一个新的数字节点。
- * @param value 数字的值。
- * @returns 新创建的抽象语法树节点。
- *
- * Create a new number node.
- * @param value The value of the number.
- * @returns The newly created abstract syntax tree node.
+ * 创建一个新的数字节点。Create a new number node.
+ * @param {number} value 数字的值。The value of the number.
+ * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
  */
 function newNumber(value: number): ASTNode {
     return {
@@ -146,13 +120,9 @@ function newNumber(value: number): ASTNode {
 }
 
 /**
- * 创建一个新的变量节点。
- * @param variableNode 代表变量的节点。
- * @returns 新创建的抽象语法树节点。
- *
- * Create a new variable node.
- * @param variableNode The node representing the variable.
- * @returns The newly created abstract syntax tree node.
+ * 创建一个新的变量节点。Create a new variable node.
+ * @param {LocalVariable} variableNode 代表变量的节点。The node representing the variable.
+ * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
  */
 function newVariableNode(variableNode: LocalVariable): ASTNode {
     return {
@@ -162,15 +132,10 @@ function newVariableNode(variableNode: LocalVariable): ASTNode {
 }
 
 /**
- * 创建一个新的局部变量。
- * @param name 变量名。
- * @param type 变量类型。
- * @returns 新创建的局部变量。
- *
- * Create a new local variable.
- * @param name The name of the variable.
- * @param type The type of the variable.
- * @returns The newly created local variable.
+ * 创建一个新的局部变量。Create a new local variable.
+ * @param {string} name 变量名。The name of the variable.
+ * @param {TypeDefinition} type 变量类型。The type of the variable.
+ * @returns {LocalVariable} 新创建的局部变量。The newly created local variable.
  */
 function newLocalVariable(name: string, type: TypeDefinition): LocalVariable {
     const localVariable: LocalVariable = {
@@ -192,10 +157,7 @@ function newLocalVariable(name: string, type: TypeDefinition): LocalVariable {
  * - for语句('for' '(' 表达式? ';' 表达式? ';' 表达式? ')' 语句)
  * - while语句('while' '(' 表达式 ')' 语句)
  *
- * @param token 代表语句的令牌。
- * @returns 代表语句的抽象语法树节点。
- *
- * Parse a statement.
+ * Parse a statement. The statement can be one of the following types:
  * - Expression statement
  * - Return statement ('return' expression ';')
  * - Block statement
@@ -203,8 +165,8 @@ function newLocalVariable(name: string, type: TypeDefinition): LocalVariable {
  * - For statement ('for' '(' expression? ';' expression? ';' expression? ')' statement)
  * - While statement ('while' '(' expression ')' statement)
  *
- * @param token The token representing the statement.
- * @returns The abstract syntax tree node representing the statement.
+ * @param {Token} token 代表语句的令牌。The token representing the statement.
+ * @returns {ASTNode} 代表语句的抽象语法树节点。The abstract syntax tree node representing the statement.
  */
 function statement(token: Token): ASTNode {
     if (token.location !== undefined && token.location !== '') {
@@ -326,13 +288,9 @@ function statement(token: Token): ASTNode {
 }
 
 /**
- * 获取标识符。
- * @param token 代表标识符的令牌。
- * @returns 标识符的字符串表示。
- *
- * Get an identifier.
- * @param token The token representing the identifier.
- * @returns The string representation of the identifier.
+ * 获取标识符。Get an identifier.
+ * @param {Token} token 代表标识符的令牌。The token representing the identifier.
+ * @returns {string} 标识符的字符串表示。The string representation of the identifier.
  */
 function getIdentifier(token: Token): string {
     if (token.kind !== TokenType.Identifier) {
@@ -347,15 +305,11 @@ function getIdentifier(token: Token): string {
 }
 
 /**
- * 声明类型。
+ * 声明类型。Declare a type.
  * 产生式为：类型定义 ::= 'int' | 'void' | 'char' | 'i64' | 'short'
- * @param token 代表类型的令牌。
- * @returns 类型定义。
- *
- * Declare a type.
  * Production rule: typeDefinition ::= 'int' | 'void' | 'char' | 'i64' | 'short'
- * @param token The token representing the type.
- * @returns The type definition.
+ * @param {Token} token 代表类型的令牌。The token representing the type.
+ * @returns {TypeDefinition} 类型定义。The type definition.
  */
 export function declareType(token: Token): TypeDefinition {
     if (isEqual(token, 'int')) {
@@ -405,15 +359,10 @@ export function declareType(token: Token): TypeDefinition {
 }
 
 /**
- * 声明。
- * @param token 代表声明的令牌。
- * @param type 类型定义。
- * @returns 类型定义。
- *
- * Declare.
- * @param token The token representing the declaration.
- * @param type The type definition.
- * @returns The type definition.
+ * 声明。Declare.
+ * @param {Token} token 代表声明的令牌。The token representing the declaration.
+ * @param {TypeDefinition} type 类型定义。The type definition.
+ * @returns {TypeDefinition} 类型定义。The type definition.
  */
 export function declare(token: Token, type: TypeDefinition): TypeDefinition {
     while (consumeToken(token, '*')) {
@@ -434,7 +383,7 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
             throw new Error('Unexpected end of input');
         }
         token = nextToken;
-        type = checkTypeSuffix(token, type)
+        type = checkTypeSuffix(token, type);
         nextToken = nowToken;
         type = declare(returnToken, type);
         nowToken = nextToken;
@@ -459,15 +408,11 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
 }
 
 /**
- * 解析声明。
+ * 解析声明。Parse a declaration.
  * 产生式为：声明 ::= 类型标识符 ('*' 类型标识符)* 变量名 ('=' 表达式)?
- * @param token 代表声明的令牌。
- * @returns 代表声明的抽象语法树节点。
- *
- * Parse a declaration.
  * Production rule: declaration ::= type identifier ('*' type identifier)* identifier ('=' expression)?
- * @param token The token representing the declaration.
- * @returns The abstract syntax tree node representing the declaration.
+ * @param {Token} token 代表声明的令牌。The token representing the declaration.
+ * @returns {ASTNode} 代表声明的抽象语法树节点。The abstract syntax tree node representing the declaration.
  */
 function parseDeclaration(token: Token): ASTNode {
     const baseType = declareType(token);
@@ -525,15 +470,11 @@ function parseDeclaration(token: Token): ASTNode {
 }
 
 /**
- * 解析一个块语句。
+ * 解析一个块语句。Parse a block statement.
  * 产生式为：块语句 ::= '{' 语句* '}'
- * @param token 代表块语句的令牌。
- * @returns 代表块语句的抽象语法树节点。
- *
- * Parse a block statement.
  * Production rule: blockStatement ::= '{' statement* '}'
- * @param token The token representing the block statement.
- * @returns The abstract syntax tree node representing the block statement.
+ * @param {Token} token 代表块语句的令牌。The token representing the block statement.
+ * @returns {ASTNode} 代表块语句的抽象语法树节点。The abstract syntax tree node representing the block statement.
  */
 function blockStatement(token: Token): ASTNode {
     const head: ASTNode = { nodeKind: ASTNodeKind.Return };
@@ -555,15 +496,11 @@ function blockStatement(token: Token): ASTNode {
 }
 
 /**
- * 解析一个表达式语句。
+ * 解析一个表达式语句。Parse an expression statement.
  * 产生式为：表达式语句 ::= 表达式? ';'
- * @param token 代表表达式语句的令牌。
- * @returns 代表表达式语句的抽象语法树节点。
- *
- * Parse an expression statement.
  * Production rule: expressionStatement ::= expression? ';'
- * @param token The token representing the expression statement.
- * @returns The abstract syntax tree node representing the expression statement.
+ * @param {Token} token 代表表达式语句的令牌。The token representing the expression statement.
+ * @returns {ASTNode} 代表表达式语句的抽象语法树节点。The abstract syntax tree node representing the expression statement.
  */
 function expressionStatement(token: Token): ASTNode {
     let node: ASTNode;
@@ -583,31 +520,22 @@ function expressionStatement(token: Token): ASTNode {
 }
 
 /**
- * 解析一个表达式。
+ * 解析一个表达式。Parse an expression.
  * 产生式为：表达式 ::= 赋值表达式
- * @param token 代表表达式的令牌。
- * @returns 代表表达式的抽象语法树节点。
- *
- * Parse an expression.
  * Production rule: expression ::= assign
- * @param token The token representing the expression.
- * @returns The abstract syntax tree node representing the expression.
+ * @param {Token} token 代表表达式的令牌。The token representing the expression.
+ * @returns {ASTNode} 代表表达式的抽象语法树节点。The abstract syntax tree node representing the expression.
  */
 function expression(token: Token): ASTNode {
-    // return assign(rest, token);
     return assign(token);
 }
 
 /**
- * 解析一个赋值表达式。
+ * 解析一个赋值表达式。Parse an assignment expression.
  * 产生式为：赋值表达式 ::= 等式 ('=' 赋值表达式)?
- * @param token 代表赋值表达式的令牌。
- * @returns 代表赋值表达式的抽象语法树节点。
- *
- * Parse an assignment expression.
  * Production rule: assign ::= equality ('=' assign)?
- * @param token The token representing the assignment expression.
- * @returns The abstract syntax tree node representing the assignment expression.
+ * @param {Token} token 代表赋值表达式的令牌。The token representing the assignment expression.
+ * @returns {ASTNode} 代表赋值表达式的抽象语法树节点。The abstract syntax tree node representing the assignment expression.
  */
 function assign(token: Token): ASTNode {
     let node = equality(token);
@@ -630,15 +558,11 @@ function assign(token: Token): ASTNode {
 }
 
 /**
- * 解析一个等式。
+ * 解析一个等式。Parse an equality.
  * 产生式为：等式 ::= 关系表达式 ( '==' 关系表达式 | '!=' 关系表达式 )*
- * @param token 代表等式的令牌。
- * @returns 代表等式的抽象语法树节点。
- *
- * Parse an equality.
  * Production rule: equality ::= relational ( '==' relational | '!=' relational )*
- * @param token The token representing the equality.
- * @returns The abstract syntax tree node representing the equality.
+ * @param {Token} token 代表等式的令牌。The token representing the equality.
+ * @returns {ASTNode} 代表等式的抽象语法树节点。The abstract syntax tree node representing the equality.
  */
 function equality(token: Token): ASTNode {
     let node = relational(token);
@@ -669,15 +593,11 @@ function equality(token: Token): ASTNode {
 }
 
 /**
- * 解析一个关系表达式。
+ * 解析一个关系表达式。Parse a relational expression.
  * 产生式为：关系表达式 ::= 加法 ( '<' 加法 | '<=' 加法 | '>' 加法 | '>=' 加法 )*
- * @param token 代表关系表达式的令牌。
- * @returns 代表关系表达式的抽象语法树节点。
- *
- * Parse a relational expression.
  * Production rule: relational ::= add ( '<' add | '<=' add | '>' add | '>=' add )*
- * @param token The token representing the relational expression.
- * @returns The abstract syntax tree node representing the relational expression.
+ * @param {Token} token 代表关系表达式的令牌。The token representing the relational expression.
+ * @returns {ASTNode} 代表关系表达式的抽象语法树节点。The abstract syntax tree node representing the relational expression.
  */
 function relational(token: Token): ASTNode {
     let node = add(token);
@@ -729,15 +649,11 @@ function relational(token: Token): ASTNode {
 }
 
 /**
- * 解析一个加法表达式。
+ * 解析一个加法表达式。Parse an addition expression.
  * 产生式为：加法 ::= 乘法 ( '+' 乘法 | '-' 乘法 )*
- * @param token 代表加法表达式的令牌。
- * @returns 代表加法表达式的抽象语法树节点。
- *
- * Parse an addition expression.
  * Production rule: add ::= mul ( '+' mul | '-' mul )*
- * @param token The token representing the addition expression.
- * @returns The abstract syntax tree node representing the addition expression.
+ * @param {Token} token 代表加法表达式的令牌。The token representing the addition expression.
+ * @returns {ASTNode} 代表加法表达式的抽象语法树节点。The abstract syntax tree node representing the addition expression.
  */
 function add(token: Token): ASTNode {
     let node = mul(token);
@@ -768,15 +684,11 @@ function add(token: Token): ASTNode {
 }
 
 /**
- * 解析一个乘法表达式。
+ * 解析一个乘法表达式。Parse a multiplication expression.
  * 产生式为：乘法 ::= 一元 ( '*' 一元 | '/' 一元 )*
- * @param token 代表乘法表达式的令牌。
- * @returns 代表乘法表达式的抽象语法树节点。
- *
- * Parse a multiplication expression.
  * Production rule: mul ::= unary ( '*' unary | '/' unary )*
- * @param token The token representing the multiplication expression.
- * @returns The abstract syntax tree node representing the multiplication expression.
+ * @param {Token} token 代表乘法表达式的令牌。The token representing the multiplication expression.
+ * @returns {ASTNode} 代表乘法表达式的抽象语法树节点。The abstract syntax tree node representing the multiplication expression.
  */
 function mul(token: Token): ASTNode {
     let node = unary(token);
@@ -807,15 +719,10 @@ function mul(token: Token): ASTNode {
 }
 
 /**
- * 处理指针加法。
- * @param leftNode 左节点
- * @param rightNode 右节点
- * @returns 代表指针加法的抽象语法树节点。
- *
- * Handle pointer addition.
- * @param leftNode The left node.
- * @param rightNode The right node.
- * @returns The abstract syntax tree node representing the pointer addition.
+ * 处理指针加法。Handle pointer addition.
+ * @param {ASTNode} leftNode 左节点。The left node.
+ * @param {ASTNode} rightNode 右节点。The right node.
+ * @returns {ASTNode} 代表指针加法的抽象语法树节点。The abstract syntax tree node representing the pointer addition.
  */
 function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     addType(leftNode);
@@ -844,14 +751,10 @@ function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
 }
 
 /**
- * 处理指针减法。
- * @param leftNode 左节点
- * @param rightNode 右节点
- * @returns 代表指针减法的抽象语法树节点。
- *
- * Handle pointer subtraction.
- * @param leftNode The left node.
- * @param rightNode The right node.
+ * 处理指针减法。Handle pointer subtraction.
+ * @param {ASTNode} leftNode 左节点。The left node.
+ * @param {ASTNode} rightNode 右节点。The right node.
+ * @returns {ASTNode} 代表指针减法的抽象语法树节点。The abstract syntax tree node representing the pointer subtraction.
  */
 function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     addType(leftNode);
@@ -883,15 +786,11 @@ function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
 }
 
 /**
- * 解析数组访问表达式。
+ * 解析数组访问表达式。Parses array access expression.
  * 产生式为：数组访问表达式 ::= 主表达式 ('[' 表达式 ']')*
- * @param tokens 要解析的令牌列表。
- * @returns 表示解析后表达式的节点。
- *
- * Parses array access expression.
  * Production rule: arrayAccess ::= primary ('[' expression ']')*
- * @param tokens The list of tokens to parse.
- * @returns A Node representing the parsed expression.
+ * @param {Token} token 要解析的令牌。The token to parse.
+ * @returns {ASTNode} 表示解析后表达式的节点。A Node representing the parsed expression.
  */
 function parseArrayAccess(token: Token): ASTNode {
     let node = primary(token);
@@ -916,15 +815,11 @@ function parseArrayAccess(token: Token): ASTNode {
 }
 
 /**
- * 解析一个一元表达式。
+ * 解析一个一元表达式。Parse a unary expression.
  * 产生式为：一元 ::= '+' 一元 | '-' 一元 | '&' 一元 | '*' 一元 | 数组访问表达式
- * @param token 代表一元表达式的令牌。
- * @returns 代表一元表达式的抽象语法树节点。
- *
- * Parse a unary expression.
  * Production rule: unary ::= '+' unary | '-' unary | '&' unary | '*' unary | arrayAccess
- * @param token The token representing the unary expression.
- * @returns The abstract syntax tree node representing the unary expression.
+ * @param {Token} token 代表一元表达式的令牌。The token representing the unary expression.
+ * @returns {ASTNode} 代表一元表达式的抽象语法树节点。The abstract syntax tree node representing the unary expression.
  */
 function unary(token: Token): ASTNode {
     if (isEqual(token, '+')) {
@@ -963,17 +858,12 @@ function unary(token: Token): ASTNode {
 }
 
 /**
- * 解析函数参数列表，将类型转换为函数类型。
+ * 解析函数参数列表，将类型转换为函数类型。Parse the function parameter list and convert the type to a function type.
  * 函数参数列表 ::= '(' (类型声明 (',' 类型声明)*)? ')'
- * @param token 当前的令牌。
- * @param type 当前的类型。
- * @returns 存在函数参数列表，返回函数类型。
- *
- * Parse the function parameter list and convert the type to a function type.
  * Function parameter list ::= '(' (declaration (',' declaration)*)? ')'
- * @param token The current token.
- * @param type The current type.
- * @returns If there is a function parameter list, return the function type.
+ * @param {Token} token 当前的令牌。The current token.
+ * @param {TypeDefinition} type 当前的类型。The current type.
+ * @returns {TypeDefinition} 存在函数参数列表，返回函数类型。If there is a function parameter list, return the function type.
  */
 function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
     const head: TypeDefinition = {};
@@ -1009,20 +899,16 @@ function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
     nowToken = token.next;
     return type;
 }
+
 /**
- * 检查类型后缀参数列表，若为函数参数列表则将类型转换为函数类型，若为数组则将类型转换为数组类型。
+ * 检查类型后缀参数列表，若为函数参数列表则将类型转换为函数类型，若为数组则将类型转换为数组类型。Check if the type has a function parameter list, then convert the type to a function type. If it is an array, convert the type to an array type.
  * 函数参数列表 ::= '(' (类型声明 (',' 类型声明)*)? ')'
- * 数组 ::= '[' 数字 ']'
- * @param token 当前的令牌。
- * @param type 当前的类型。
- * @returns 如果存在函数参数列表，则返回函数类型，否则返回原始类型。
- *
- * Check if the type has a function parameter list, then convert the type to a function type. If it is an array, convert the type to an array type.
  * Function parameter list ::= '(' (declaration (',' declaration)*)? ')'
+ * 数组 ::= '[' 数字 ']'
  * Array ::= '[' number ']'
- * @param token The current token.
- * @param type The current type.
- * @returns If there is a function parameter list, return the function type, otherwise return the original type.
+ * @param {Token} token 当前的令牌。The current token.
+ * @param {TypeDefinition} type 当前的类型。The current type.
+ * @returns {TypeDefinition} 如果存在函数参数列表，则返回函数类型，否则返回原始类型。If there is a function parameter list, return the function type, otherwise return the original type.
  */
 function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
     if (isEqual(token, '(')) {
@@ -1065,11 +951,8 @@ function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
 }
 
 /**
- * 为函数参数创建局部变量。
- * @param param 函数参数类型。
- *
- * Create local variables for function parameters.
- * @param param The function parameter type.
+ * 为函数参数创建局部变量。Create local variables for function parameters.
+ * @param {TypeDefinition | undefined} type 函数参数类型。The function parameter type.
  */
 function createLocalVariablesForParameters(type: TypeDefinition | undefined): void {
     if (type !== undefined) {
@@ -1083,13 +966,9 @@ function createLocalVariablesForParameters(type: TypeDefinition | undefined): vo
 }
 
 /**
- * 解析函数定义。
- * @param token 当前的令牌。
- * @returns 解析出的函数定义。
- *
- * Parse a function definition.
- * @param token The current token.
- * @returns The parsed function definition.
+ * 解析函数定义。Parse a function definition.
+ * @param {Token} token 当前的令牌。The current token.
+ * @returns {FunctionNode} 解析出的函数定义。The parsed function definition.
  */
 function parseFunction(token: Token): FunctionNode {
     let type = declareType(token);
@@ -1121,15 +1000,11 @@ function parseFunction(token: Token): FunctionNode {
 }
 
 /**
- *  解析一个函数调用。
+ * 解析一个函数调用。Parse a function call.
  * 产生式为：函数调用 ::= 标识符 '(' (表达式 (',' 表达式)*)? ')'
- * @param token 代表函数调用的令牌。
- * @returns 代表函数调用的抽象语法树节点。
- *
- * Parse a function call.
  * Production rule: functionCall ::= Identifier '(' (expression (',' expression)*)? ')'
- * @param token The token representing the function call.
- * @returns The abstract syntax tree node representing the function call.
+ * @param {Token} token 代表函数调用的令牌。The token representing the function call.
+ * @returns {ASTNode} 代表函数调用的抽象语法树节点。The abstract syntax tree node representing the function call.
  */
 function functionCall(token: Token): ASTNode {
     if (token?.next?.next === undefined) {
@@ -1168,19 +1043,14 @@ function functionCall(token: Token): ASTNode {
 }
 
 /**
- * 解析抽象声明符。
+ * 解析抽象声明符。Parse an abstract declarator.
  * 抽象声明符用于描述一个类型而不需要给出具体的变量名。在函数声明中，我们可以使用抽象声明符来描述函数的参数类型。
- * 产生式为：抽象声明符 ::= ('*' 抽象声明符)? 类型后缀
- * @param tokens 代表抽象声明符的令牌序列。
- * @param type 初始类型。
- * @returns 解析得到的类型。
- *
- * Parse an abstract declarator.
  * An abstract declarator is used to describe a type without giving a specific variable name. In function declarations, we can use an abstract declarator to describe the parameter types of a function.
+ * 产生式为：抽象声明符 ::= ('*' 抽象声明符)? 类型后缀
  * Production rule: abstractDeclarator ::= ('*' abstractDeclarator)? typeSuffix
- * @param tokens The token sequence representing the abstract declarator.
- * @param type The initial type.
- * @returns The parsed type.
+ * @param {Token} token 代表抽象声明符的令牌序列。The token sequence representing the abstract declarator.
+ * @param {TypeDefinition} type 初始类型。The initial type.
+ * @returns {TypeDefinition} 解析得到的类型。The parsed type.
  */
 function parseAbstractDeclarator(token: Token, type: TypeDefinition): TypeDefinition {
     while (isEqual(token, '*')) {
@@ -1213,15 +1083,11 @@ function parseAbstractDeclarator(token: Token, type: TypeDefinition): TypeDefini
 }
 
 /**
- * 解析类型。
+ * 解析类型。Parse a type.
  * 产生式为：类型 ::= 类型标识符 ('*' 类型标识符)*
- * @param token 代表类型的令牌。
- * @returns 代表类型的抽象语法树节点。
- *
- * Parse a type.
  * Production rule: type ::= typeIdentifier ('*' typeIdentifier)*
- * @param token The token representing the type.
- * @returns The abstract syntax tree node representing the type.
+ * @param {Token} token 代表类型的令牌。The token representing the type.
+ * @returns {TypeDefinition} 代表类型的抽象语法树节点。The abstract syntax tree node representing the type.
  */
 function parseType(token: Token): TypeDefinition {
     const type: TypeDefinition = declareType(token);
@@ -1230,15 +1096,11 @@ function parseType(token: Token): TypeDefinition {
 }
 
 /**
- * 解析一个主表达式。
+ * 解析一个主表达式。Parse a primary expression.
  * 产生式为：主表达式 ::= '(' 表达式 ')' | 标识符 | 数字字面量 | 函数调用
- * @param token 代表主表达式的令牌。
- * @returns 代表主表达式的抽象语法树节点。
- *
- * Parse a primary expression.
  * Production rule: primary ::= '(' expression ')' | Identifier | NumericLiteral | functionCall
- * @param token The token representing the primary expression.
- * @returns The abstract syntax tree node representing the primary expression.
+ * @param {Token} token 代表主表达式的令牌。The token representing the primary expression.
+ * @returns {ASTNode} 代表主表达式的抽象语法树节点。The abstract syntax tree node representing the primary expression.
  */
 function primary(token: Token): ASTNode {
     if (isEqual(token, '(')) {
@@ -1324,13 +1186,9 @@ function primary(token: Token): ASTNode {
 }
 
 /**
- * 解析代码段。
- * @param tokens 代表代码的令牌流。
- * @returns 代表代码的抽象语法树节点簇。
- *
- * Parse a piece of code.
- * @param tokens The token stream representing the code.
- * @returns The abstract syntax tree node representing the code.
+ * 解析代码段。Parse a piece of code.
+ * @param {Token[]} tokens 代表代码的令牌流。The token stream representing the code.
+ * @returns {FunctionNode} 代表代码的抽象语法树节点簇。The abstract syntax tree node representing the code.
  */
 export function parse(tokens: Token[]): FunctionNode {
     locals = undefined;
