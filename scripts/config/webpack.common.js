@@ -1,6 +1,7 @@
 /* eslint-disable unicorn/prefer-module */
 /* eslint-disable @typescript-eslint/no-var-requires */
-const { resolve } = require('node:path');
+const path = require('node:path');
+const resolve = path.resolve.bind(path);
 const { isDev, PROJECT_PATH } = require('../constant');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');

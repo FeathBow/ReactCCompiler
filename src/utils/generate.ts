@@ -1,18 +1,15 @@
-import {
-    type ASTNode,
-    ASTNodeKind,
-    type LocalVariable,
-    type FunctionNode,
-    type TypeDefinition,
-    ASTNodeType,
-} from './commons';
+import { ASTNodeKind, ASTNodeType } from './commons';
+import type TypeDefinition from './classes/typedef-class';
+import type ASTNode from './classes/astnode-class';
+import type FunctionNode from './classes/functionnode-class';
+import type LocalVariable from './classes/localvariable-class';
 import { logMessage } from './logger';
 
 /**
  * 用于追踪当前的嵌套深度。
  * Used to track the current nesting depth.
  */
-let depth: number = 0;
+let depth = 0;
 
 /**
  * 存储生成的代码行。
@@ -24,7 +21,7 @@ let generated: string[] = [];
  * 用于计数的变量。
  * A variable used for counting.
  */
-let count: number = 0;
+let count = 0;
 
 /**
  * 用于存储参数的寄存器。
@@ -46,200 +43,189 @@ let nowFunction: FunctionNode | undefined;
  * @returns {number} 返回新的计数值。Returns the new count value.
  */
 function addCount(): number {
-    return ++count;
+    count += 1;
+    return count;
 }
+
+/**
+ * 类型定义的大小到 Load 操作的映射。
+ * A mapping from the size of a type definition to load operation.
+ * @type {Record<number | 'default', string>}
+ */
+const sizeToLoadOperation: Record<number | 'default', string> = {
+    1: 'movsbq (%rax), %rax',
+    2: 'movswq (%rax), %rax',
+    4: 'movsxd (%rax), %rax',
+    default: 'mov (%rax), %rax',
+};
 
 /**
  * 根据给定的类型定义，将值加载到寄存器中。Load a value into a register based on the given type definition.
  * @param {TypeDefinition} type 要加载的值的类型定义。The type definition of the value to load.
  */
 function load(type: TypeDefinition): void {
-    if (type.type !== ASTNodeType.Array) {
-        switch (type.size) {
-            case 1: {
-                console.log('  movsbq (%rax), %rax');
-                generated.push('  movsbq (%rax), %rax');
-
-                break;
-            }
-            case 4: {
-                console.log('  movsxd (%rax), %rax');
-                generated.push('  movsxd (%rax), %rax');
-
-                break;
-            }
-            case 2: {
-                console.log('  movswq (%rax), %rax');
-                generated.push('  movswq (%rax), %rax');
-
-                break;
-            }
-            default: {
-                console.log('  mov (%rax), %rax');
-                generated.push('  mov (%rax), %rax');
-            }
-        }
+    if (type.type !== ASTNodeType.Array && type.size !== undefined) {
+        const operation = sizeToLoadOperation[type.size];
+        console.log(`  ${operation}`);
+        generated.push(`  ${operation}`);
     }
 }
 
+/**
+ * 类型定义的大小到 Store 操作的映射。
+ * A mapping from the size of a type definition to store operation.
+ * @type {Record<number | 'default', string>}
+ */
+const sizeToStoreOperation: Record<number | 'default', string> = {
+    1: 'mov %al, (%rdi)',
+    2: 'mov %ax, (%rdi)',
+    4: 'mov %eax, (%rdi)',
+    default: 'mov %rax, (%rdi)',
+};
 /**
  * 根据给定的类型定义，将值存储到内存中。Store a value into memory based on the given type definition.
  * @param {TypeDefinition} type 要存储的值的类型定义。The type definition of the value to store.
  */
 function store(type: TypeDefinition): void {
     popFromStack('%rdi');
-    switch (type.size) {
-        case 1: {
-            console.log('  mov %al, (%rdi)');
-            generated.push('  mov %al, (%rdi)');
-
-            break;
-        }
-        case 4: {
-            console.log('  mov %eax, (%rdi)');
-            generated.push('  mov %eax, (%rdi)');
-
-            break;
-        }
-        case 2: {
-            console.log('  mov %ax, (%rdi)');
-            generated.push('  mov %ax, (%rdi)');
-
-            break;
-        }
-        default: {
-            console.log('  mov %rax, (%rdi)');
-            generated.push('  mov %rax, (%rdi)');
-        }
+    if (type.size !== undefined) {
+        const operation = sizeToStoreOperation[type.size];
+        console.log(`  ${operation}`);
+        generated.push(`  ${operation}`);
     }
 }
+
+type generateExpressionHandler = (node: ASTNode) => void;
+
+type generateExpressionHandlerMap = {
+    [K in ASTNodeKind]?: generateExpressionHandler;
+};
+
+const generateExpressionHandlers: generateExpressionHandlerMap = {
+    [ASTNodeKind.Number]: (node: ASTNode) => {
+        if (node.numberValue === undefined) {
+            logMessage('error', 'Invalid number', { node, position: generateExpression, case: ASTNodeKind.Number });
+            throw new Error('invalid number');
+        }
+        generated.push(`  mov $${node.numberValue}, %rax`);
+        console.log(`  mov $${node.numberValue}, %rax`);
+    },
+    [ASTNodeKind.Negation]: (node: ASTNode) => {
+        if (node.leftNode === undefined) {
+            logMessage('error', 'Invalid negation', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.Negation,
+            });
+            throw new Error('invalid negation');
+        }
+        generateExpression(node.leftNode);
+        generated.push(`  neg %rax`);
+        console.log(`  neg %rax`);
+    },
+    [ASTNodeKind.Dereference]: (node: ASTNode) => {
+        if (node.leftNode === undefined) {
+            logMessage('error', 'Invalid dereference', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.Dereference,
+            });
+            throw new Error('invalid dereference');
+        }
+        generateExpression(node.leftNode);
+        if (node.typeDef === undefined) {
+            logMessage('error', 'Invalid variable', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.Variable,
+            });
+            throw new Error('invalid variable');
+        }
+        load(node.typeDef);
+    },
+    [ASTNodeKind.AddressOf]: (node: ASTNode) => {
+        if (node.leftNode === undefined) {
+            logMessage('error', 'Invalid address', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.AddressOf,
+            });
+            throw new Error('invalid address');
+        }
+        generateAddress(node.leftNode);
+    },
+    [ASTNodeKind.Variable]: (node: ASTNode) => {
+        generateAddress(node);
+        if (node.typeDef === undefined) {
+            logMessage('error', 'Invalid variable', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.Variable,
+            });
+            throw new Error('invalid variable');
+        }
+        load(node.typeDef);
+    },
+    [ASTNodeKind.Assignment]: (node: ASTNode) => {
+        if (node.leftNode === undefined || node.rightNode === undefined) {
+            logMessage('error', 'Invalid assignment', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.Assignment,
+            });
+            throw new Error('invalid assignment');
+        }
+        generateAddress(node.leftNode);
+        pushToStack();
+        generateExpression(node.rightNode);
+        if (node.typeDef === undefined) {
+            logMessage('error', 'Invalid variable', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.Variable,
+            });
+            throw new Error('invalid variable');
+        }
+        store(node.typeDef);
+    },
+    [ASTNodeKind.FunctionCall]: (node: ASTNode) => {
+        if (node.functionDef === undefined) {
+            logMessage('error', 'Invalid function call', {
+                node,
+                position: generateExpression,
+                case: ASTNodeKind.FunctionCall,
+            });
+            throw new Error('invalid function call');
+        }
+        let nowArgument = node.functionArgs;
+        let argumentNumber = -1;
+        while (nowArgument !== undefined) {
+            generateExpression(nowArgument);
+            pushToStack();
+            nowArgument = nowArgument.nextNode;
+            argumentNumber += 1;
+        }
+
+        while (argumentNumber >= 0) {
+            popFromStack(reg64ForArguments[argumentNumber]);
+            argumentNumber -= 1;
+        }
+        console.log(`  mov $0, %rax`);
+        console.log(`  call ${node.functionDef}`);
+        generated.push(`  mov $0, %rax`, `  call ${node.functionDef}`);
+    },
+    // TODO: Add other cases
+};
 
 /**
  * 根据给定的 AST 节点生成表达式。Generate an expression based on the given AST node.
  * @param {ASTNode} node 要生成表达式的 AST 节点。The AST node to generate the expression for.
  */
 function generateExpression(node: ASTNode): void {
-    switch (node.nodeKind) {
-        case ASTNodeKind.Number: {
-            if (node.numberValue === undefined) {
-                logMessage('error', 'Invalid number', { node, position: generateExpression, case: ASTNodeKind.Number });
-                throw new Error('invalid number');
-            }
-            generated.push(`  mov $${node.numberValue}, %rax`);
-            console.log(`  mov $${node.numberValue}, %rax`);
-            return;
-        }
-        case ASTNodeKind.Negation: {
-            if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid negation', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.Negation,
-                });
-                throw new Error('invalid negation');
-            }
-            generateExpression(node.leftNode);
-            generated.push(`  neg %rax`);
-            console.log(`  neg %rax`);
-            return;
-        }
-        case ASTNodeKind.Dereference: {
-            if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid dereference', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.Dereference,
-                });
-                throw new Error('invalid dereference');
-            }
-            generateExpression(node.leftNode);
-            if (node.typeDef === undefined) {
-                logMessage('error', 'Invalid variable', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.Variable,
-                });
-                throw new Error('invalid variable');
-            }
-            load(node.typeDef);
-            return;
-        }
-        case ASTNodeKind.AddressOf: {
-            if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid address', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.AddressOf,
-                });
-                throw new Error('invalid address');
-            }
-            generateAddress(node.leftNode);
-            return;
-        }
-        case ASTNodeKind.Variable: {
-            generateAddress(node);
-            if (node.typeDef === undefined) {
-                logMessage('error', 'Invalid variable', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.Variable,
-                });
-                throw new Error('invalid variable');
-            }
-            load(node.typeDef);
-            return;
-        }
-        case ASTNodeKind.Assignment: {
-            if (node.leftNode === undefined || node.rightNode === undefined) {
-                logMessage('error', 'Invalid assignment', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.Assignment,
-                });
-                throw new Error('invalid assignment');
-            }
-            generateAddress(node.leftNode);
-            pushToStack();
-            generateExpression(node.rightNode);
-            if (node.typeDef === undefined) {
-                logMessage('error', 'Invalid variable', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.Variable,
-                });
-                throw new Error('invalid variable');
-            }
-            store(node.typeDef);
-            return;
-        }
-        case ASTNodeKind.FunctionCall: {
-            if (node.functionDef === undefined) {
-                logMessage('error', 'Invalid function call', {
-                    node,
-                    position: generateExpression,
-                    case: ASTNodeKind.FunctionCall,
-                });
-                throw new Error('invalid function call');
-            }
-            let nowArgument = node.functionArgs;
-            let argumentNumber = -1;
-            while (nowArgument !== undefined) {
-                generateExpression(nowArgument);
-                pushToStack();
-                nowArgument = nowArgument.nextNode;
-                argumentNumber++;
-            }
-
-            while (argumentNumber >= 0) {
-                popFromStack(reg64ForArguments[argumentNumber]);
-                argumentNumber--;
-            }
-            console.log(`  mov $0, %rax`);
-            console.log(`  call ${node.functionDef}`);
-            generated.push(`  mov $0, %rax`, `  call ${node.functionDef}`);
-            return;
-        }
-        // TODO: Add other cases
+    const handler = generateExpressionHandlers[node.nodeKind];
+    if (handler !== undefined) {
+        handler(node);
+        return;
     }
     if (node.leftNode === undefined || node.rightNode === undefined) {
         logMessage('error', 'Invalid binary expression', {
@@ -303,17 +289,21 @@ function generateExpression(node: ASTNode): void {
                     console.log(`  setle %al`);
                     break;
                 }
-                // No default
+                default: {
+                    logMessage('error', 'Invalid expression', { node, position: generateExpression });
+                    throw new Error('invalid expression');
+                }
             }
             generated.push(`  movzb %al, %rax`);
             console.log(`  movzb %al, %rax`);
 
             return;
         }
-        // No default
+        default: {
+            logMessage('error', 'Invalid expression', { node, position: generateExpression });
+            throw new Error('invalid expression');
+        }
     }
-    logMessage('error', 'Invalid expression', { node, position: generateExpression });
-    throw new Error('invalid expression');
     // TODO: Add other cases
 }
 
@@ -404,9 +394,11 @@ function generateStatement(node: ASTNode): void {
             generated.push(`  jmp .L.begin.${c}`, `.L.end.${c}:`);
             return;
         }
+        default: {
+            logMessage('error', 'Invalid statement', { node, position: generateStatement });
+            throw new Error('invalid statement');
+        }
     }
-    logMessage('error', 'Invalid statement', { node, position: generateStatement });
-    throw new Error('invalid statement');
 }
 
 /**
@@ -427,7 +419,7 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
                 });
                 throw new Error('invalid variable type');
             }
-            offset += localVariable.varType?.size;
+            offset += localVariable.varType.size;
             if (localVariable.varType.alignment === undefined) {
                 logMessage('error', 'Invalid variable type', {
                     position: assignLocalVariableOffsets,
@@ -444,6 +436,17 @@ function assignLocalVariableOffsets(prog: FunctionNode): void {
         localFunction = localFunction.returnFunc;
     }
 }
+
+/**
+ * 用于存储给定大小的寄存器。Registers for the given size.
+ * @type {Record<number | 'default', string[]>}
+ */
+const sizeToRegForArguments: Record<number | 'default', string[]> = {
+    1: reg8ForArguments,
+    2: reg16ForArguments,
+    4: reg32ForArguments,
+    default: reg64ForArguments,
+};
 
 /**
  * 生成给定函数节点的汇编代码。Generate assembly code for the given function node.
@@ -493,38 +496,13 @@ export function generateCode(prog: FunctionNode): void {
                     });
                     throw new Error('invalid variable type');
                 }
-                switch (nowArgument.varType.size) {
-                    case 1: {
-                        console.log(`  mov ${reg8ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
-                        generated.push(`  mov ${reg8ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
 
-                        break;
-                    }
-                    case 4: {
-                        console.log(`  mov ${reg32ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
-                        generated.push(
-                            `  mov ${reg32ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`,
-                        );
-
-                        break;
-                    }
-                    case 2: {
-                        console.log(`  mov ${reg16ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
-                        generated.push(
-                            `  mov ${reg16ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`,
-                        );
-
-                        break;
-                    }
-                    default: {
-                        console.log(`  mov ${reg64ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`);
-                        generated.push(
-                            `  mov ${reg64ForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`,
-                        );
-                    }
-                }
+                const regForArguments = sizeToRegForArguments[nowArgument.varType.size];
+                const operation = `  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`;
+                console.log(operation);
+                generated.push(operation);
                 nowArgument = nowArgument.nextVar;
-                argumentNumber++;
+                argumentNumber += 1;
             }
         }
 
@@ -548,7 +526,7 @@ export function generateCode(prog: FunctionNode): void {
 function pushToStack(): void {
     console.log('  push %rax');
     generated.push('  push %rax');
-    depth++;
+    depth += 1;
 }
 
 /**
@@ -558,7 +536,7 @@ function pushToStack(): void {
 function popFromStack(argument: string): void {
     console.log(`  pop ${argument}`);
     generated.push(`  pop ${argument}`);
-    depth--;
+    depth -= 1;
 }
 
 /**
@@ -580,7 +558,8 @@ function generateAddress(node: ASTNode): void {
         console.log(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         generated.push(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         return;
-    } else if (node.nodeKind === ASTNodeKind.Dereference) {
+    }
+    if (node.nodeKind === ASTNodeKind.Dereference) {
         if (node.leftNode === undefined) {
             logMessage('error', 'Invalid dereference', { node, position: generateAddress });
             throw new Error('invalid dereference');

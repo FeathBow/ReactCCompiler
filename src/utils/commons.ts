@@ -1,3 +1,7 @@
+import type ASTNode from './classes/astnode-class';
+import LocalVariable from './classes/localvariable-class';
+import type Token from './classes/token-class';
+import TypeDefinition from './classes/typedef-class';
 import { logMessage } from './logger';
 
 /**
@@ -16,57 +20,6 @@ export enum TokenType {
     /** 文件结束标记 End of File */
     EndOfFile,
 }
-/**
- * 代表一个词法单元的类。
- * Token class.
- */
-export class Token {
-    /** 词法单元的类型。The type of the token. */
-    kind: TokenType = TokenType.EndOfFile;
-    /** 下一个词法单元。The next token. */
-    next?: Token;
-    /** 如果类型是 NumericLiteral，这是它的值。The value if the type is NumericLiteral. */
-    value?: number;
-    /** 词法单元的位置。The location of the token. */
-    location?: string;
-    /** 词法单元的长度。The length of the token. */
-    length?: number;
-}
-
-/**
- * 代表一个局部变量的类。
- * Class representing a local variable.
- */
-export class LocalVariable {
-    /** 下一个局部变量。The next local variable. */
-    nextVar?: LocalVariable;
-    /** 变量名。Variable name. */
-    varName: string = '';
-    /** RBP的偏移量。Offset from RBP. */
-    offsetFromRBP: number = 0;
-    /** 变量类型。Variable type. */
-    varType?: TypeDefinition;
-}
-
-/**
- * 代表一个函数节点的类。
- * Class representing a function node.
- */
-export class FunctionNode {
-    /** 函数体。Function body. */
-    body?: ASTNode;
-    /** 局部变量。Local variables. */
-    locals?: LocalVariable;
-    /** 栈大小。Stack size. */
-    stackSize: number = 0;
-    /** 函数名。Function name. */
-    funcName: string = '';
-    /** 调用返回 Function call return */
-    returnFunc?: FunctionNode;
-    /** 参数。Arguments. */
-    Arguments?: LocalVariable;
-}
-
 /**
  * 定义了抽象语法树节点的类型。
  * AST node type.
@@ -112,43 +65,6 @@ export enum ASTNodeKind {
     Dereference,
     /** 函数调用。Function call. */
     FunctionCall,
-}
-
-/**
- * 代表一个抽象语法树节点的类。
- * AST node class.
- */
-export class ASTNode {
-    /** 节点类型。Node kind. */
-    nodeKind: ASTNodeKind = ASTNodeKind.Addition;
-    /** 下一个节点。Next node. */
-    nextNode?: ASTNode;
-    /** 左节点。Left node. */
-    leftNode?: ASTNode;
-    /** 右节点。Right node. */
-    rightNode?: ASTNode;
-    /** 局部变量。Local variable. */
-    localVar?: LocalVariable;
-    /** 数字值。Number value. */
-    numberValue?: number;
-    /** 语句块体。Block body. */
-    blockBody?: ASTNode;
-    /** 条件。Condition. */
-    condition?: ASTNode;
-    /** 真体。True body. */
-    trueBody?: ASTNode;
-    /** 否体。Else body. */
-    elseBody?: ASTNode;
-    /** 初始化体。Init body. */
-    initBody?: ASTNode;
-    /** 增量体。Increment body. */
-    incrementBody?: ASTNode;
-    /** 类型定义。Type definition. */
-    typeDef?: TypeDefinition;
-    /** 函数定义。Function definition. */
-    functionDef?: string;
-    /** 函数参数。Function arguments. */
-    functionArgs?: ASTNode;
 }
 
 /**
@@ -221,94 +137,70 @@ export enum ASTNodeType {
 }
 
 /**
- * 定义了变量类型的类。
- * Defination of variable type class.
+ * 定义了类型定义的选项。
+ * Defination of type definition options.
  */
-export class TypeDefinition {
-    /** 变量类型。Variable type. */
-    type?: ASTNodeType;
-    /** 指针。Pointer. */
+export interface TypeDefinitionOptions {
+    type: ASTNodeType;
+    size: number;
+    alignment: number;
     ptr?: TypeDefinition;
-    /** 词法单元。Tokens. */
     tokens?: Token;
-    /** 函数类型 */
     functionType?: TypeDefinition;
-    /** 函数参数 */
     parameters?: TypeDefinition;
-    /** 下一个参数 */
     nextParameters?: TypeDefinition;
-    /** 数组长度 */
     arrayLength?: number;
-    /** 变量大小 */
-    size?: number;
-    /** 内存对齐 */
-    alignment?: number;
-
-    /**
-     * 类构造函数。
-     * @param {ASTNodeType} type - 变量类型（Variable type）。
-     * @param {number} size - 变量大小（Variable size）。
-     * @param {number} alignment - 内存对齐（Memory alignment）。
-     * @param {TypeDefinition} ptr - 指针（Pointer）。
-     * @param {Token} tokens - 词法单元（Tokens）。
-     * @param {TypeDefinition} functionType - 函数类型（Function type）。
-     * @param {TypeDefinition} parameters - 函数参数（Function parameters）。
-     * @param {TypeDefinition} nextParameters - 下一个参数（Next parameters）。
-     * @param {number} arrayLength - 数组长度（Array length）。
-     * @returns {TypeDefinition} 类实例（Class instance）。
-     */
-    constructor(
-        type: ASTNodeType,
-        size: number,
-        alignment: number,
-        ptr?: TypeDefinition,
-        tokens?: Token,
-        functionType?: TypeDefinition,
-        parameters?: TypeDefinition,
-        nextParameters?: TypeDefinition,
-        arrayLength?: number,
-    ) {
-        this.type = type;
-        this.size = size;
-        this.alignment = alignment;
-        this.ptr = ptr;
-        this.tokens = tokens;
-        this.functionType = functionType;
-        this.parameters = parameters;
-        this.nextParameters = nextParameters;
-        this.arrayLength = arrayLength;
-    }
 }
 
 /**
  * 定义了整数类型的变量。
  * Defination of integer type variable.
  */
-export const intTypeDefinition = new TypeDefinition(ASTNodeType.Integer, 4, 4);
+export const intTypeDefinition = new TypeDefinition({
+    type: ASTNodeType.Integer,
+    size: 4,
+    alignment: 4,
+});
 
 /**
  * 定义了空类型的变量。
  * Defination of void type variable.
  */
-export const voidTypeDefinition = new TypeDefinition(ASTNodeType.Void, 1, 1);
+export const voidTypeDefinition = new TypeDefinition({
+    type: ASTNodeType.Void,
+    size: 1,
+    alignment: 1,
+});
 
 /**
  * 定义了字符类型的变量。
  * Defination of char type variable.
  */
-export const charTypeDefinition = new TypeDefinition(ASTNodeType.Char, 1, 1);
+export const charTypeDefinition = new TypeDefinition({
+    type: ASTNodeType.Char,
+    size: 1,
+    alignment: 1,
+});
 
 /**
  * 定义了长整型类型的变量。
  * Defination of long long type variable.
  */
-export const int64TypeDefinition = new TypeDefinition(ASTNodeType.Int64, 8, 8);
+export const int64TypeDefinition = new TypeDefinition({
+    type: ASTNodeType.Int64,
+    size: 8,
+    alignment: 8,
+});
 
 /**
  * 定义了短整型类型的变量。
  * Defination of short type variable.
  */
-export const shortTypeDefinition = new TypeDefinition(ASTNodeType.Short, 2, 2);
+export const shortTypeDefinition = new TypeDefinition({
+    type: ASTNodeType.Short,
+    size: 2,
+    alignment: 2,
+});
 
 /**
  * 判断一个变量类型是否是数类型。Judge if a variable type is a number type.
@@ -330,7 +222,11 @@ export function isNumberType(type: TypeDefinition): boolean {
  * @returns {TypeDefinition} 指向指定类型的指针（A pointer to the specified type）。
  */
 export function pointerTo(ptr: TypeDefinition): TypeDefinition {
-    const pointer = new TypeDefinition(ASTNodeType.Pointer, 8, 8);
+    const pointer = new TypeDefinition({
+        type: ASTNodeType.Pointer,
+        size: 8,
+        alignment: 8,
+    });
     pointer.ptr = ptr;
     pointer.type = ASTNodeType.Pointer;
     return pointer;
@@ -348,15 +244,13 @@ export function addType(node: ASTNode | undefined): void {
     for (const key of ['leftNode', 'rightNode', 'condition', 'trueBody', 'elseBody', 'initBody', 'incrementBody']) {
         const nodeProperty = node[key as keyof ASTNode];
         if (
-            typeof nodeProperty === 'number' ||
-            typeof nodeProperty === 'string' ||
-            nodeProperty instanceof LocalVariable ||
-            nodeProperty instanceof FunctionNode ||
-            nodeProperty instanceof TypeDefinition
+            typeof nodeProperty !== 'number' &&
+            typeof nodeProperty !== 'string' &&
+            !(nodeProperty instanceof LocalVariable) &&
+            !(nodeProperty instanceof TypeDefinition)
         ) {
-            continue;
+            addType(nodeProperty);
         }
-        addType(nodeProperty);
     }
 
     let block = node.blockBody;
@@ -365,10 +259,10 @@ export function addType(node: ASTNode | undefined): void {
         block = block.nextNode;
     }
 
-    let arguments_ = node.functionArgs;
-    while (arguments_ !== undefined) {
-        addType(arguments_);
-        arguments_ = arguments_.nextNode;
+    let { functionArgs } = node;
+    while (functionArgs !== undefined) {
+        addType(functionArgs);
+        functionArgs = functionArgs.nextNode;
     }
     switch (node.nodeKind) {
         case ASTNodeKind.Addition:
@@ -422,6 +316,10 @@ export function addType(node: ASTNode | undefined): void {
                 throw new Error('Invalid pointer dereference');
             }
             node.typeDef = node.leftNode.typeDef.ptr;
+            break;
+        }
+        default: {
+            break;
         }
     }
 }
@@ -432,7 +330,11 @@ export function addType(node: ASTNode | undefined): void {
  * @returns {TypeDefinition} 新的函数类型（New function type）。
  */
 export function addFunctionType(type: TypeDefinition): TypeDefinition {
-    const nowType = new TypeDefinition(ASTNodeType.Function, 8, 8);
+    const nowType = new TypeDefinition({
+        type: ASTNodeType.Function,
+        size: 8,
+        alignment: 8,
+    });
     nowType.functionType = type;
     return nowType;
 }
@@ -452,7 +354,11 @@ export function addArray(type: TypeDefinition, length: number): TypeDefinition {
         logMessage('error', 'Array type must have alignment', { type });
         throw new Error('Array type must have alignment');
     }
-    const arrayType = new TypeDefinition(ASTNodeType.Array, type.size * length, type.alignment);
+    const arrayType = new TypeDefinition({
+        type: ASTNodeType.Array,
+        size: type.size * length,
+        alignment: type.alignment,
+    });
     arrayType.ptr = type;
     arrayType.arrayLength = length;
     return arrayType;

@@ -43,7 +43,7 @@ function App(): JSX.Element {
 }
 
 interface OutputProperties {
-    output: string[];
+    readonly output: string[];
 }
 /**
  * OutputComponent 组件，用于显示输出的结果。
@@ -54,8 +54,8 @@ interface OutputProperties {
 function OutputComponent({ output }: OutputProperties): JSX.Element {
     return (
         <div>
-            {output.map((line, index) => (
-                <p key={index}>{line}</p>
+            {output.map((line) => (
+                <p key={line}>{line}</p>
             ))}
         </div>
     );

@@ -51,14 +51,15 @@ export function logMessage(
     message: string,
     context: object = {},
     error: Error | undefined = undefined,
-    namespace: string = 'Logs',
+    namespace = 'Logs',
 ): void {
     const stack = level === 'error' && (error === undefined ? new Error('Stack trace').stack : error.stack);
     const contextString = JSON.stringify(context);
     const namespacedLog = log.extend(namespace);
     const now = new Date();
     const timestamp = `${now.toLocaleDateString()} ${now.toLocaleTimeString()}`;
-    namespacedLog[level](`[${timestamp}] ${message}\n${contextString}${stack === false ? '' : `\n${stack}`}`);
+    const stackMessage = stack === false ? '' : `\n${stack}`;
+    namespacedLog[level](`[${timestamp}] ${message}\n${contextString}${stackMessage}`);
 }
 
 /**

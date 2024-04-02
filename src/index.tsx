@@ -1,10 +1,15 @@
+/* eslint-disable import/no-import-module-exports */
 import React from 'react';
 import ReactDOM from 'react-dom';
-import App from './app';
 import axios from 'axios';
-if (module?.hot) {
+import App from './app';
+/* eslint-enable import/no-import-module-exports */
+
+/* eslint-disable unicorn/prefer-module */
+if (module?.hot !== undefined) {
     module.hot.accept();
 }
+/* eslint-enable unicorn/prefer-module */
 
 // axios test using public api
 axios

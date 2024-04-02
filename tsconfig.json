@@ -42,6 +42,7 @@
         "hideGenerator": true,
         "plugin": ["typedoc-material-theme"],
         "themeColor": "#cb9820",
-        "entryPointStrategy": "expand"
+        "entryPointStrategy": "expand",
+        "searchInComments": true
     }
 }

@@ -1,14 +1,8 @@
 import {
-    FunctionNode,
-    type Token,
-    type LocalVariable,
-    type ASTNode,
     ASTNodeKind,
-    TokenType,
     addType,
     isNumberType,
     intTypeDefinition,
-    type TypeDefinition,
     pointerTo,
     addFunctionType,
     addArray,
@@ -17,7 +11,13 @@ import {
     int64TypeDefinition,
     shortTypeDefinition,
     ASTNodeType,
+    TokenType,
 } from './commons';
+import type TypeDefinition from './classes/typedef-class';
+import type ASTNode from './classes/astnode-class';
+import FunctionNode from './classes/functionnode-class';
+import type LocalVariable from './classes/localvariable-class';
+import type Token from './classes/token-class';
 import { logMessage } from './logger';
 import { skipToken, isEqual, isVariableTypeDefinition } from './token';
 
@@ -56,7 +56,6 @@ function findVariable(token: Token): LocalVariable | undefined {
 
     while (variableNode !== undefined) {
         if (
-            variableNode.varName !== undefined &&
             token.location !== undefined &&
             variableNode.varName.length === token.length &&
             variableNode.varName === token.location.slice(0, Math.max(0, token.length))
@@ -149,142 +148,388 @@ function newLocalVariable(name: string, type: TypeDefinition): LocalVariable {
 }
 
 /**
+ * 语句处理器类型。Statement handler type.
+ * @typedef {Function} StatementHandler
+ * @param {Token} token - 代表语句的令牌。The token representing the statement.
+ * @returns {{returnNode: ASTNode, token: Token}} - 返回新创建的抽象语法树节点和下一个令牌。The newly created abstract syntax tree node and the next token.
+ * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
+ */
+type StatementHandler = (token: Token) => { returnNode: ASTNode; token: Token };
+
+/**
+ * 语句处理器映射。Statement handler mapping.
+ * @type {Record<string, StatementHandler>}
+ */
+const statementHandlers: Record<string, StatementHandler> = {
+    return: returnStatement,
+    if: ifStatement,
+    for: forStatement,
+    while: whileStatement,
+};
+
+/**
+ * 类型定义处理器类型。Type definition handler type.
+ * @typedef {Function} TypeDefinitionHandler
+ * @param {Token} token - 代表类型的令牌。The token representing the type.
+ * @param {TypeDefinition} type - 类型定义。The type definition.
+ * @returns {TypeDefinition} 类型定义。The type definition.
+ */
+type TypeDefinitionHandler = (token: Token, type: string) => TypeDefinition;
+
+/**
+ * 类型到 TypeDefinition 的映射。Mapping from type to TypeDefinition.
+ */
+const typeDefinitions: Record<string, TypeDefinition> = {
+    int: intTypeDefinition,
+    void: voidTypeDefinition,
+    char: charTypeDefinition,
+    i64: int64TypeDefinition,
+    short: shortTypeDefinition,
+};
+
+/**
+ * 关系操作处理器类型。Relational operation handler type.
+ * @typedef {Function} RelationalHandler
+ * @param {Token} token - 代表类型的令牌。The token representing the type.
+ * @param {ASTNodeKind} kind - AST节点类型。The kind of AST node.
+ * @param {ASTNode} node - 当前的AST节点。The current AST node.
+ * @param {boolean} swapNodes - 是否交换节点。Whether to swap nodes.
+ * @returns {ASTNode} - 返回新的AST节点。Returns a new AST node.
+ */
+type RelationalHandler = (token: Token, kind: ASTNodeKind, node: ASTNode, swapNodes: boolean) => ASTNode;
+
+/**
+ * 处理关系操作。Handle relational operation.
+ * @param {Token} token - 代表类型的令牌。The token representing the type.
+ * @param {ASTNodeKind} kind - AST节点类型。The kind of AST node.
+ * @param {ASTNode} node - 当前的AST节点。The current AST node.
+ * @param {boolean} swapNodes - 是否交换节点。Whether to swap nodes.
+ * @returns {ASTNode} - 返回新的AST节点。Returns a new AST node.
+ */
+const handleRelationalOperation: RelationalHandler = (
+    token: Token,
+    kind: ASTNodeKind,
+    node: ASTNode,
+    swapNodes: boolean,
+) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: relational });
+        throw new Error('Unexpected end of input');
+    }
+    const leftNode: ASTNode = swapNodes ? add(token.next) : node;
+    const rightNode: ASTNode = swapNodes ? node : add(token.next);
+    return newBinary(kind, leftNode, rightNode);
+};
+
+/**
+ * 关系操作符映射。Relational operators mapping.
+ * @type {Record<string, [ASTNodeKind, boolean]>}
+ */
+const relationalOperators: Record<string, [ASTNodeKind, boolean]> = {
+    '<': [ASTNodeKind.LessThan, false],
+    '<=': [ASTNodeKind.LessThanOrEqual, false],
+    '>': [ASTNodeKind.LessThan, true],
+    '>=': [ASTNodeKind.LessThanOrEqual, true],
+};
+
+/**
+ * 乘法操作处理器类型。Multiplication operation handler type.
+ * @typedef {Function} MulHandler
+ * @param {Token} token - 代表乘法表达式的令牌。The token representing the multiplication expression.
+ * @param {ASTNodeKind} kind - 乘法操作的种类。The kind of multiplication operation.
+ * @param {ASTNode} left - 左操作数。The left operand.
+ * @returns {ASTNode} 代表乘法表达式的抽象语法树节点。The abstract syntax tree node representing the multiplication expression.
+ */
+type MulHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => ASTNode;
+
+/**
+ * 处理乘法操作。Handle multiplication operation.
+ * @param {Token} token - 代表乘法表达式的令牌。The token representing the multiplication expression.
+ * @param {ASTNodeKind} kind - 乘法操作的种类。The kind of multiplication operation.
+ * @param {ASTNode} left - 左操作数。The left operand.
+ * @returns {ASTNode} 代表乘法表达式的抽象语法树节点。The abstract syntax tree node representing the multiplication expression.
+ */
+const handleMulOperation: MulHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: mul });
+        throw new Error('Unexpected end of input');
+    }
+    return newBinary(kind, left, unary(token.next));
+};
+
+/**
+ * 乘法操作符到 ASTNodeKind 的映射。Mapping from multiplication operators to ASTNodeKind.
+ */
+const mulOperators: Record<string, ASTNodeKind> = {
+    '*': ASTNodeKind.Multiplication,
+    '/': ASTNodeKind.Division,
+};
+
+/**
+ * 处理类型定义。Handle type definition.
+ * @param {Token} token - 代表类型的令牌。The token representing the type.
+ * @param {TypeDefinition} type - 类型定义。The type definition.
+ * @returns {TypeDefinition} 类型定义。The type definition.
+ */
+const handleTypeDefinition: TypeDefinitionHandler = (token: Token, type: string) => {
+    const nextToken = skipToken(token, type);
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: declareType });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = nextToken;
+    return typeDefinitions[type];
+};
+
+/**
+ * 加法操作处理器类型。Addition operation handler type.
+ * @typedef {Function} AddHandler
+ * @param {Token} token - 代表加法表达式的令牌。The token representing the addition expression.
+ * @param {ASTNodeKind} kind - 加法操作的种类。The kind of addition operation.
+ * @param {ASTNode} left - 左操作数。The left operand.
+ * @returns {ASTNode} 代表加法表达式的抽象语法树节点。The abstract syntax tree node representing the addition expression.
+ */
+type AddHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => ASTNode;
+
+/**
+ * 处理加法操作。Handle addition operation.
+ * @param {Token} token - 代表加法表达式的令牌。The token representing the addition expression.
+ * @param {ASTNodeKind} kind - 加法操作的种类。The kind of addition operation.
+ * @param {ASTNode} left - 左操作数。The left operand.
+ * @returns {ASTNode} 代表加法表达式的抽象语法树节点。The abstract syntax tree node representing the addition expression.
+ */
+const handleAddOperation: AddHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: add });
+        throw new Error('Unexpected end of input');
+    }
+    if (kind === ASTNodeKind.Addition) {
+        return ptrAdd(left, mul(token.next));
+    }
+    if (kind === ASTNodeKind.Subtraction) {
+        return ptrSub(left, mul(token.next));
+    }
+    throw new Error('Invalid operation');
+};
+
+/**
+ * 加法操作符到 ASTNodeKind 的映射。Mapping from addition operators to ASTNodeKind.
+ * @type {Record<string, ASTNodeKind>}
+ */
+const addOperators: Record<string, ASTNodeKind> = {
+    '+': ASTNodeKind.Addition,
+    '-': ASTNodeKind.Subtraction,
+};
+
+/**
+ * 一元操作处理器类型。Unary operation handler type.
+ * @typedef {Function} UnaryHandler
+ * @param {Token} token - 代表一元表达式的令牌。The token representing the unary expression.
+ * @param {ASTNodeKind} kind - 一元操作的种类。The kind of unary operation.
+ * @returns {ASTNode} 代表一元表达式的抽象语法树节点。The abstract syntax tree node representing the unary expression.
+ */
+type UnaryHandler = (token: Token, kind: ASTNodeKind) => ASTNode;
+
+/**
+ * 处理一元操作。Handle unary operation.
+ * @param {Token} token - 代表一元表达式的令牌。The token representing the unary expression.
+ * @param {ASTNodeKind} kind - 一元操作的种类。The kind of unary operation.
+ * @returns {ASTNode} 代表一元表达式的抽象语法树节点。The abstract syntax tree node representing the unary expression.
+ */
+const handleUnaryOperation: UnaryHandler = (token: Token, kind: ASTNodeKind) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: unary });
+        throw new Error('Unexpected end of input');
+    }
+    return kind === ASTNodeKind.Addition ? unary(token.next) : newUnary(kind, unary(token.next));
+};
+
+/**
+ * 一元操作符到 ASTNodeKind 的映射。Mapping from unary operators to ASTNodeKind.
+ */
+const unaryOperators: Record<string, ASTNodeKind> = {
+    '+': ASTNodeKind.Addition,
+    '-': ASTNodeKind.Negation,
+    '&': ASTNodeKind.AddressOf,
+    '*': ASTNodeKind.Dereference,
+};
+
+/**
  * 解析一个语句。语句可以是多种类型之一：
  * - 表达式语句
- * - 返回语句('return' 表达式 ';')
  * - 块语句
- * - if语句('if' '(' 表达式 ')' 语句 ('else' 语句)?)
- * - for语句('for' '(' 表达式? ';' 表达式? ';' 表达式? ')' 语句)
- * - while语句('while' '(' 表达式 ')' 语句)
- *
+ * - 流程控制语句
  * Parse a statement. The statement can be one of the following types:
  * - Expression statement
- * - Return statement ('return' expression ';')
  * - Block statement
- * - If statement ('if' '(' expression ')' statement ('else' statement)?)
- * - For statement ('for' '(' expression? ';' expression? ';' expression? ')' statement)
- * - While statement ('while' '(' expression ')' statement)
- *
+ * - Control flow statement
  * @param {Token} token 代表语句的令牌。The token representing the statement.
  * @returns {ASTNode} 代表语句的抽象语法树节点。The abstract syntax tree node representing the statement.
  */
 function statement(token: Token): ASTNode {
     if (token.location !== undefined && token.location !== '') {
-        if (token.location.slice(0, 6) === 'return') {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'return' });
-                throw new Error('Unexpected end of input');
-            }
-            const node = newUnary(ASTNodeKind.Return, expression(token.next));
-            token = nowToken;
-            const nextToken = skipToken(token, ';');
-            if (nextToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'return' });
-                throw new Error('Unexpected end of input');
-            }
-            nowToken = nextToken;
-            return node;
-        } else if (token.location.slice(0, 1) === '{') {
+        if (token.location.startsWith('{')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'block' });
                 throw new Error('Unexpected end of input');
             }
             return blockStatement(token.next);
-        } else if (token.location.slice(0, 2) === 'if') {
-            const node = newNode(ASTNodeKind.If);
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
-                throw new Error('Unexpected end of input');
+        }
+        for (const [prefix, handler] of Object.entries(statementHandlers)) {
+            if (token.location.startsWith(prefix)) {
+                let returnNode;
+                ({ returnNode, token } = handler(token));
+                return returnNode;
             }
-            const trueToken = skipToken(token.next, ';');
-            if (trueToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
-                throw new Error('Unexpected end of input');
-            }
-            node.condition = expression(trueToken);
-            token = nowToken;
-
-            const elseToken = skipToken(token, ')');
-            if (elseToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
-                throw new Error('Unexpected end of input');
-            }
-            node.trueBody = statement(elseToken);
-            token = nowToken;
-
-            if (isEqual(token, 'else')) {
-                if (token.next === undefined) {
-                    logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'else' });
-                    throw new Error('Unexpected end of input');
-                }
-
-                node.elseBody = statement(token.next);
-                token = nowToken;
-            }
-            nowToken = token;
-            return node;
-        } else if (token.location.slice(0, 3) === 'for') {
-            const node = newNode(ASTNodeKind.For);
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
-                throw new Error('Unexpected end of input');
-            }
-            const initToken = skipToken(token.next, '(');
-            if (initToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
-                throw new Error('Unexpected end of input');
-            }
-            node.initBody = expressionStatement(initToken);
-            token = nowToken;
-
-            if (!isEqual(token, ';')) {
-                node.condition = expression(token);
-                token = nowToken;
-            }
-
-            let conditionToken = skipToken(token, ';');
-            if (conditionToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
-                throw new Error('Unexpected end of input');
-            }
-
-            if (!isEqual(conditionToken, ')')) {
-                node.incrementBody = expression(conditionToken);
-                token = nowToken;
-                conditionToken = nowToken;
-            }
-
-            const outToken = skipToken(conditionToken, ')');
-            if (outToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
-                throw new Error('Unexpected end of input');
-            }
-            node.trueBody = statement(outToken);
-            return node;
-        } else if (token.location.slice(0, 5) === 'while') {
-            const node = newNode(ASTNodeKind.For);
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
-                throw new Error('Unexpected end of input');
-            }
-            const conditionToken = skipToken(token.next, '(');
-            if (conditionToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
-                throw new Error('Unexpected end of input');
-            }
-            node.condition = expression(conditionToken);
-            token = nowToken;
-
-            const outToken = skipToken(token, ')');
-            if (outToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
-                throw new Error('Unexpected end of input');
-            }
-            node.trueBody = statement(outToken);
-            return node;
         }
     }
     return expressionStatement(token);
+}
+
+/**
+ * 创建一个新的while语句节点。Create a new while statement node.
+ * - while语句('while' '(' 表达式 ')' 语句)
+ * - While statement ('while' '(' expression ')' statement)
+ * @param {Token} token 代表while语句的令牌。The token representing the while statement.
+ * @returns {{returnNode: ASTNode, token: Token}} 新创建的抽象语法树节点和下一个令牌。The newly created abstract syntax tree node and the next token.
+ * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
+ */
+function whileStatement(token: Token): { returnNode: ASTNode; token: Token } {
+    const node = newNode(ASTNodeKind.For);
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
+        throw new Error('Unexpected end of input');
+    }
+    const conditionToken: Token | undefined = skipToken(token.next, '(');
+    if (conditionToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
+        throw new Error('Unexpected end of input');
+    }
+    node.condition = expression(conditionToken);
+    token = nowToken;
+
+    const outToken: Token | undefined = skipToken(token, ')');
+    if (outToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
+        throw new Error('Unexpected end of input');
+    }
+    node.trueBody = statement(outToken);
+    return { returnNode: node, token };
+}
+
+/**
+ * 创建一个新的for语句节点。Create a new for statement node.
+ * - for语句('for' '(' 表达式? ';' 表达式? ';' 表达式? ')' 语句)
+ * - For statement ('for' '(' expression? ';' expression? ';' expression? ')' statement)
+ * @param {Token} token 代表for语句的令牌。The token representing the for statement.
+ * @returns {{returnNode: ASTNode, token: Token}} 新创建的抽象语法树节点和下一个令牌。The newly created abstract syntax tree node and the next token.
+ * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
+ */
+function forStatement(token: Token): { returnNode: ASTNode; token: Token } {
+    const node = newNode(ASTNodeKind.For);
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
+        throw new Error('Unexpected end of input');
+    }
+    const initToken: Token | undefined = skipToken(token.next, '(');
+    if (initToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
+        throw new Error('Unexpected end of input');
+    }
+    node.initBody = expressionStatement(initToken);
+    token = nowToken;
+
+    if (!isEqual(token, ';')) {
+        node.condition = expression(token);
+        token = nowToken;
+    }
+
+    let conditionToken: Token | undefined = skipToken(token, ';');
+    if (conditionToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
+        throw new Error('Unexpected end of input');
+    }
+
+    if (!isEqual(conditionToken, ')')) {
+        node.incrementBody = expression(conditionToken);
+        token = nowToken;
+        conditionToken = nowToken;
+    }
+
+    const outToken: Token | undefined = skipToken(conditionToken, ')');
+    if (outToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
+        throw new Error('Unexpected end of input');
+    }
+    node.trueBody = statement(outToken);
+    return { returnNode: node, token };
+}
+
+/**
+ * 创建一个新的if语句节点。Create a new if statement node.
+ * - if语句('if' '(' 表达式 ')' 语句 ('else' 语句)?)
+ * - If statement ('if' '(' expression ')' statement ('else' statement)?)
+ * @param {Token} token 代表if语句的令牌。The token representing the if statement.
+ * @returns {{returnNode: ASTNode, token: Token}} 新创建的抽象语法树节点和下一个令牌。The newly created abstract syntax tree node and the next token.
+ * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
+ */
+function ifStatement(token: Token): { returnNode: ASTNode; token: Token } {
+    const node = newNode(ASTNodeKind.If);
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
+        throw new Error('Unexpected end of input');
+    }
+    const trueToken: Token | undefined = skipToken(token.next, ';');
+    if (trueToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
+        throw new Error('Unexpected end of input');
+    }
+    node.condition = expression(trueToken);
+    token = nowToken;
+
+    const elseToken: Token | undefined = skipToken(token, ')');
+    if (elseToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
+        throw new Error('Unexpected end of input');
+    }
+    node.trueBody = statement(elseToken);
+    token = nowToken;
+
+    if (isEqual(token, 'else')) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'else' });
+            throw new Error('Unexpected end of input');
+        }
+
+        node.elseBody = statement(token.next);
+        token = nowToken;
+    }
+    nowToken = token;
+    return { returnNode: node, token };
+}
+
+/**
+ * 创建一个新的return语句节点。Create a new return statement node.
+ * - 返回语句('return' 表达式 ';')
+ * - Return statement ('return' expression ';')
+ * @param {Token} token 代表return语句的令牌。The token representing the return statement.
+ * @returns {{returnNode: ASTNode, token: Token}} 新创建的抽象语法树节点和下一个令牌。The newly created abstract syntax tree node and the next token.
+ * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
+ */
+function returnStatement(token: Token): { returnNode: ASTNode; token: Token } {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'return' });
+        throw new Error('Unexpected end of input');
+    }
+    const node = newUnary(ASTNodeKind.Return, expression(token.next));
+    token = nowToken;
+    const nextToken = skipToken(token, ';');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'return' });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = nextToken;
+    return { returnNode: node, token };
 }
 
 /**
@@ -312,50 +557,13 @@ function getIdentifier(token: Token): string {
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
 export function declareType(token: Token): TypeDefinition {
-    if (isEqual(token, 'int')) {
-        const nextToken = skipToken(token, 'int');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: declareType });
-            throw new Error('Unexpected end of input');
+    for (const type in typeDefinitions) {
+        if (isEqual(token, type)) {
+            return handleTypeDefinition(token, type);
         }
-        nowToken = nextToken;
-        return intTypeDefinition;
-    } else if (isEqual(token, 'void')) {
-        const nextToken = skipToken(token, 'void');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: declareType });
-            throw new Error('Unexpected end of input');
-        }
-        nowToken = nextToken;
-        return voidTypeDefinition;
-    } else if (isEqual(token, 'char')) {
-        const nextToken = skipToken(token, 'char');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: declareType });
-            throw new Error('Unexpected end of input');
-        }
-        nowToken = nextToken;
-        return charTypeDefinition;
-    } else if (isEqual(token, 'i64')) {
-        const nextToken = skipToken(token, 'i64');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: declareType });
-            throw new Error('Unexpected end of input');
-        }
-        nowToken = nextToken;
-        return int64TypeDefinition;
-    } else if (isEqual(token, 'short')) {
-        const nextToken = skipToken(token, 'short');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: declareType });
-            throw new Error('Unexpected end of input');
-        }
-        nowToken = nextToken;
-        return shortTypeDefinition;
-    } else {
-        logMessage('error', 'Unknown type', { token, position: declareType });
-        throw new Error('Unknown type');
     }
+    logMessage('error', 'Unknown type', { token, position: declareType });
+    throw new Error('Unknown type');
 }
 
 /**
@@ -370,7 +578,7 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
         type = pointerTo(type);
     }
     if (isEqual(token, '(')) {
-        const returnToken = skipToken(token, '(');
+        const returnToken: Token | undefined = skipToken(token, '(');
         if (returnToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: declare });
             throw new Error('Unexpected end of input');
@@ -400,10 +608,6 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
     }
     type = checkTypeSuffix(token.next, type);
     type.tokens = token;
-    if (token.next === undefined) {
-        logMessage('error', 'Unexpected end of input', { token, position: declare });
-        throw new Error('Unexpected end of input');
-    }
     return type;
 }
 
@@ -444,19 +648,17 @@ function parseDeclaration(token: Token): ASTNode {
         }
         const variable = newLocalVariable(getIdentifier(type.tokens), type);
 
-        if (!isEqual(token, '=')) {
-            continue;
+        if (isEqual(token, '=')) {
+            const leftNode = newVariableNode(variable);
+            if (token.next === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
+                throw new Error('Unexpected end of input');
+            }
+            const rightNode = assign(token.next);
+            token = nowToken;
+            const node = newBinary(ASTNodeKind.Assignment, leftNode, rightNode);
+            current = current.nextNode = newUnary(ASTNodeKind.ExpressionStatement, node);
         }
-
-        const leftNode = newVariableNode(variable);
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
-            throw new Error('Unexpected end of input');
-        }
-        const rightNode = assign(token.next);
-        token = nowToken;
-        const node = newBinary(ASTNodeKind.Assignment, leftNode, rightNode);
-        current = current.nextNode = newUnary(ASTNodeKind.ExpressionStatement, node);
     }
 
     const node = newNode(ASTNodeKind.Block);
@@ -479,7 +681,6 @@ function parseDeclaration(token: Token): ASTNode {
 function blockStatement(token: Token): ASTNode {
     const head: ASTNode = { nodeKind: ASTNodeKind.Return };
     let current: ASTNode = head;
-    // nowToken = token;
     while (!isEqual(token, '}')) {
         current = current.nextNode = isVariableTypeDefinition(token) ? parseDeclaration(token) : statement(token);
         token = nowToken;
@@ -549,10 +750,6 @@ function assign(token: Token): ASTNode {
         node = newBinary(ASTNodeKind.Assignment, node, assign(token.next));
         token = nowToken;
     }
-    if (token === undefined) {
-        logMessage('error', 'Unexpected end of input', { token, position: assign });
-        throw new Error('Unexpected end of input');
-    }
     nowToken = token;
     return node;
 }
@@ -575,20 +772,17 @@ function equality(token: Token): ASTNode {
             }
             node = newBinary(ASTNodeKind.Equality, node, relational(token.next));
             token = nowToken;
-            continue;
-        }
-
-        if (isEqual(token, '!=')) {
+        } else if (isEqual(token, '!=')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: equality });
                 throw new Error('Unexpected end of input');
             }
             node = newBinary(ASTNodeKind.Negation, node, relational(token.next));
             token = nowToken;
-            continue;
+        } else {
+            nowToken = token;
+            return node;
         }
-        nowToken = token;
-        return node;
     }
 }
 
@@ -603,49 +797,21 @@ function relational(token: Token): ASTNode {
     let node = add(token);
     token = nowToken;
 
-    while (true) {
-        if (isEqual(token, '<')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: relational });
-                throw new Error('Unexpected end of input');
-            }
-            node = newBinary(ASTNodeKind.LessThan, node, add(token.next));
+    const processOperator = (operator: string): boolean => {
+        if (isEqual(token, operator)) {
+            const [kind, swapNodes] = relationalOperators[operator];
+            node = handleRelationalOperation(token, kind, node, swapNodes);
             token = nowToken;
-            continue;
+            return true;
         }
+        return false;
+    };
 
-        if (isEqual(token, '<=')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: relational });
-                throw new Error('Unexpected end of input');
-            }
-            node = newBinary(ASTNodeKind.LessThanOrEqual, node, add(token.next));
-            token = nowToken;
-            continue;
-        }
-
-        if (isEqual(token, '>')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: relational });
-                throw new Error('Unexpected end of input');
-            }
-            node = newBinary(ASTNodeKind.LessThan, add(token.next), node);
-            token = nowToken;
-            continue;
-        }
-
-        if (isEqual(token, '>=')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: relational });
-                throw new Error('Unexpected end of input');
-            }
-            node = newBinary(ASTNodeKind.LessThanOrEqual, add(token.next), node);
-            token = nowToken;
-            continue;
-        }
-        nowToken = token;
-        return node;
+    while (Object.keys(relationalOperators).some((operator) => processOperator(operator))) {
+        // continue;
     }
+    nowToken = token;
+    return node;
 }
 
 /**
@@ -658,29 +824,20 @@ function relational(token: Token): ASTNode {
 function add(token: Token): ASTNode {
     let node = mul(token);
     token = nowToken;
-    while (true) {
-        if (isEqual(token, '+')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: add });
-                throw new Error('Unexpected end of input');
-            }
-            node = ptrAdd(node, mul(token.next));
+    const processOperator = (operator: string): boolean => {
+        if (isEqual(token, operator)) {
+            const kind: ASTNodeKind = addOperators[operator];
+            node = handleAddOperation(token, kind, node);
             token = nowToken;
-            continue;
+            return true;
         }
-
-        if (isEqual(token, '-')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: add });
-                throw new Error('Unexpected end of input');
-            }
-            node = ptrSub(node, mul(token.next));
-            token = nowToken;
-            continue;
-        }
-        nowToken = token;
-        return node;
+        return false;
+    };
+    while (Object.keys(addOperators).some((operator) => processOperator(operator))) {
+        // continue;
     }
+    nowToken = token;
+    return node;
 }
 
 /**
@@ -693,31 +850,21 @@ function add(token: Token): ASTNode {
 function mul(token: Token): ASTNode {
     let node = unary(token);
     token = nowToken;
-    while (true) {
-        if (isEqual(token, '*')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: mul });
-                throw new Error('Unexpected end of input');
-            }
-            node = newBinary(ASTNodeKind.Multiplication, node, unary(token.next));
+    const processOperator = (operator: string): boolean => {
+        if (isEqual(token, operator)) {
+            const kind: ASTNodeKind = mulOperators[operator];
+            node = handleMulOperation(token, kind, node);
             token = nowToken;
-            continue;
+            return true;
         }
-
-        if (isEqual(token, '/')) {
-            if (token.next === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: mul });
-                throw new Error('Unexpected end of input');
-            }
-            node = newBinary(ASTNodeKind.Division, node, unary(token.next));
-            token = nowToken;
-            continue;
-        }
-        nowToken = token;
-        return node;
+        return false;
+    };
+    while (Object.keys(mulOperators).some((operator) => processOperator(operator))) {
+        // continue;
     }
+    nowToken = token;
+    return node;
 }
-
 /**
  * 处理指针加法。Handle pointer addition.
  * @param {ASTNode} leftNode 左节点。The left node.
@@ -822,38 +969,12 @@ function parseArrayAccess(token: Token): ASTNode {
  * @returns {ASTNode} 代表一元表达式的抽象语法树节点。The abstract syntax tree node representing the unary expression.
  */
 function unary(token: Token): ASTNode {
-    if (isEqual(token, '+')) {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: unary });
-            throw new Error('Unexpected end of input');
+    for (const operator in unaryOperators) {
+        if (isEqual(token, operator)) {
+            const kind: ASTNodeKind = unaryOperators[operator];
+            return handleUnaryOperation(token, kind);
         }
-        return unary(token.next);
     }
-
-    if (isEqual(token, '-')) {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: unary });
-            throw new Error('Unexpected end of input');
-        }
-        return newUnary(ASTNodeKind.Negation, unary(token.next));
-    }
-
-    if (isEqual(token, '&')) {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: unary });
-            throw new Error('Unexpected end of input');
-        }
-        return newUnary(ASTNodeKind.AddressOf, unary(token.next));
-    }
-
-    if (isEqual(token, '*')) {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: unary });
-            throw new Error('Unexpected end of input');
-        }
-        return newUnary(ASTNodeKind.Dereference, unary(token.next));
-    }
-
     return parseArrayAccess(token);
 }
 
@@ -886,7 +1007,7 @@ function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
 
             nowType = declare(token, nowType);
             token = nowToken;
-            current = current.nextParameters = JSON.parse(JSON.stringify(nowType));
+            current = current.nextParameters = JSON.parse(JSON.stringify(nowType)) as TypeDefinition;
         }
     }
 
@@ -928,8 +1049,8 @@ function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
             logMessage('error', 'Invalid array size', { token, position: checkTypeSuffix });
             throw new Error('Invalid array size');
         }
-        const number_ = token.next.value;
-        if (number_ === undefined) {
+        const { value } = token.next;
+        if (value === undefined) {
             logMessage('error', 'Number is undefined', { token, position: checkTypeSuffix });
             throw new Error('Number is undefined');
         }
@@ -944,7 +1065,7 @@ function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
         }
         token = nextToken;
         type = checkTypeSuffix(token, type);
-        return addArray(type, number_);
+        return addArray(type, value);
     }
     nowToken = token;
     return type;
@@ -1104,19 +1225,9 @@ function parseType(token: Token): TypeDefinition {
  */
 function primary(token: Token): ASTNode {
     if (isEqual(token, '(')) {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: primary });
-            throw new Error('Unexpected end of input');
-        }
-        const node = expression(token.next);
-        token = nowToken;
-        const nextToken = skipToken(token, ')');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: primary });
-            throw new Error('Unexpected end of input');
-        }
-        nowToken = nextToken;
-        return node;
+        let returnNode;
+        ({ returnNode, token } = bracketsPrimary(token));
+        return returnNode;
     }
     if (isEqual(token, 'sizeof')) {
         if (token.next === undefined) {
@@ -1124,28 +1235,11 @@ function primary(token: Token): ASTNode {
             throw new Error('Unexpected end of input');
         }
         if (isEqual(token.next, '(') && token.next.next !== undefined && isVariableTypeDefinition(token.next.next)) {
-            const type = parseType(token.next.next);
-            token = nowToken;
-            const nextToken = skipToken(token, ')');
-            if (nextToken === undefined) {
-                logMessage('error', 'Unexpected end of input', { token, position: primary });
-                throw new Error('Unexpected end of input');
-            }
-            nowToken = nextToken;
-            if (type.size === undefined) {
-                logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
-                throw new Error('TypeDefinition is undefined');
-            }
-            return newNumber(type.size);
-        } else {
-            const node = unary(token.next);
-            addType(node);
-            if (node?.typeDef?.size === undefined) {
-                logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
-                throw new Error('TypeDefinition is undefined');
-            }
-            return newNumber(node.typeDef.size);
+            let returnNode;
+            ({ returnNode, token } = sizeofVariableType(token.next.next));
+            return returnNode;
         }
+        return sizeofVariable(token.next);
     }
 
     if (token.kind === TokenType.Identifier) {
@@ -1153,19 +1247,7 @@ function primary(token: Token): ASTNode {
             return functionCall(token);
         }
 
-        const variableNode = findVariable(token);
-        if (variableNode === undefined && token.location !== undefined && token.length !== undefined) {
-            logMessage('error', 'Variable not defined', { token, position: primary });
-            throw new Error('Variable not defined');
-        }
-        if (token.next !== undefined) {
-            nowToken = token.next;
-        }
-        if (variableNode === undefined) {
-            logMessage('error', 'Variable not found', { token, position: primary });
-            throw new Error('Variable not found');
-        }
-        return newVariableNode(variableNode);
+        return identifierPrimary(token);
     }
 
     if (token.kind === TokenType.NumericLiteral) {
@@ -1186,6 +1268,94 @@ function primary(token: Token): ASTNode {
 }
 
 /**
+ * 解析一个标识符主表达式。Parse an identifier primary expression.
+ * Production rule: identifierPrimary ::= Identifier
+ * @param {Token} token 代表标识符主表达式的令牌。The token representing the identifier primary expression.
+ * @returns {ASTNode} 代表标识符主表达式的抽象语法树节点。The abstract syntax tree node representing the identifier primary expression.
+ * @throws 当变量未定义或未找到时抛出错误。Throws an error when the variable is not defined or not found.
+ */
+function identifierPrimary(token: Token): ASTNode {
+    const variableNode = findVariable(token);
+    if (variableNode === undefined && token.location !== undefined && token.length !== undefined) {
+        logMessage('error', 'Variable not defined', { token, position: primary });
+        throw new Error('Variable not defined');
+    }
+    if (token.next !== undefined) {
+        nowToken = token.next;
+    }
+    if (variableNode === undefined) {
+        logMessage('error', 'Variable not found', { token, position: primary });
+        throw new Error('Variable not found');
+    }
+    return newVariableNode(variableNode);
+}
+
+/**
+ * 解析一个sizeof变量表达式。Parse a sizeof variable expression.
+ * Production rule: sizeofVariable ::= 'sizeof' Variable
+ * @param {Token} token 代表sizeof变量表达式的令牌。The token representing the sizeof variable expression.
+ * @returns {ASTNode} 代表sizeof变量表达式的抽象语法树节点。The abstract syntax tree node representing the sizeof variable expression.
+ * @throws 当类型定义未定义时抛出错误。Throws an error when the type definition is undefined.
+ */
+function sizeofVariable(token: Token): ASTNode {
+    const node = unary(token);
+    addType(node);
+    if (node?.typeDef?.size === undefined) {
+        logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
+        throw new Error('TypeDefinition is undefined');
+    }
+    return newNumber(node.typeDef.size);
+}
+
+/**
+ * 解析一个sizeof变量类型表达式。Parse a sizeof variable type expression.
+ * 产生式为：sizeof变量类型表达式 ::= 'sizeof' '(' 类型 ')'
+ * Production rule: sizeofVariableType ::= 'sizeof' '(' Type ')'
+ * @param {Token} token 代表sizeof变量类型表达式的令牌。The token representing the sizeof variable type expression.
+ * @returns {{returnNode: ASTNode, token: Token}} 代表sizeof变量类型表达式的抽象语法树节点和下一个令牌。The abstract syntax tree node representing the sizeof variable type expression and the next token.
+ * @throws 当输入意外结束或类型定义未定义时抛出错误。Throws an error when the input ends unexpectedly or the type definition is undefined.
+ */
+function sizeofVariableType(token: Token): { returnNode: ASTNode; token: Token } {
+    const type = parseType(token);
+    token = nowToken;
+    const nextToken = skipToken(token, ')');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: primary });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = nextToken;
+    if (type.size === undefined) {
+        logMessage('error', 'TypeDefinition is undefined', { token, position: primary });
+        throw new Error('TypeDefinition is undefined');
+    }
+    return { returnNode: newNumber(type.size), token };
+}
+
+/**
+ * 解析一个括号内的主表达式。Parse a brackets primary expression.
+ * 产生式为：括号内的主表达式 ::= '(' 表达式 ')'
+ * Production rule: bracketsPrimary ::= '(' expression ')'
+ * @param {Token} token 代表括号内的主表达式的令牌。The token representing the brackets primary expression.
+ * @returns {{returnNode: ASTNode, token: Token}} 代表括号内的主表达式的抽象语法树节点和下一个令牌。The abstract syntax tree node representing the brackets primary expression and the next token.
+ * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
+ */
+function bracketsPrimary(token: Token): { returnNode: ASTNode; token: Token } {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: primary });
+        throw new Error('Unexpected end of input');
+    }
+    const node = expression(token.next);
+    token = nowToken;
+    const nextToken = skipToken(token, ')');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: primary });
+        throw new Error('Unexpected end of input');
+    }
+    nowToken = nextToken;
+    return { returnNode: node, token };
+}
+
+/**
  * 解析代码段。Parse a piece of code.
  * @param {Token[]} tokens 代表代码的令牌流。The token stream representing the code.
  * @returns {FunctionNode} 代表代码的抽象语法树节点簇。The abstract syntax tree node representing the code.
@@ -1196,7 +1366,7 @@ export function parse(tokens: Token[]): FunctionNode {
     let current: FunctionNode = head;
 
     let token = tokens[0];
-    while (token !== undefined && token.kind !== TokenType.EndOfFile) {
+    while (token.kind !== TokenType.EndOfFile) {
         current = current.returnFunc = parseFunction(token);
         token = nowToken;
     }

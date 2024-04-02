@@ -1,4 +1,5 @@
-import { TokenType, Token, Keywords, VariableTypeDefinition } from './commons';
+import { Keywords, VariableTypeDefinition, TokenType } from './commons';
+import Token from './classes/token-class';
 import { logMessage } from './logger';
 
 /**
@@ -37,7 +38,7 @@ export function isVariableTypeDefinition(token: Token): boolean {
  * @returns {boolean} 如果 token 等于操作符，返回 true，否则返回 false。If the token is equal to the operator, return true, otherwise return false.
  */
 export function isEqual(token: Token, operator: string): boolean {
-    return token.location !== undefined && token.location !== null && token.length !== undefined
+    return token.location !== undefined && token.length !== undefined
         ? token.location.slice(0, token.length) === operator && operator.length === token.length
         : false;
 }
@@ -148,14 +149,9 @@ export function tokenize(p: string): Token[] {
             p = p.slice(end + 2);
         }
 
-        // Skip whitespace characters.
         if (p.charAt(0).trim() === '') {
             p = p.slice(1);
-            continue;
-        }
-
-        // Numeric literal
-        if (/\d/.test(p.charAt(0))) {
+        } else if (/\d/.test(p.charAt(0))) {
             const current = new Token();
             current.kind = TokenType.NumericLiteral;
             current.location = p;
@@ -163,11 +159,7 @@ export function tokenize(p: string): Token[] {
             current.length = current.value.toString().length;
             tokens.push(current);
             p = p.slice(current.length);
-            continue;
-        }
-
-        // Identifier or keyword
-        if (isValidFirstCharOfIdentifier(p.charAt(0))) {
+        } else if (isValidFirstCharOfIdentifier(p.charAt(0))) {
             const start = p;
             do {
                 p = p.slice(1);
@@ -177,22 +169,18 @@ export function tokenize(p: string): Token[] {
             current.location = start;
             current.length = start.length - p.length;
             tokens.push(current);
-            continue;
-        }
-
-        // Punctuators
-        const punctLength = readPunctuation(p);
-        if (punctLength > 0) {
+        } else if (readPunctuation(p) > 0) {
+            const punctLength = readPunctuation(p);
             const current = new Token();
             current.kind = TokenType.Punctuator;
             current.location = p;
             current.length = punctLength;
             tokens.push(current);
             p = p.slice(current.length);
-            continue;
+        } else {
+            logMessage('error', `Invalid token at ${p}`, { position: tokenize });
+            throw new Error(`Invalid token at ${p}`);
         }
-        logMessage('error', `Invalid token at ${p}`, { position: tokenize });
-        throw new Error(`Invalid token at ${p}`);
     }
 
     const eofToken = new Token();
@@ -202,7 +190,7 @@ export function tokenize(p: string): Token[] {
 
     convertKeywords(tokens);
 
-    for (let index = 0; index < tokens.length - 1; index++) {
+    for (let index = 0; index < tokens.length - 1; index += 1) {
         tokens[index].next = tokens[index + 1];
     }
     return tokens;
