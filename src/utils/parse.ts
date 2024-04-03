@@ -16,7 +16,7 @@ import {
 import type TypeDefinition from './classes/typedef-class';
 import type ASTNode from './classes/astnode-class';
 import FunctionNode from './classes/functionnode-class';
-import type LocalVariable from './classes/localvariable-class';
+import LocalVariable from './classes/localvariable-class';
 import type Token from './classes/token-class';
 import { logMessage } from './logger';
 import { skipToken, isEqual, isVariableTypeDefinition } from './token';
@@ -137,12 +137,7 @@ function newVariableNode(variableNode: LocalVariable): ASTNode {
  * @returns {LocalVariable} 新创建的局部变量。The newly created local variable.
  */
 function newLocalVariable(name: string, type: TypeDefinition): LocalVariable {
-    const localVariable: LocalVariable = {
-        varName: name,
-        nextVar: locals,
-        offsetFromRBP: 0,
-        varType: type,
-    };
+    const localVariable = new LocalVariable(name, 0, type, locals);
     locals = localVariable;
     return localVariable;
 }
@@ -777,7 +772,7 @@ function equality(token: Token): ASTNode {
                 logMessage('error', 'Unexpected end of input', { token, position: equality });
                 throw new Error('Unexpected end of input');
             }
-            node = newBinary(ASTNodeKind.Negation, node, relational(token.next));
+            node = newBinary(ASTNodeKind.Inequality, node, relational(token.next));
             token = nowToken;
         } else {
             nowToken = token;

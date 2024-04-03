@@ -61,20 +61,3 @@ export function logMessage(
     const stackMessage = stack === false ? '' : `\n${stack}`;
     namespacedLog[level](`[${timestamp}] ${message}\n${contextString}${stackMessage}`);
 }
-
-/**
- * 启用指定命名空间的日志记录。enable logging for the specified namespace.
- * @param {string} namespace 要启用的日志的命名空间。 The namespace for the log to enable.
- * @returns {void} 无返回值。No return value.
- */
-export function enableLogger(namespace: string): void {
-    log.enable(namespace);
-}
-
-/**
- * 禁用指定命名空间的日志记录。disable logging for the specified namespace.
- * @param {string} namespace 要禁用的日志的命名空间。The namespace for the log to disable.
- */
-export function disableLogger(namespace: string): void {
-    log.disable(namespace);
-}

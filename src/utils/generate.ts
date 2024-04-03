@@ -65,8 +65,7 @@ const sizeToLoadOperation: Record<number | 'default', string> = {
  */
 function load(type: TypeDefinition): void {
     if (type.type !== ASTNodeType.Array && type.size !== undefined) {
-        const operation = sizeToLoadOperation[type.size];
-        console.log(`  ${operation}`);
+        const operation = sizeToLoadOperation[type.size] ?? sizeToLoadOperation.default;
         generated.push(`  ${operation}`);
     }
 }
@@ -89,8 +88,7 @@ const sizeToStoreOperation: Record<number | 'default', string> = {
 function store(type: TypeDefinition): void {
     popFromStack('%rdi');
     if (type.size !== undefined) {
-        const operation = sizeToStoreOperation[type.size];
-        console.log(`  ${operation}`);
+        const operation = sizeToStoreOperation[type.size] ?? sizeToStoreOperation.default;
         generated.push(`  ${operation}`);
     }
 }
@@ -108,7 +106,6 @@ const generateExpressionHandlers: generateExpressionHandlerMap = {
             throw new Error('invalid number');
         }
         generated.push(`  mov $${node.numberValue}, %rax`);
-        console.log(`  mov $${node.numberValue}, %rax`);
     },
     [ASTNodeKind.Negation]: (node: ASTNode) => {
         if (node.leftNode === undefined) {
@@ -121,7 +118,6 @@ const generateExpressionHandlers: generateExpressionHandlerMap = {
         }
         generateExpression(node.leftNode);
         generated.push(`  neg %rax`);
-        console.log(`  neg %rax`);
     },
     [ASTNodeKind.Dereference]: (node: ASTNode) => {
         if (node.leftNode === undefined) {
@@ -210,8 +206,6 @@ const generateExpressionHandlers: generateExpressionHandlerMap = {
             popFromStack(reg64ForArguments[argumentNumber]);
             argumentNumber -= 1;
         }
-        console.log(`  mov $0, %rax`);
-        console.log(`  call ${node.functionDef}`);
         generated.push(`  mov $0, %rax`, `  call ${node.functionDef}`);
     },
     // TODO: Add other cases
@@ -243,23 +237,18 @@ function generateExpression(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Addition: {
             generated.push(`  add %rdi, %rax`);
-            console.log(`  add %rdi, %rax`);
             return;
         }
         case ASTNodeKind.Subtraction: {
             generated.push(`  sub %rdi, %rax`);
-            console.log(`  sub %rdi, %rax`);
             return;
         }
         case ASTNodeKind.Multiplication: {
             generated.push(`  imul %rdi, %rax`);
-            console.log(`  imul %rdi, %rax`);
             return;
         }
         case ASTNodeKind.Division: {
             generated.push(`  cqo`, `  idiv %rdi`);
-            console.log(`  cqo`);
-            console.log(`  idiv %rdi`);
             return;
         }
         case ASTNodeKind.Equality:
@@ -267,26 +256,21 @@ function generateExpression(node: ASTNode): void {
         case ASTNodeKind.LessThan:
         case ASTNodeKind.LessThanOrEqual: {
             generated.push(`  cmp %rdi, %rax`);
-            console.log(`  cmp %rdi, %rax`);
             switch (node.nodeKind) {
                 case ASTNodeKind.Equality: {
                     generated.push(`  sete %al`);
-                    console.log(`  sete %al`);
                     break;
                 }
                 case ASTNodeKind.Inequality: {
                     generated.push(`  setne %al`);
-                    console.log(`  setne %al`);
                     break;
                 }
                 case ASTNodeKind.LessThan: {
                     generated.push(`  setl %al`);
-                    console.log(`  setl %al`);
                     break;
                 }
                 case ASTNodeKind.LessThanOrEqual: {
                     generated.push(`  setle %al`);
-                    console.log(`  setle %al`);
                     break;
                 }
                 default: {
@@ -295,8 +279,6 @@ function generateExpression(node: ASTNode): void {
                 }
             }
             generated.push(`  movzb %al, %rax`);
-            console.log(`  movzb %al, %rax`);
-
             return;
         }
         default: {
@@ -320,7 +302,6 @@ function generateStatement(node: ASTNode): void {
             }
 
             generateExpression(node.leftNode);
-            console.log(`  jmp .L.return.${nowFunction?.funcName}`);
             generated.push(`  jmp .L.return.${nowFunction?.funcName}`);
             return;
         }
@@ -354,17 +335,12 @@ function generateStatement(node: ASTNode): void {
                 throw new Error('invalid if');
             }
             generateExpression(node.condition);
-            console.log(`  cmp $0, %%rax`);
-            console.log(`  je  .L.else.${c}`);
             generated.push(`  cmp $0, %rax`, `  je  .L.else.${c}`);
             generateStatement(node.trueBody);
-            console.log(`  jmp .L.end.${c}`);
-            console.log(`.L.else.${c}:`);
             generated.push(`  jmp .L.end.${c}`, `.L.else.${c}:`);
             if (node.elseBody !== undefined) {
                 generateStatement(node.elseBody);
             }
-            console.log(`.L.end.${c}:`);
             generated.push(`.L.end.${c}:`);
             return;
         }
@@ -377,20 +353,15 @@ function generateStatement(node: ASTNode): void {
             if (node.initBody !== undefined) {
                 generateStatement(node.initBody);
             }
-            console.log(`.L.begin.${c}:`);
             generated.push(`.L.begin.${c}:`);
             if (node.condition !== undefined) {
                 generateExpression(node.condition);
-                console.log(`  cmp $0, %rax`);
-                console.log(`  je  .L.end.${c}`);
                 generated.push(`  cmp $0, %rax`, `  je  .L.end.${c}`);
             }
             generateStatement(node.trueBody);
             if (node.incrementBody !== undefined) {
                 generateExpression(node.incrementBody);
             }
-            console.log(`  jmp .L.begin.${c}`);
-            console.log(`.L.end.${c}:`);
             generated.push(`  jmp .L.begin.${c}`, `.L.end.${c}:`);
             return;
         }
@@ -462,15 +433,7 @@ export function generateCode(prog: FunctionNode): void {
 
     let localFunction: FunctionNode | undefined = prog;
     while (localFunction !== undefined) {
-        console.log(`  .globl ${localFunction.funcName}`);
-        console.log(`${localFunction.funcName}:`);
-
         nowFunction = localFunction;
-
-        console.log(`  push %rbp`);
-        console.log(`  mov %rsp, %rbp`);
-        console.log(`  sub $${localFunction.stackSize}, %rsp`);
-
         generated.push(
             `  .globl ${localFunction.funcName}`,
             `${localFunction.funcName}:`,
@@ -497,9 +460,8 @@ export function generateCode(prog: FunctionNode): void {
                     throw new Error('invalid variable type');
                 }
 
-                const regForArguments = sizeToRegForArguments[nowArgument.varType.size];
+                const regForArguments = sizeToRegForArguments[nowArgument.varType.size] ?? sizeToRegForArguments.default;
                 const operation = `  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`;
-                console.log(operation);
                 generated.push(operation);
                 nowArgument = nowArgument.nextVar;
                 argumentNumber += 1;
@@ -508,11 +470,6 @@ export function generateCode(prog: FunctionNode): void {
 
         generateStatement(localFunction.body);
         console.assert(depth === 0);
-
-        console.log(`.L.return.${localFunction.funcName}:`);
-        console.log(`  mov %rbp, %rsp`);
-        console.log(`  pop %rbp`);
-        console.log(`  ret`);
 
         generated.push(`.L.return.${localFunction.funcName}:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
 
@@ -524,7 +481,6 @@ export function generateCode(prog: FunctionNode): void {
  * 从堆栈中弹出一个元素。Pop an element from the stack.
  */
 function pushToStack(): void {
-    console.log('  push %rax');
     generated.push('  push %rax');
     depth += 1;
 }
@@ -534,7 +490,6 @@ function pushToStack(): void {
  * @param {string} argument 要弹出的元素的名称。The name of the element to pop.
  */
 function popFromStack(argument: string): void {
-    console.log(`  pop ${argument}`);
     generated.push(`  pop ${argument}`);
     depth -= 1;
 }
@@ -555,7 +510,6 @@ function alignToNearest(n: number, align: number): number {
  */
 function generateAddress(node: ASTNode): void {
     if (node.nodeKind === ASTNodeKind.Variable && node.localVar !== undefined) {
-        console.log(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         generated.push(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
         return;
     }

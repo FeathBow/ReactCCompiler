@@ -78,6 +78,12 @@ module.exports = {
                 'import/no-extraneous-dependencies': OFF,
             },
         },
+        {
+            files: ['**/*.test.js', '**/*.test.jsx', '**/*.test.ts', '**/*.test.tsx'],
+            rules: {
+                'import/no-extraneous-dependencies': ['error', { devDependencies: true }],
+            },
+        },
     ],
     globals: {
         Atomics: 'readonly',
