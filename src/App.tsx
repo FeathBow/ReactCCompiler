@@ -12,17 +12,18 @@ import { logMessage } from './utils/logger';
 function App(): JSX.Element {
     const [code, setCode] = useState('');
     const [output, setOutput] = useState<string[]>([]);
-
+    const [quadruple, setQuadruple] = useState('');
     const handleSubmit = (event: React.FormEvent): void => {
         event.preventDefault();
 
         const tokens = tokenize(code);
         logMessage('info', 'Tokens', { tokens: JSON.stringify(tokens) });
-        const program = parse(tokens);
-        logMessage('info', 'AST', { program: JSON.stringify(program) });
+        const { functionNode, quadrupleOutput } = parse(tokens);
+        logMessage('info', 'AST', { program: JSON.stringify(functionNode) });
         // Traverse the AST to emit assembly.
-        generateCode(program);
+        generateCode(functionNode);
         setOutput(getGenerated());
+        setQuadruple(quadrupleOutput);
     };
 
     return (
@@ -38,6 +39,7 @@ function App(): JSX.Element {
                 <button type='submit'>Submit</button>
             </form>
             <OutputComponent output={output} />
+            <QuadrupleOutputComponent quadrupleOutput={quadruple} />
         </div>
     );
 }
@@ -59,6 +61,20 @@ function OutputComponent({ output }: OutputProperties): JSX.Element {
             ))}
         </div>
     );
+}
+
+interface QuadrupleOutputProperties {
+    readonly quadrupleOutput: string;
+}
+
+/**
+ * QuadrupleOutputComponent 组件，用于显示四元式输出。
+ * The QuadrupleOutputComponent, used to display the quadruple output.
+ * @param {QuadrupleOutputProperties} quadrupleOutput - 需要显示的四元式输出。The quadruple output to display.
+ * @returns {JSX.Element} 返回一个 JSX 元素。Return a JSX element.
+ */
+function QuadrupleOutputComponent({ quadrupleOutput }: QuadrupleOutputProperties): JSX.Element {
+    return <pre>{quadrupleOutput}</pre>;
 }
 
 export default App;

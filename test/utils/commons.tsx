@@ -41,8 +41,8 @@ async function runAssemblyCode(assemblyCode: string[], filename: string): Promis
  */
 async function testCode(code: string, expectedExitStatus: string, filename: string): Promise<void> {
     const tokens = tokenize(code);
-    const program = parse(tokens);
-    generateCode(program);
+    const { functionNode } = parse(tokens);
+    generateCode(functionNode);
     const assemblyCode = getGenerated();
     const exitStatus = await runAssemblyCode(assemblyCode, filename);
     expect(exitStatus).toBe(expectedExitStatus);

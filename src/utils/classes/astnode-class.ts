@@ -1,11 +1,11 @@
 import type LocalVariable from './localvariable-class';
 import { ASTNodeKind } from '../commons';
 import type TypeDefinition from './typedef-class';
+
 /**
  * 代表一个抽象语法树节点的类。
  * AST node class.
  */
-
 class ASTNode {
     /** 节点类型。Node kind. */
     nodeKind: ASTNodeKind = ASTNodeKind.Addition;
@@ -37,6 +37,8 @@ class ASTNode {
     functionDef?: string;
     /** 函数参数。Function arguments. */
     functionArgs?: ASTNode;
+    /** 结点编号。Node number. */
+    nodeNumber = 0;
 }
 
 export default ASTNode;
