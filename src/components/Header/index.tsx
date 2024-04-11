@@ -61,7 +61,6 @@ type HeaderProperties = Record<string, unknown>;
  */
 function Header(properties: Readonly<HeaderProperties>): ReactElement {
     const [isOpen, setIsOpen] = React.useState(false);
-
     const toggle = (): void => {
         setIsOpen(!isOpen);
     };

@@ -30,6 +30,7 @@ const menuItemClass = {
 const activeClass = {
     color: 'green.500',
     fontWeight: 'semibold',
+
 };
 
 const unActiveClass = {
@@ -88,6 +89,7 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
         <Link to={menuItem.path ?? '/'} key={menuItem.title}>
             <Flex
                 align='center'
+
                 justify='space-between'
                 {...menuItemClass}
                 {...(isActive(index) ? activeClass : unActiveClass)}
@@ -153,7 +155,7 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
                                     pl: '3',
                                     p: '3',
                                 })}
-                              
+
                             </PopoverContent>
                         </Popover>
 

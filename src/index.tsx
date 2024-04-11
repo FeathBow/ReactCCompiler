@@ -43,8 +43,6 @@ const testMenuList: MenuList = [
     },
 ];
 
-const textColor = 'gray.700';
-
 /**
  * IndexView component.
  * 视窗组件。

@@ -18,9 +18,11 @@ import {
     TableCaption,
     Flex,
     useToast,
+    useColorMode,
+    Text,
 } from '@chakra-ui/react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { solarizedlight } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ArrowForwardIcon, ChevronDownIcon, ChevronUpIcon, CopyIcon } from '@chakra-ui/icons';
 import { useLocation } from 'react-router-dom';
 import Separator from 'Components/Separator';
@@ -63,6 +65,7 @@ function Compiler(): JSX.Element {
     // eslint-disable-next-line @typescript-eslint/no-unsafe-call, @typescript-eslint/no-unsafe-assignment
     const location: Location = useLocation();
     const debouncedHandleInput = useRef<((event: FormEvent<HTMLTextAreaElement>) => void) & { cancel?: () => void }>();
+    const { colorMode } = useColorMode();
 
     useEffect(() => {
         debouncedHandleInput.current = debounce((event: FormEvent<HTMLTextAreaElement>) => {
@@ -106,6 +109,8 @@ function Compiler(): JSX.Element {
             });
     };
 
+    const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
+
     return (
         <Box>
             <Box as='form' onSubmit={handleSubmit}>
@@ -144,25 +149,55 @@ function Compiler(): JSX.Element {
                         {isOpen ? 'Hide Code' : 'Show Code'}
                     </Button>
                     <Collapse in={isOpen} animateOpacity>
-                        <Box width='100%' overflowX='hidden'>
-                            <SyntaxHighlighter
-                                language='cpp'
-                                style={solarizedlight}
-                                showLineNumbers
-                                wrapLines
-                                wrapLongLines
-                                customStyle={{ whiteSpace: 'pre-wrap' }}
-                                lineProps={(lineNumber) => {
-                                    const style: React.CSSProperties = { display: 'block' };
-                                    if (lineNumber % 2 === 0) {
-                                        style.backgroundColor = '#ede5cf';
-                                    }
-                                    return { style };
-                                }}
-                            >
-                                {code}
-                            </SyntaxHighlighter>
-                        </Box>
+                        {isOpen && (code === null || code.length === 0) ? (
+                            <CustomAlert
+                                type='warning'
+                                title='No Code Found'
+                                description='Please provide the code to display the syntax highlighting.'
+                            />
+                        ) : (
+                            <Box width='100%' overflowX='hidden'>
+                                {code !== null && code.length > 0 && (
+                                    <>
+                                        <Box
+                                            display='flex'
+                                            justifyContent='center'
+                                            alignItems='center'
+                                            p={2}
+                                            bg={colorMode === 'light' ? 'gray.200' : 'gray.700'}
+                                            color={colorMode === 'light' ? 'black' : 'white'}
+                                            borderRadius='md'
+                                            _hover={{
+                                                bg: colorMode === 'light' ? 'gray.300' : 'gray.600',
+                                                transform: 'scale(1.05)',
+                                                transition: 'all 0.2s ease-in-out',
+                                                borderRadius: 'md',
+                                            }}
+                                        >
+                                            <Text fontSize='sm'>CPP</Text>
+                                        </Box>
+                                        <SyntaxHighlighter
+                                            language='cpp'
+                                            style={currentStyle}
+                                            showLineNumbers
+                                            wrapLines
+                                            wrapLongLines
+                                            customStyle={{ whiteSpace: 'pre-wrap', marginTop: 0 }}
+                                            lineProps={(lineNumber) => {
+                                                const style: React.CSSProperties = { display: 'block' };
+                                                if (lineNumber % 2 === 0) {
+                                                    style.backgroundColor =
+                                                        colorMode === 'light' ? '#ede5cf' : '#2c2c2c';
+                                                }
+                                                return { style };
+                                            }}
+                                        >
+                                            {code}
+                                        </SyntaxHighlighter>
+                                    </>
+                                )}
+                            </Box>
+                        )}
                     </Collapse>
                 </Grid>
                 <Separator />
@@ -191,7 +226,6 @@ function Compiler(): JSX.Element {
                     )}
                 </>
             )}
-
         </Box>
     );
 }
@@ -208,11 +242,15 @@ interface OutputProperties {
 function OutputComponent({ output }: OutputProperties): JSX.Element {
     const codeString = output.join('\n');
     const toast = useToast();
+    const { colorMode } = useColorMode();
+
+    const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
+
     return (
         <Box>
             <SyntaxHighlighter
                 language='nasm'
-                style={solarizedlight}
+                style={currentStyle}
                 showLineNumbers
                 wrapLines
                 wrapLongLines
@@ -220,7 +258,7 @@ function OutputComponent({ output }: OutputProperties): JSX.Element {
                 lineProps={(lineNumber) => {
                     const style: React.CSSProperties = { display: 'block' };
                     if (lineNumber % 2 === 0) {
-                        style.backgroundColor = '#ede5cf';
+                        style.backgroundColor = colorMode === 'light' ? '#ede5cf' : '#2c2c2c';
                     }
                     return { style };
                 }}
@@ -275,10 +313,13 @@ function QuadrupleOutputComponent({ quadrupleOutput }: QuadrupleOutputProperties
         .split('\n')
         .slice(1)
         .map((line) => line.match(/.{1,13}/g) ?? []);
+    const { colorMode } = useColorMode();
+    const oddRowBg = colorMode === 'light' ? 'gray.100' : 'gray.700'; // 浅色模式用浅灰色，深色模式用深灰色
+    const evenRowBg = colorMode === 'light' ? 'white' : 'gray.800'; // 浅色模式用白色，深色模式用更深灰色
 
     return (
-        <Table variant='striped' colorScheme='teal'>
-            <TableCaption> Quadruple Output </TableCaption>
+        <Table variant='simple' colorScheme='teal' borderRadius='lg' overflow='hidden'>
+            <TableCaption placement='top'>Quadruple Output</TableCaption>
             <Thead>
                 <Tr>
                     <Th>id</Th>
@@ -290,10 +331,21 @@ function QuadrupleOutputComponent({ quadrupleOutput }: QuadrupleOutputProperties
             </Thead>
             <Tbody>
                 {quadrupleArray.map((quad, index) => (
-                    <Tr key={quad[0]}>
+                    <Tr
+                        key={quad[0]}
+                        bg={index % 2 === 0 ? evenRowBg : oddRowBg}
+                        _hover={{ bg: 'teal.100', color: 'teal.900' }}
+                    >
                         {quad.map((item, itemIndex) => (
-                            /* eslint-disable-next-line react/no-array-index-key */
-                            <Td key={`${quad[0]}-${index}-${itemIndex}`}>{item}</Td>
+                            <Td
+                                /* eslint-disable-next-line react/no-array-index-key */
+                                key={`${quad[0]}-${index}-${itemIndex}`}
+                                borderRadius={
+                                    itemIndex === 0 ? 'lg 0 0 lg' : itemIndex === quad.length - 1 ? '0 lg lg 0' : '0'
+                                }
+                            >
+                                {item}
+                            </Td>
                         ))}
                     </Tr>
                 ))}

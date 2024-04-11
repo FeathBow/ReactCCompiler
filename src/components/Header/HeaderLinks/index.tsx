@@ -1,5 +1,6 @@
 import React, { type ReactElement } from 'react';
-import { Box, Button, Stack } from '@chakra-ui/react';
+import { Box, Button, Stack, IconButton, useColorMode } from '@chakra-ui/react';
+import { SunIcon, MoonIcon } from '@chakra-ui/icons';
 import HeaderItem from '../HeaderItem';
 
 interface HeaderLinksProperties {
@@ -12,6 +13,7 @@ interface HeaderLinksProperties {
  * @returns {ReactElement} The `HeaderLinks` component.
  */
 function HeaderLinks({ isOpen }: Readonly<HeaderLinksProperties>): ReactElement {
+    const { colorMode, toggleColorMode } = useColorMode();
     return (
         <Box display={{ base: isOpen ? 'block' : 'none', md: 'block' }} flexBasis={{ base: '100%', md: 'auto' }}>
             <Stack
@@ -21,6 +23,14 @@ function HeaderLinks({ isOpen }: Readonly<HeaderLinksProperties>): ReactElement 
                 direction={['column', 'row', 'row', 'row']}
                 pt={[4, 4, 0, 0]}
             >
+                <HeaderItem isLast={false}>
+                    <IconButton
+                        icon={colorMode === 'light' ? <MoonIcon /> : <SunIcon />}
+                        onClick={toggleColorMode}
+                        aria-label='Toggle color mode'
+                        variant='ghost'
+                    />
+                </HeaderItem>
                 <HeaderItem to='/' isLast={false}>
                     Home
                 </HeaderItem>

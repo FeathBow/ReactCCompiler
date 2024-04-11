@@ -423,8 +423,9 @@ function statement(token: Token): ASTNode {
         }
         for (const [prefix, handler] of Object.entries(statementHandlers)) {
             if (token.location.startsWith(prefix)) {
-                let returnNode;
-                ({ returnNode, token } = handler(token));
+                // let returnNode;
+                // ({ returnNode } = );
+                const { returnNode } = handler(token);
                 return returnNode;
             }
         }
@@ -1373,8 +1374,7 @@ function parseType(token: Token): TypeDefinition {
  */
 function primary(token: Token): ASTNode {
     if (isEqual(token, '(')) {
-        let returnNode;
-        ({ returnNode, token } = bracketsPrimary(token));
+        const { returnNode } = bracketsPrimary(token);
         return returnNode;
     }
     if (isEqual(token, 'sizeof')) {
@@ -1383,8 +1383,7 @@ function primary(token: Token): ASTNode {
             throw new Error('Unexpected end of input');
         }
         if (isEqual(token.next, '(') && token.next.next !== undefined && isVariableTypeDefinition(token.next.next)) {
-            let returnNode;
-            ({ returnNode, token } = sizeofVariableType(token.next.next));
+            const { returnNode } = sizeofVariableType(token.next.next);
 
             intermediateCodeList.emit('sizeof', String(returnNode.numberValue), undefined, getNodeValue(returnNode));
 
