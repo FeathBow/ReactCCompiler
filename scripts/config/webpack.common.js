@@ -1,14 +1,20 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/explicit-function-return-type */
+/* eslint-disable global-require */
 /* eslint-disable unicorn/prefer-module */
 /* eslint-disable @typescript-eslint/no-var-requires */
 const path = require('node:path');
+
 const resolve = path.resolve.bind(path);
-const { isDev, PROJECT_PATH } = require('../constant');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const CopyPlugin = require('copy-webpack-plugin');
 const WebpackBar = require('webpackbar');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
+const { isDev, PROJECT_PATH } = require('../constant');
+
 const getCssLoaders = (importLoaders) => [
     isDev ? 'style-loader' : MiniCssExtractPlugin.loader,
     {
@@ -76,6 +82,8 @@ module.exports = {
             Src: resolve(PROJECT_PATH, './src'),
             Components: resolve(PROJECT_PATH, './src/components'),
             Utils: resolve(PROJECT_PATH, './src/utils'),
+            react: path.resolve('./node_modules/react'),
+            'react-dom': path.resolve('./node_modules/react-dom'),
         },
     },
 
@@ -191,10 +199,17 @@ module.exports = {
             },
         ],
     },
+    devServer: {
+        historyApiFallback: true,
+    },
     externals: {
-        react: 'React',
-        'react-dom': 'ReactDOM',
+        // react: 'React',
+        // 'react-dom': 'ReactDOM',
     },
 };
 /* eslint-enable unicorn/prefer-module */
 /* eslint-enable @typescript-eslint/no-var-requires */
+/* eslint-enable global-require */
+/* eslint-enable @typescript-eslint/explicit-function-return-type */
+/* eslint-enable @typescript-eslint/no-unsafe-assignment */
+/* eslint-enable @typescript-eslint/no-unsafe-call */

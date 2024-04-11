@@ -2,6 +2,7 @@ const OFF = 0;
 const WARN = 1;
 const ERROR = 2;
 
+// eslint-disable-next-line unicorn/prefer-module
 module.exports = {
     env: {
         browser: true,
@@ -38,6 +39,7 @@ module.exports = {
         'no-multi-assign': 'off',
         'no-restricted-syntax': 'off',
         'no-shadow': 'off',
+        'react/jsx-props-no-spreading': 'off',
         'jsdoc/check-alignment': 1,
         // 'jsdoc/check-examples': 1,
         'jsdoc/check-indentation': 1,

@@ -1,3 +1,5 @@
+/* eslint-disable unicorn/prefer-module */
+/* eslint-disable @typescript-eslint/no-var-requires */
 const path = require('node:path');
 
 const PROJECT_PATH = path.resolve(__dirname, '../');
@@ -13,3 +15,5 @@ module.exports = {
     SERVER_HOST,
     SERVER_PORT,
 };
+/* eslint-enable @typescript-eslint/no-var-requires */
+/* eslint-enable unicorn/prefer-module */

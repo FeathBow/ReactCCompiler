@@ -422,59 +422,72 @@ const sizeToRegForArguments: Record<number | 'default', string[]> = {
 /**
  * 生成给定函数节点的汇编代码。Generate assembly code for the given function node.
  * @param {FunctionNode} prog 要生成代码的函数节点。The function node to generate code for.
+ * @returns {Promise<void>} 生成代码的 Promise。The Promise of generating code.
  */
-export function generateCode(prog: FunctionNode): void {
-    depth = 0;
-    generated = [];
-    count = 0;
-    nowFunction = undefined;
+export async function generateCode(prog: FunctionNode): Promise<void> {
+    await new Promise<void>((resolve, reject) => {
+        try {
+            depth = 0;
+            generated = [];
+            count = 0;
+            nowFunction = undefined;
 
-    assignLocalVariableOffsets(prog);
+            assignLocalVariableOffsets(prog);
 
-    let localFunction: FunctionNode | undefined = prog;
-    while (localFunction !== undefined) {
-        nowFunction = localFunction;
-        generated.push(
-            `  .globl ${localFunction.funcName}`,
-            `${localFunction.funcName}:`,
-            `  push %rbp`,
-            `  mov %rsp, %rbp`,
-            `  sub $${localFunction.stackSize}, %rsp`,
-        );
+            let localFunction: FunctionNode | undefined = prog;
+            while (localFunction !== undefined) {
+                nowFunction = localFunction;
+                generated.push(
+                    `  .globl ${localFunction.funcName}`,
+                    `${localFunction.funcName}:`,
+                    `  push %rbp`,
+                    `  mov %rsp, %rbp`,
+                    `  sub $${localFunction.stackSize}, %rsp`,
+                );
 
-        if (localFunction.body === undefined) {
-            logMessage('error', 'Body is undefined', { position: generateCode, function: localFunction });
-            throw new Error('body is undefined');
-        }
-
-        let nowArgument = localFunction.Arguments;
-        if (nowArgument !== undefined) {
-            let argumentNumber = 0;
-            while (nowArgument !== undefined) {
-                if (nowArgument?.varType?.size === undefined) {
-                    logMessage('error', 'Invalid variable type', {
-                        position: generateCode,
-                        function: localFunction,
-                        variable: nowArgument,
-                    });
-                    throw new Error('invalid variable type');
+                if (localFunction.body === undefined) {
+                    logMessage('error', 'Body is undefined', { position: generateCode, function: localFunction });
+                    throw new Error('body is undefined');
                 }
 
-                const regForArguments = sizeToRegForArguments[nowArgument.varType.size] ?? sizeToRegForArguments.default;
-                const operation = `  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`;
-                generated.push(operation);
-                nowArgument = nowArgument.nextVar;
-                argumentNumber += 1;
+                let nowArgument = localFunction.Arguments;
+                if (nowArgument !== undefined) {
+                    let argumentNumber = 0;
+                    while (nowArgument !== undefined) {
+                        if (nowArgument?.varType?.size === undefined) {
+                            logMessage('error', 'Invalid variable type', {
+                                position: generateCode,
+                                function: localFunction,
+                                variable: nowArgument,
+                            });
+                            throw new Error('invalid variable type');
+                        }
+
+                        const regForArguments =
+                            sizeToRegForArguments[nowArgument.varType.size] ?? sizeToRegForArguments.default;
+                        const operation = `  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`;
+                        generated.push(operation);
+                        nowArgument = nowArgument.nextVar;
+                        argumentNumber += 1;
+                    }
+                }
+
+                generateStatement(localFunction.body);
+                console.assert(depth === 0);
+
+                generated.push(`.L.return.${localFunction.funcName}:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
+
+                localFunction = localFunction.returnFunc;
             }
+
+            // setTimeout(() => {
+            //     resolve();
+            // }, 1000);
+            resolve();
+        } catch (error) {
+            reject(error);
         }
-
-        generateStatement(localFunction.body);
-        console.assert(depth === 0);
-
-        generated.push(`.L.return.${localFunction.funcName}:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
-
-        localFunction = localFunction.returnFunc;
-    }
+    });
 }
 
 /**

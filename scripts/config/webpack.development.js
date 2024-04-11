@@ -1,8 +1,11 @@
-const { SERVER_HOST, SERVER_PORT } = require('../constant');
+/* eslint-disable unicorn/prefer-module */
+/* eslint-disable @typescript-eslint/no-var-requires */
 const { merge } = require('webpack-merge');
-const common = require('./webpack.common.js');
 const webpack = require('webpack');
+const { SERVER_HOST, SERVER_PORT } = require('../constant');
+const common = require('./webpack.common.js');
 const proxySetting = require('../../src/set-proxy.js');
+
 module.exports = merge(common, {
     mode: 'development',
     stats: 'errors-only',
@@ -20,3 +23,5 @@ module.exports = merge(common, {
     },
     plugins: [new webpack.HotModuleReplacementPlugin()],
 });
+/* eslint-enable unicorn/prefer-module */
+/* eslint-enable @typescript-eslint/no-var-requires */
