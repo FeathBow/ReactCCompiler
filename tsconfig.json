@@ -18,6 +18,7 @@
             //  "Src/*": ["src/*"]  =>  import { ... } from "Src/..."
             "Src/*": ["src/*"],
             "Components/*": ["src/components/*"],
+            "Layouts/*": ["src/layouts/*"],
             "Utils/*": ["src/utils/*"]
         },
 

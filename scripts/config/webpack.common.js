@@ -82,6 +82,7 @@ module.exports = {
             Src: resolve(PROJECT_PATH, './src'),
             Components: resolve(PROJECT_PATH, './src/components'),
             Utils: resolve(PROJECT_PATH, './src/utils'),
+            Layouts: resolve(PROJECT_PATH, './src/layouts'),
             react: path.resolve('./node_modules/react'),
             'react-dom': path.resolve('./node_modules/react-dom'),
         },

@@ -93,10 +93,6 @@ function Compiler(): JSX.Element {
         const { functionNode, quadrupleOutput } = parse(tokens);
         logMessage('info', 'AST', { program: JSON.stringify(functionNode) });
 
-        // generateCode(functionNode);
-        // setOutput(getGenerated());
-        // setQuadruple(quadrupleOutput);
-
         generateCode(functionNode)
             .then(() => {
                 setOutput(getGenerated());
@@ -302,6 +298,16 @@ interface QuadrupleOutputProperties {
     readonly quadrupleOutput: string;
 }
 
+const getBorderRadius = (itemIndex: number, quadLength: number): string => {
+    if (itemIndex === 0) {
+        return 'lg 0 0 lg';
+    }
+    if (itemIndex === quadLength - 1) {
+        return '0 lg lg 0';
+    }
+    return '0';
+};
+
 /**
  * QuadrupleOutputComponent 组件，用于显示四元式输出。
  * The QuadrupleOutputComponent, used to display the quadruple output.
@@ -340,9 +346,7 @@ function QuadrupleOutputComponent({ quadrupleOutput }: QuadrupleOutputProperties
                             <Td
                                 /* eslint-disable-next-line react/no-array-index-key */
                                 key={`${quad[0]}-${index}-${itemIndex}`}
-                                borderRadius={
-                                    itemIndex === 0 ? 'lg 0 0 lg' : itemIndex === quad.length - 1 ? '0 lg lg 0' : '0'
-                                }
+                                borderRadius={getBorderRadius(itemIndex, quad.length)}
                             >
                                 {item}
                             </Td>
