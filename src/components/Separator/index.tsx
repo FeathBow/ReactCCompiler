@@ -1,10 +1,8 @@
 import React, { type ReactNode } from 'react';
-import { Flex } from '@chakra-ui/react';
+import { Center, Box, Text } from '@chakra-ui/react';
 
 interface SeparatorProperties {
-    variant?: string;
     children?: ReactNode;
-    [key: string]: unknown;
 }
 
 /**
@@ -12,17 +10,21 @@ interface SeparatorProperties {
  * @param {SeparatorProps} properties - The properties of the component.
  * @returns {JSX.Element} The Separator component.
  */
-function Separator(properties: Readonly<SeparatorProperties>): JSX.Element {
-    const { variant, children, ...rest } = properties;
+function Separator({children}: Readonly<SeparatorProperties>): JSX.Element {
     return (
-        <Flex
-            h='1px'
-            w='100%'
-            bg='linear-gradient(90deg, rgba(224, 225, 226, 0) 0%, #E0E1E2 49.52%, rgba(224, 225, 226, 0) 100%)'
-            {...rest}
-        >
-            {children}
-        </Flex>
+        <Center position='relative' height='20px'>
+            <Box
+                position='absolute'
+                height='1px'
+                width='full'
+                bgGradient='linear(to-r, transparent, gray.300, transparent)'
+            />
+            {children !== undefined && (
+                <Text as='span' px='4' bg='white' position='relative' zIndex='1'>
+                    {children}
+                </Text>
+            )}
+        </Center>
     );
 }
 

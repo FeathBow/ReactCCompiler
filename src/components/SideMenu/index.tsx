@@ -22,7 +22,7 @@ const menuItemClass = {
     whiteSpace: 'nowrap',
     transition: 'all 0.2s',
     fontSize: 'sm',
-    _hover: { bg: 'blue.100' },
+    _hover: { bg: 'blue.300' },
     borderRadius: 'lg',
     boxShadow: 'sm',
 };
@@ -30,7 +30,6 @@ const menuItemClass = {
 const activeClass = {
     color: 'green.500',
     fontWeight: 'semibold',
-
 };
 
 const unActiveClass = {
@@ -69,27 +68,26 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
         subMenu?.map(
             (subMenuItem, subIndex): JSX.Element => (
                 <Link to={subMenuItem.path ?? '/'} key={subMenuItem.title}>
-                <Box
-                    {...menuItemClass}
-                    {...(isActive(index, subIndex) ? activeClass : unActiveClass)}
-                    pl='8'
-                    key={subMenuItem.title}
-                    onClick={(): void => {
-                        setMenuActive(index, subIndex);
-                    }}
-                    {...properties}
-                >
-                    {subMenuItem.title}
-                </Box>
+                    <Box
+                        {...menuItemClass}
+                        {...(isActive(index, subIndex) ? activeClass : unActiveClass)}
+                        pl='8'
+                        key={subMenuItem.title}
+                        onClick={(): void => {
+                            setMenuActive(index, subIndex);
+                        }}
+                        {...properties}
+                    >
+                        {subMenuItem.title}
+                    </Box>
                 </Link>
             ),
         );
 
-    const renderMenuItem = (menuItem: MenuList[number], index: number): JSX.Element => (
-        <Link to={menuItem.path ?? '/'} key={menuItem.title}>
+    const renderMenuItem = (menuItem: MenuList[number], index: number): JSX.Element =>
+        menuItem.path === undefined ? ( 
             <Flex
                 align='center'
-
                 justify='space-between'
                 {...menuItemClass}
                 {...(isActive(index) ? activeClass : unActiveClass)}
@@ -109,8 +107,31 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
                     />
                 )}
             </Flex>
-        </Link>
-    );
+        ) : (
+            <Link to={menuItem.path} key={menuItem.title}>
+                <Flex
+                    align='center'
+                    justify='space-between'
+                    {...menuItemClass}
+                    {...(isActive(index) ? activeClass : unActiveClass)}
+                    onClick={() => {
+                        onMenuClick(index, menuItem);
+                    }}
+                >
+                    <Flex align='center' overflow='hidden'>
+                        <Box mr='3'>{menuItem.icon}</Box>
+                        {!isMenuCollapse && <Box fontSize='sm'>{menuItem.title}</Box>}
+                    </Flex>
+                    {!isMenuCollapse && menuItem.subMenu !== undefined && (
+                        <Icon
+                            transition='transform 0.2s ease-in-out'
+                            transform={`rotate(${isExpanded(index) ? -180 : 0}deg)`}
+                            as={FiChevronDown}
+                        />
+                    )}
+                </Flex>
+            </Link>
+        );
 
     return (
         <Box
@@ -119,6 +140,7 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
             w={isMenuCollapse ? '50px' : '200px'}
             position='relative'
             transition='width 0.2s'
+            borderRadius='lg'
             onMouseEnter={() => {
                 showCollapseBtn();
             }}
@@ -155,7 +177,6 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
                                     pl: '3',
                                     p: '3',
                                 })}
-
                             </PopoverContent>
                         </Popover>
 

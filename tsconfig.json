@@ -40,7 +40,8 @@
         "postcss.config.js",
         "src/**/*",
         "test/**/*",
-        "scripts/**/*"
+        "scripts/**/*",
+        "public/**/*"
     ],
     "exclude": ["node_modules"],
     "typedocOptions": {

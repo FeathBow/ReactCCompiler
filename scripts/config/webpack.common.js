@@ -189,8 +189,22 @@ module.exports = {
                 },
             },
             {
-                test: /\.(eot|svg|ttf|woff|woff2?)$/,
+                test: /\.svg$/i,
+                issuer: /\.[jt]sx?$/,
+                resourceQuery: { not: [/url/] },
+                use: [
+                    {
+                        loader: '@svgr/webpack',
+                        options: {
+                            typescript: true,
+                        },
+                    },
+                ],
+            },
+            {
+                test: /\.(eot|ttf|woff|woff2?)$/,
                 type: 'asset/resource',
+                exclude: /\.svg$/,
             },
             {
                 test: /\.(tsx?|js)$/,
