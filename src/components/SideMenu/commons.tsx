@@ -92,7 +92,6 @@ export const useCollapse = (): CollapseState => {
         </ScaleFade>
     );
 
-
     return {
         isMenuCollapse,
         isMenuCollapseBtnShow: isMenuCollapseButtonShow,

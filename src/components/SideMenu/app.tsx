@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { MenuList } from './commons';
-import { FaHome, FaCode } from 'react-icons/fa';
+import { FaHome, FaCode, FaTools, FaToolbox, FaHandsHelping, FaQuestion } from 'react-icons/fa';
 
 const sideMenuList: MenuList = [
     {
@@ -16,5 +16,23 @@ const sideMenuList: MenuList = [
             { title: 'Quadruple', path: '/quadruple' },
         ],
     },
+    {
+        title: 'Tools',
+        icon: <FaToolbox size='16px' />,
+        subMenu: [
+            { title: 'GNU', path: 'https://www.gnu.org/gnu/gnu.en.html' },
+            { title: 'GCC', path: 'https://gcc.gnu.org/' },
+        ],
+    },
+    {
+        title: 'Compiler Explorer',
+        path: 'https://gcc.godbolt.org/',
+        icon: <FaTools size='16px' />,
+    },
+    {
+        title: 'Helps',
+        path: '/helps',
+        icon: <FaQuestion size='16px' />,
+    }
 ];
 export default sideMenuList;

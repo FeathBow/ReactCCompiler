@@ -85,7 +85,7 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
         );
 
     const renderMenuItem = (menuItem: MenuList[number], index: number): JSX.Element =>
-        menuItem.path === undefined ? ( 
+        menuItem.path === undefined ? (
             <Flex
                 align='center'
                 justify='space-between'

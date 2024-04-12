@@ -24,7 +24,7 @@ const menuItems = [
         links: [
             { href: '#', ariaLabel: 'Show Case' },
             { href: 'https://gcc.godbolt.org/', ariaLabel: 'Compiler Explorer' },
-            { href: '#', ariaLabel: 'Helps' },
+            { href: '/helps', ariaLabel: 'Helps' },
         ],
     },
 ];

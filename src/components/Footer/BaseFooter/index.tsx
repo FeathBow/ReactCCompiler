@@ -25,50 +25,50 @@ function BaseFooter({ brandText, brandLink, rightsText, socialLinks }: Readonly<
 
     return (
         <Box mt='auto'>
-                <Flex
-                    w='full'
-                    as='footer'
-                    flexDir={{ base: 'column', sm: 'row' }}
-                    align='center'
-                    justify='space-between'
-                    px='6'
-                    py='4'
-                    bg={colorMode === 'light' ? 'white' : 'gray.800'}
-                    boxShadow='sm' 
+            <Flex
+                w='full'
+                as='footer'
+                flexDir={{ base: 'column', sm: 'row' }}
+                align='center'
+                justify='space-between'
+                px='6'
+                py='4'
+                bg={colorMode === 'light' ? 'white' : 'gray.800'}
+                boxShadow='sm'
+            >
+                <chakra.a
+                    href={brandLink}
+                    fontSize='xl'
+                    fontWeight='bold'
+                    color={colorMode === 'light' ? 'gray.600' : 'white'}
+                    _hover={{
+                        color: colorMode === 'light' ? 'gray.700' : 'gray.300',
+                    }}
                 >
-                    <chakra.a
-                        href={brandLink}
-                        fontSize='xl'
-                        fontWeight='bold'
-                        color={colorMode === 'light' ? 'gray.600' : 'white'}
-                        _hover={{
-                            color: colorMode === 'light' ? 'gray.700' : 'gray.300',
-                        }}
-                    >
-                        {brandText}
-                    </chakra.a>
+                    {brandText}
+                </chakra.a>
 
-                    <chakra.p py={{ base: '2', sm: '0' }} color={colorMode === 'light' ? 'gray.800' : 'white'}>
-                        {rightsText}
-                    </chakra.p>
+                <chakra.p py={{ base: '2', sm: '0' }} color={colorMode === 'light' ? 'gray.800' : 'white'}>
+                    {rightsText}
+                </chakra.p>
 
-                    <Flex mx='-2'>
-                        {socialLinks.map((link) => (
-                            <chakra.a
-                                key={link.label}
-                                href={link.href}
-                                mx='2'
-                                color={colorMode === 'light' ? 'gray.600' : 'gray.300'}
-                                _hover={{
-                                    color: colorMode === 'light' ? 'gray.500' : 'gray.400',
-                                }}
-                                aria-label={link.label}
-                            >
-                                <Icon as={link.icon} boxSize='5' fill='currentColor' />
-                            </chakra.a>
-                        ))}
-                    </Flex>
+                <Flex mx='-2'>
+                    {socialLinks.map((link) => (
+                        <chakra.a
+                            key={link.label}
+                            href={link.href}
+                            mx='2'
+                            color={colorMode === 'light' ? 'gray.600' : 'gray.300'}
+                            _hover={{
+                                color: colorMode === 'light' ? 'gray.500' : 'gray.400',
+                            }}
+                            aria-label={link.label}
+                        >
+                            <Icon as={link.icon} boxSize='5' fill='currentColor' />
+                        </chakra.a>
+                    ))}
                 </Flex>
+            </Flex>
         </Box>
     );
 }

@@ -3,7 +3,6 @@ import {
     Box,
     Stack,
     Flex,
-    Image,
     HStack,
     VStack,
     Divider,
@@ -43,7 +42,7 @@ interface AdvancedFooterProperties {
  * @param {LinkProperties} properties - The properties of the MenuLink component.
  * @returns {JSX.Element} The MenuLink component.
  */
-function MenuLink({ href, ariaLabel }: LinkProperties): JSX.Element {
+function MenuLink({ href, ariaLabel }: Readonly<LinkProperties>): JSX.Element {
     const { colorMode } = useColorMode();
     return (
         <Button
@@ -67,7 +66,7 @@ function MenuLink({ href, ariaLabel }: LinkProperties): JSX.Element {
  * @param {SocialLinkProperties} properties - The properties of the SocialButton component.
  * @returns {JSX.Element} The SocialButton component.
  */
-function SocialButton({ href, icon, ariaLabel }: SocialLinkProperties): JSX.Element {
+function SocialButton({ href, icon, ariaLabel }: Readonly<SocialLinkProperties>): JSX.Element {
     return (
         <Button as={RouterLink} to={href} variant='ghost' aria-label={ariaLabel} iconSpacing={0}>
             <Icon as={icon} boxSize='20px' />
@@ -79,7 +78,7 @@ function SocialButton({ href, icon, ariaLabel }: SocialLinkProperties): JSX.Elem
  * @param {AdvancedFooterProperties} props - The properties of the AdvancedFooter component.
  * @returns {JSX.Element} The AdvancedFooter component.
  */
-function AdvancedFooter({ logoSrc, logoAlt, menuItems, socialLinks }: AdvancedFooterProperties): JSX.Element {
+function AdvancedFooter({ logoSrc, logoAlt, menuItems, socialLinks }: Readonly<AdvancedFooterProperties>): JSX.Element {
     const { colorMode } = useColorMode();
 
     return (

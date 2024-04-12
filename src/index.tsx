@@ -6,8 +6,8 @@ import Header from 'Components/Header';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import HomeLayout from 'Layouts/HomeLayout';
 import MainLayout from 'Layouts/MainLayout';
-
 import Compiler from './compiler';
+import HelpsPage from './pages/HelpsPage';
 /* eslint-enable import/no-import-module-exports */
 
 /* eslint-disable unicorn/prefer-module */
@@ -49,6 +49,22 @@ function IndexView(): JSX.Element {
                             <MainLayout>
                                 <Compiler />
                             </MainLayout>
+                        }
+                    />
+                    <Route
+                        path='/helps'
+                        element={
+                            <MainLayout>
+                                <HelpsPage />
+                            </MainLayout>
+                        }
+                    />
+                    <Route
+                        path='*'
+                        element={
+                            <HomeLayout>
+                                <div>404 Not Found</div>
+                            </HomeLayout>
                         }
                     />
                 </Routes>
