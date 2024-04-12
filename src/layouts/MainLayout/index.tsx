@@ -20,18 +20,19 @@ const socialLinks = [
 function MainLayout({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element {
     return (
         <>
-            <Grid templateColumns='1fr 13fr' gap={10} height='100vh'>
-                <GridItem>
-                    <SideMenu menuList={sideMenuList} />
-                </GridItem>
-                <Grid templateColumns='12fr 1fr' gap={10} height='full'>
-                    <GridItem height='100%'>{children}</GridItem>
-                    <GridItem />
-                </Grid>
+        <Grid templateColumns='1fr 13fr' gap={10} minHeight='100vh'>
+            <GridItem>
+                <SideMenu menuList={sideMenuList} />
+            </GridItem>
+            <Grid templateColumns='12fr 1fr' gap={10} height='full'>
+                <GridItem>{children}</GridItem>
+                <GridItem />
             </Grid>
-            <Separator />
-            <BaseFooter brandText='CCompiler' brandLink='#' rightsText='All rights reserved' socialLinks={socialLinks} />
-        </>
+        </Grid>
+        <Separator />
+        <BaseFooter brandText='CCompiler' brandLink='#' rightsText='All rights reserved' socialLinks={socialLinks} />
+      </>
+
     );
 }
 

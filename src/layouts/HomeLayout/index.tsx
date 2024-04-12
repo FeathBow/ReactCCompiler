@@ -43,8 +43,8 @@ const socialLinks = [
 function HomeLayout({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element {
     return (
         <>
-            <Grid templateColumns='1fr' gap={10} height='100vh'>
-                <GridItem height='100%'>{children}</GridItem>
+            <Grid templateColumns='1fr' gap={10} height='full'>
+                <GridItem>{children}</GridItem>
             </Grid>
             <AdvancedFooter logoSrc='' logoAlt='Logo' menuItems={menuItems} socialLinks={socialLinks} />
         </>

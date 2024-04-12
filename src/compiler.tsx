@@ -288,7 +288,7 @@ function OutputComponent({ output }: OutputProperties): JSX.Element {
                         });
                 }}
             >
-                <CopyIcon /> 复制
+                <CopyIcon /> Copy
             </Button>
         </Box>
     );

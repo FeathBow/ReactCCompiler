@@ -14,7 +14,7 @@ import {
     GridItem,
 } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
-import CCompilerLogo from '../../../../public/ReactCCompiler.svg';
+import CCompilerLogo from '../../../../public/image/ReactCCompiler.svg';
 
 interface LinkProperties {
     href: string;
