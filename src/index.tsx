@@ -9,6 +9,7 @@ import MainLayout from 'Layouts/MainLayout';
 import Compiler from './compiler';
 import HelpsPage from './pages/HelpsPage';
 import HomePage from './pages/HomePage';
+import TestsPage from './pages/TestsPage';
 /* eslint-enable import/no-import-module-exports */
 
 /* eslint-disable unicorn/prefer-module */
@@ -57,6 +58,14 @@ function IndexView(): JSX.Element {
                         element={
                             <MainLayout>
                                 <HelpsPage />
+                            </MainLayout>
+                        }
+                    />
+                    <Route
+                        path='/tests'
+                        element={
+                            <MainLayout>
+                                <TestsPage />
                             </MainLayout>
                         }
                     />

@@ -57,7 +57,7 @@ function ScreenShotPanel({
 
     return (
         <Grid
-            templateColumns={{ md: isImageOnLeft ? '1fr 1fr' : '1fr 1fr' }}
+            templateColumns={{ md: '1fr 1fr' }}
             gap={6}
             bg={bgColor}
             px={8}
@@ -107,7 +107,7 @@ function ScreenShotPanel({
                             as={RouterLink}
                             to={buttonLink}
                             colorScheme='teal'
-                            variant="outline"
+                            variant='outline'
                             rightIcon={ButtonIcon === undefined ? undefined : <ButtonIcon />}
                         >
                             {buttonText}

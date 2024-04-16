@@ -22,7 +22,7 @@ const menuItems = [
     {
         title: 'Menu 3',
         links: [
-            { href: '#', ariaLabel: 'Show Case' },
+            { href: '/tests', ariaLabel: 'Show Case' },
             { href: 'https://gcc.godbolt.org/', ariaLabel: 'Compiler Explorer' },
             { href: '/helps', ariaLabel: 'Helps' },
         ],

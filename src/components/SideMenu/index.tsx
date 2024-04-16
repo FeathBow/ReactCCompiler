@@ -84,13 +84,14 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
             ),
         );
 
-    const renderMenuItem = (menuItem: MenuList[number], index: number): JSX.Element =>
-        menuItem.path === undefined ? (
+    const renderMenuItem = (menuItem: MenuList[number], index: number): JSX.Element => {
+        const activeStyles = isActive(index) ? activeClass : unActiveClass;
+        return menuItem.path === undefined ? (
             <Flex
                 align='center'
                 justify='space-between'
                 {...menuItemClass}
-                {...(isActive(index) ? activeClass : unActiveClass)}
+                {...activeStyles}
                 onClick={() => {
                     onMenuClick(index, menuItem);
                 }}
@@ -113,7 +114,7 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
                     align='center'
                     justify='space-between'
                     {...menuItemClass}
-                    {...(isActive(index) ? activeClass : unActiveClass)}
+                    {...activeStyles}
                     onClick={() => {
                         onMenuClick(index, menuItem);
                     }}
@@ -132,7 +133,7 @@ function SideMenu({ menuList }: Readonly<{ menuList: MenuList }>): JSX.Element {
                 </Flex>
             </Link>
         );
-
+    };
     return (
         <Box
             h='100%'

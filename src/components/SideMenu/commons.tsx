@@ -44,7 +44,7 @@ export const useMenuState = (): MenuState => {
     };
 };
 export const useCollapse = (): CollapseState => {
-    const [isMenuCollapse, { toggle: toggleMenuCollapse }] = useBoolean(false);
+    const [isMenuCollapse, { toggle: toggleMenuCollapse }] = useBoolean(true);
     const [isMenuCollapseButtonShow, { on: showCollapseButton, off: hideCollapseButton }] = useBoolean(false);
 
     const collapseButton = (

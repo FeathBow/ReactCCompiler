@@ -1,6 +1,6 @@
 import * as React from 'react';
 import { MenuList } from './commons';
-import { FaHome, FaCode, FaTools, FaToolbox, FaHandsHelping, FaQuestion } from 'react-icons/fa';
+import { FaHome, FaCode, FaTools, FaToolbox, FaQuestion, FaVial } from 'react-icons/fa';
 
 const sideMenuList: MenuList = [
     {
@@ -33,6 +33,11 @@ const sideMenuList: MenuList = [
         title: 'Helps',
         path: '/helps',
         icon: <FaQuestion size='16px' />,
-    }
+    },
+    {
+        title: 'Tests',
+        path: '/tests',
+        icon: <FaVial size='16px' />,
+    },
 ];
 export default sideMenuList;
