@@ -3,7 +3,13 @@ import { Box } from '@chakra-ui/react';
 import { CloseIcon } from '@chakra-ui/icons';
 import { FiMenu as MenuIcon } from 'react-icons/fi';
 
-interface HeaderToggleProperties {
+/**
+ * HeaderToggle properties.
+ * @interface
+ * @property {Function} toggle - The toggle function.
+ * @property {boolean} isOpen - Whether the header is open.
+ */
+export interface HeaderToggleProperties {
     toggle: () => void;
     isOpen: boolean;
 }

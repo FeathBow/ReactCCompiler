@@ -17,7 +17,15 @@ import { CopyIcon } from '@chakra-ui/icons';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
-interface CodeModalProperties {
+/**
+ * CodeModal properties.
+ * @interface
+ * @property {boolean} isOpen - Whether the modal is open.
+ * @property {() => void} onClose - The function to close the modal.
+ * @property {string} code - The code to display.
+ * @property {string} result - The result of the code.
+ */
+export interface CodeModalProperties {
     isOpen: boolean;
     onClose: () => void;
     code: string;

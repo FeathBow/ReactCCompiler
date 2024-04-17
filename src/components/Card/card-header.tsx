@@ -1,11 +1,18 @@
 import { Box } from '@chakra-ui/react';
 import React, { type ReactNode } from 'react';
 
-interface CardHeaderProperties {
+/**
+ * CardHeader properties.
+ * @interface
+ * @property {string} [variant] - The variant of the card header.
+ * @property {ReactNode} children - The children of the card header.
+ */
+export interface CardHeaderProperties {
     variant?: string;
     children: ReactNode;
     [key: string]: unknown;
 }
+
 const styleConfig = {
     baseStyle: {
         display: 'flex',

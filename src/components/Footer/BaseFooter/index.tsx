@@ -2,13 +2,28 @@ import { Flex, chakra, Icon, useColorMode, Box } from '@chakra-ui/react';
 import { IconType } from 'react-icons';
 import React from 'react';
 
-interface SocialLink {
+/**
+ * SocialLink interface.
+ * @interface
+ * @property {string} href - The link.
+ * @property {string} label - The label.
+ * @property {IconType} icon - The icon.
+ */
+export interface SocialLink {
     href: string;
     label: string;
     icon: IconType;
 }
 
-interface FooterProps {
+/**
+ * FooterProps interface.
+ * @interface
+ * @property {string} brandText - The brand text.
+ * @property {string} brandLink - The brand link.
+ * @property {string} rightsText - The rights text.
+ * @property {SocialLink[]} socialLinks - The social links.
+ */
+export interface FooterProps {
     brandText: string;
     brandLink: string;
     rightsText: string;

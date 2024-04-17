@@ -3,7 +3,17 @@ import { useToast, Flex, Icon, Box, chakra, Avatar, CloseButton } from '@chakra-
 import { IoMdCheckmarkCircle, IoMdAlert } from 'react-icons/io';
 import { BsLightningFill } from 'react-icons/bs';
 
-interface CustomAlertProperties {
+/**
+ * CustomAlertProperties interface.
+ * @interface
+ * @property {string} type - The type of the alert.
+ * @property {string} title - The title of the alert.
+ * @property {string} description - The description of the alert.
+ * @property {string} [avatarSrc] - The source of the avatar.
+ * @property {string} [avatarName] - The name of the avatar.
+ * @property {boolean} [isClosable] - Whether the alert is closable.
+ */
+export interface CustomAlertProperties {
     type: 'success' | 'info' | 'warning' | 'error' | 'notification';
     title: string;
     description: string;

@@ -2,7 +2,22 @@ import React from 'react';
 import { Box, Grid, chakra, Stack, Image, useColorModeValue, keyframes, Button } from '@chakra-ui/react';
 import { Link as RouterLink } from 'react-router-dom';
 
-interface ScreenShotPanelProperties {
+/**
+ * ScreenShotPanel properties.
+ * @interface
+ * @property {boolean} isImageOnLeft - Whether the image is on the left.
+ * @property {string} title - The title of the panel.
+ * @property {string} subtitle - The subtitle of the panel.
+ * @property {string} description - The description of the panel.
+ * @property {string} imageUrl - The image URL.
+ * @property {string} imageAlt - The image alt.
+ * @property {string} [imageMaxHeight] - The image max height.
+ * @property {'height' | 'proportional'} [scaleImage] - The image scale.
+ * @property {string} [buttonText] - The button text.
+ * @property {string} [buttonLink] - The button link.
+ * @property {React.ElementType} [buttonIcon] - The button icon.
+ */
+export interface ScreenShotPanelProperties {
     isImageOnLeft: boolean;
     title: string;
     subtitle: string;

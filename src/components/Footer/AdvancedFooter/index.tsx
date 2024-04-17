@@ -16,21 +16,46 @@ import {
 import { Link as RouterLink } from 'react-router-dom';
 import CCompilerLogo from '../../../../public/image/ReactCCompiler.svg';
 
-interface LinkProperties {
+/**
+ * LinkProperties interface.
+ * @interface
+ * @property {string} href - The href of the link.
+ * @property {string} ariaLabel - The aria label of the link.
+ */
+export interface LinkProperties {
     href: string;
     ariaLabel: string;
 }
 
-interface SocialLinkProperties extends LinkProperties {
+/**
+ * SocialLinkProperties interface.
+ * @interface
+ * @property {React.ElementType} icon - The icon of the social link.
+ */
+export interface SocialLinkProperties extends LinkProperties {
     icon: React.ElementType;
 }
 
-interface MenuItemProperties {
+/**
+ * MenuItemProperties interface.
+ * @interface
+ * @property {string} title - The title of the menu item.
+ * @property {LinkProperties[]} links - The links of the menu item.
+ */
+export interface MenuItemProperties {
     title: string;
     links: LinkProperties[];
 }
 
-interface AdvancedFooterProperties {
+/**
+ * AdvancedFooterProperties interface.
+ * @interface
+ * @property {string} logoSrc - The logo source.
+ * @property {string} logoAlt - The logo alt.
+ * @property {MenuItemProperties[]} menuItems - The menu items.
+ * @property {SocialLinkProperties[]} socialLinks - The social links.
+ */
+export interface AdvancedFooterProperties {
     logoSrc: string;
     logoAlt: string;
     menuItems: MenuItemProperties[];

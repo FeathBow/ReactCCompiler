@@ -1,7 +1,13 @@
 import { Box } from '@chakra-ui/react';
 import React, { type ReactNode } from 'react';
 
-interface CardBodyProperties {
+/**
+ * CardBody properties.
+ * @interface
+ * @property {string} [variant] - The variant of the card body.
+ * @property {ReactNode} children - The children of the card body.
+ */
+export interface CardBodyProperties {
     variant?: string;
     children: ReactNode;
     [key: string]: unknown;

@@ -20,7 +20,19 @@ import {
 import React from 'react';
 import CodeModal from 'Components/OutModal/CodeModal';
 
-interface FeatureProperties {
+/**
+ * Feature properties.
+ * @interface
+ * @property {string} title - The title of the feature.
+ * @property {string} description - The description of the feature.
+ * @property {string} example - The example of the feature.
+ * @property {string} result - The result of the feature.
+ * @property {React.ElementType} icon - The icon of the feature.
+ * @property {string} [iconColor] - The color of the icon.
+ * @property {boolean} [showDetails] - Whether to show details.
+ * @property {string} [contentType] - The content type.
+ */
+export interface FeatureProperties {
     title: string;
     description: string;
     example: string;
@@ -138,7 +150,15 @@ function Feature({
     );
 }
 
-interface FeaturesGridProperties {
+/**
+ * FeaturesGrid properties.
+ * @interface
+ * @property {FeatureProperties[]} features - The features.
+ * @property {string} introductionText - The introduction text.
+ * @property {string} introductionHeading - The introduction heading.
+ * @property {string} [introductionPosition] - The introduction position.
+ */
+export interface FeaturesGridProperties {
     features: FeatureProperties[];
     introductionText: string;
     introductionHeading: string;

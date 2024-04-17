@@ -2,7 +2,14 @@ import React, { type ReactNode } from 'react';
 import { Text, useColorMode } from '@chakra-ui/react';
 import { Link } from 'react-router-dom';
 
-interface HeaderItemProperties {
+/**
+ * HeaderItem properties.
+ * @interface
+ * @property {ReactNode} children - The children of the header item.
+ * @property {boolean} isLast - The last item of the header.
+ * @property {string} [to] - The to of the header item.
+ */
+export interface HeaderItemProperties {
     children: ReactNode;
     isLast: boolean;
     to?: string;

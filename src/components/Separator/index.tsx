@@ -1,7 +1,12 @@
 import React, { type ReactNode } from 'react';
 import { Center, Box, Text } from '@chakra-ui/react';
 
-interface SeparatorProperties {
+/**
+ * Separator properties.
+ * @interface
+ * @property {ReactNode} children - The children of the separator.
+ */
+export interface SeparatorProperties {
     children?: ReactNode;
 }
 

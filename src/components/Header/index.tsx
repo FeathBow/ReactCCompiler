@@ -21,7 +21,12 @@ const customTheme = extendTheme({
     colors,
 });
 
-interface NavBarContainerProperties {
+/**
+ * NavBarContainer properties.
+ * @interface
+ * @property {React.ReactNode} children - The children of the NavBarContainer.
+ */
+export interface NavBarContainerProperties {
     children: React.ReactNode;
     [key: string]: unknown;
 }
@@ -51,7 +56,12 @@ function NavBarContainer({ children, ...properties }: PropsWithChildren<NavBarCo
     );
 }
 
-type HeaderProperties = Record<string, unknown>;
+/**
+ * Header properties.
+ * @type
+ * @property {Record<string, unknown>} properties - The properties of the Header component.
+ */
+export type HeaderProperties = Record<string, unknown>;
 
 /**
  * Header 组件，用于显示页面的标题。

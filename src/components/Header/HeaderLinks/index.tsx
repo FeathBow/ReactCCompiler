@@ -3,7 +3,12 @@ import { Box, Button, Stack, IconButton, useColorMode } from '@chakra-ui/react';
 import { SunIcon, MoonIcon } from '@chakra-ui/icons';
 import HeaderItem from '../HeaderItem';
 
-interface HeaderLinksProperties {
+/**
+ * HeaderLinks properties.
+ * @interface
+ * @property {boolean} isOpen - Whether the header links are open.
+ */
+export interface HeaderLinksProperties {
     isOpen: boolean;
 }
 

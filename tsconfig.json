@@ -46,8 +46,8 @@
     "exclude": ["node_modules"],
     "typedocOptions": {
         "out": "docs",
-        "exclude": ["node_modules"],
-        "entryPoints": ["src/utils"],
+        "exclude": ["node_modules,src/set-proxy.js"],
+        "entryPoints": ["src"],
         "name": "ReactCComplier",
         //"plugin": ["typedoc-plugin-markdown"],
         "hideGenerator": true,

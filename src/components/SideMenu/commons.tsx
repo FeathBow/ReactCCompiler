@@ -8,13 +8,32 @@ export type MenuList = Array<{
     path?: string;
     subMenu?: Array<{ title: string; path?: string }>;
 }>;
-interface MenuState {
+
+/**
+ * Menu state.
+ * @interface
+ * @property {number[]} expandedMenu - The expanded menu indexes.
+ * @property {[number, number]} activeMenuIndexes - The active menu indexes.
+ * @property {Function} toggleMenuExpand - Toggle the menu expand.
+ * @property {Function} setMenuActive - Set the menu active.
+ */
+export interface MenuState {
     expandedMenu: number[];
     activeMenuIndexes: [number, number];
     toggleMenuExpand: (index: number) => void;
     setMenuActive: (index: number, subIndex?: number) => void;
 }
-interface CollapseState {
+
+/**
+ * Collapse state.
+ * @interface
+ * @property {boolean} isMenuCollapse - Whether the menu is collapsed.
+ * @property {boolean} isMenuCollapseBtnShow - Whether the collapse button is shown.
+ * @property {Function} showCollapseBtn - Show the collapse button.
+ * @property {Function} hideCollapseBtn - Hide the collapse button.
+ * @property {JSX.Element} collapseButton - The collapse button.
+ */
+export interface CollapseState {
     isMenuCollapse: boolean;
     isMenuCollapseBtnShow: boolean;
     showCollapseBtn: () => void;

@@ -1,18 +1,38 @@
 import { Box, type ColorMode } from '@chakra-ui/react';
 import React, { type ReactNode } from 'react';
 
-interface PanelProperties {
+/**
+ * Panel properties.
+ * @interface
+ * @property {ColorMode} colorMode - The color mode of the panel.
+ */
+export interface PanelProperties {
     colorMode: 'dark' | 'light';
 }
 
-interface VariantStyles {
+/**
+ * Variant styles.
+ * @interface
+ * @property {string} bg - The background color.
+ * @property {string} width - The width of the panel.
+ * @property {string} boxShadow - The box shadow of the panel.
+ * @property {string} borderRadius - The border radius of the panel.
+ */
+export interface VariantStyles {
     bg: string;
     width: string;
     boxShadow: string;
     borderRadius: string;
 }
 
-interface CardProperties {
+/**
+ * Card properties.
+ * @interface
+ * @property {string} [variant] - The variant of the card.
+ * @property {ReactNode} children - The children of the card.
+ * @property {ColorMode} [colorMode] - The color mode of the card.
+ */
+export interface CardProperties {
     variant?: 'panel';
     children: ReactNode;
     colorMode?: ColorMode;
