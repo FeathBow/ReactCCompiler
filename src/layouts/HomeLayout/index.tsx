@@ -17,13 +17,14 @@ const menuItems = [
         links: [
             { href: 'https://www.gnu.org/gnu/gnu.en.html', ariaLabel: 'GNU' },
             { href: 'https://gcc.gnu.org/', ariaLabel: 'GCC' },
+            { href: 'https://gcc.godbolt.org/', ariaLabel: 'Compiler Explorer' },
         ],
     },
     {
         title: 'Menu 3',
         links: [
             { href: '/tests', ariaLabel: 'Show Case' },
-            { href: 'https://gcc.godbolt.org/', ariaLabel: 'Compiler Explorer' },
+            { href: '/timeline', ariaLabel: 'Time Line' },
             { href: '/helps', ariaLabel: 'Helps' },
         ],
     },
