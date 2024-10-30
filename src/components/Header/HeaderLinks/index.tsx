@@ -1,5 +1,5 @@
 import React, { type ReactElement } from 'react';
-import { Box, Stack, IconButton, useColorMode } from '@chakra-ui/react';
+import { Box, Button, Stack, IconButton, useColorMode } from '@chakra-ui/react';
 import { SunIcon, MoonIcon } from '@chakra-ui/icons';
 import HeaderItem from '../HeaderItem';
 
@@ -45,7 +45,7 @@ function HeaderLinks({ isOpen }: Readonly<HeaderLinksProperties>): ReactElement 
                 <HeaderItem to='/quadruple' isLast={false}>
                     Quadruple
                 </HeaderItem>
-                {/* <HeaderItem to='/signup' isLast>
+                <HeaderItem to='/helps' isLast>
                     <Button
                         size='sm'
                         rounded='md'
@@ -55,9 +55,9 @@ function HeaderLinks({ isOpen }: Readonly<HeaderLinksProperties>): ReactElement 
                             bg: ['primary.100', 'primary.100', 'primary.600', 'primary.600'],
                         }}
                     >
-                        Create Account
+                        Helps
                     </Button>
-                </HeaderItem> */}
+                </HeaderItem>
             </Stack>
         </Box>
     );

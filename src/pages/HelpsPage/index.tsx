@@ -10,6 +10,8 @@ import {
     Link,
     VStack,
     useColorMode,
+    UnorderedList,
+    ListItem,
 } from '@chakra-ui/react';
 import React, { useState } from 'react';
 import { CopyIcon } from '@chakra-ui/icons';
@@ -21,6 +23,7 @@ import { Link as RouterLink } from 'react-router-dom';
 
 /**
  * HelpsPage component.
+ *
  * @returns {JSX.Element} The rendered HelpsPage component.
  */
 function HelpsPage(): JSX.Element {
@@ -55,13 +58,16 @@ function HelpsPage(): JSX.Element {
 
     return (
         <VStack spacing={4} align='stretch' p={5}>
-            <Heading size='lg'>如何使用</Heading>
+            <Heading size='lg'>How to Use</Heading>
 
-            <Text>这个帮助页面将指导你如何使用代码转换,并观察转化后的执行结果。</Text>
-
-            <Heading size='md'>1. 类C语言代码转换</Heading>
             <Text>
-                在访问{' '}
+                This help page will guide you on how to use the code conversion feature and observe the execution
+                results of the converted code.
+            </Text>
+
+            <Heading size='md'>1. Converting C-like Code</Heading>
+            <Text>
+                When you visit the{' '}
                 <Link
                     as={RouterLink}
                     to='/Assembly'
@@ -77,15 +83,15 @@ function HelpsPage(): JSX.Element {
                 >
                     Assembly
                 </Link>{' '}
-                页面时，你可以在{' '}
+                page, you can input standard C-like code in the{' '}
                 <Code borderRadius='md' colorScheme='teal'>
                     TextArea
-                </Code>{' '}
-                中输入符合标准的类 C 语言代码。
+                </Code>
+                . This code should follow standard C syntax to ensure proper conversion.
             </Text>
 
             <Button onClick={onToggle} mt='2' borderRadius='md' colorScheme='teal'>
-                {isOpen ? '隐藏示例代码' : '显示示例代码'}
+                {isOpen ? 'Hide Sample Code' : 'Show Sample Code'}
             </Button>
 
             <Collapse in={isOpen}>
@@ -121,25 +127,26 @@ function HelpsPage(): JSX.Element {
                 </Box>
                 <Separator />
                 <Button colorScheme='teal' variant='outline' width='full' onClick={handleCopy}>
-                    <CopyIcon mr={2} /> 复制
+                    <CopyIcon mr={2} /> Copy
                 </Button>
             </Collapse>
 
             <Text mt='2'>
-                点击{' '}
+                Click the{' '}
                 <Code borderRadius='md' colorScheme='teal'>
                     Submit
                 </Code>{' '}
-                按钮，你将在下方看到转换成汇编语言的代码。这个代码可以被复制并用于进一步的编译和执行。
+                button, and you will see the code converted to assembly language below. You can copy this code and use
+                it for further compilation and execution.
             </Text>
 
-            <Heading size='md'>2. 编译和执行</Heading>
+            <Heading size='md'>2. Compiling and Executing</Heading>
             <Text>
-                当你获取汇编代码后，可以将其保存为{' '}
+                After obtaining the assembly code, save it as a{' '}
                 <Code borderRadius='md' colorScheme='teal'>
                     test.s
                 </Code>{' '}
-                文件。然后在命令行中使用以下命令进行编译和执行：
+                file. Then, in the command line, use the following command to compile and execute:
             </Text>
             <Box
                 p={4}
@@ -165,41 +172,42 @@ function HelpsPage(): JSX.Element {
                 </SyntaxHighlighter>
             </Box>
             <Button colorScheme='teal' variant='outline' width='full' onClick={handleCopy}>
-                <CopyIcon mr={2} /> 复制
+                <CopyIcon mr={2} /> Copy
             </Button>
 
             <Separator />
 
             <Text mt='2'>
-                此命令会编译汇编代码文件{' '}
+                This command compiles the assembly code file{' '}
                 <Code borderRadius='md' colorScheme='teal'>
                     test.s
-                </Code>
-                ，并生成可执行文件{' '}
+                </Code>{' '}
+                and generates an executable file{' '}
                 <Code borderRadius='md' colorScheme='teal'>
                     test
                 </Code>
-                。
+                .
             </Text>
             <Text>
-                执行{' '}
+                Run the command{' '}
                 <Code borderRadius='md' colorScheme='teal'>
                     ./test
                 </Code>{' '}
-                命令以运行编译后的程序。
+                to execute the compiled program.
             </Text>
 
             <Text mt='2'>
-                最后，通过执行{' '}
+                Finally, by executing{' '}
                 <Code borderRadius='md' colorScheme='teal'>
                     echo $?
-                </Code>{' '}
-                命令，你可以查看程序的返回值。请注意，返回值必须在 0 到 255（8位）之间。
+                </Code>
+                , you can check the return value of the program. Please note that the return value must be between 0 and
+                255 (an 8-bit unsigned integer).
             </Text>
 
-            <Heading size='md'>3. 额外说明</Heading>
+            <Heading size='md'>3. Additional Information</Heading>
             <Text>
-                在访问{' '}
+                When visiting the{' '}
                 <Link
                     as={RouterLink}
                     to='/Quadruple'
@@ -215,7 +223,7 @@ function HelpsPage(): JSX.Element {
                 >
                     Quadruple
                 </Link>{' '}
-                页面时，操作流程与{' '}
+                page, the operation process is similar to the{' '}
                 <Link
                     as={RouterLink}
                     to='/Assembly'
@@ -231,12 +239,66 @@ function HelpsPage(): JSX.Element {
                 >
                     Assembly
                 </Link>{' '}
-                相似。
+                page.
             </Text>
-            <Text>确保你的代码符合类 C 语言的标准，这样才能正确地转换。</Text>
+            <Text>Ensure that your code adheres to standard C syntax to enable correct conversion.</Text>
 
-            <Heading size='md'>4. 常见问题</Heading>
-            <Text>如果你在使用过程中遇到任何问题，请通过邮件联系以获得技术支持。</Text>
+            <Heading size='md'>4. Frequently Asked Questions</Heading>
+            <Text>If you encounter any issues during use, please contact us via email for technical support.</Text>
+
+            {/* Additional guidance for non-technical users */}
+            <Heading size='md'>5. Tips for Non-Technical Users</Heading>
+            <Text>If you are not familiar with command-line operations, here are some helpful tips:</Text>
+            <UnorderedList pl={5} spacing={3}>
+                <ListItem>
+                    <Text>
+                        <Text as='b'>Accessing the Command Line:</Text> On <Text as='b'>Windows</Text>, open the Command
+                        Prompt or PowerShell. On <Text as='b'>macOS</Text> or <Text as='b'>Linux</Text>, open the
+                        Terminal application.
+                    </Text>
+                </ListItem>
+                <ListItem>
+                    <Text>
+                        <Text as='b'>Installing GCC Compiler:</Text> Ensure that you have the{' '}
+                        <Text as='b'>GCC compiler</Text> installed. If not, you can download it from the official
+                        website or install it via package managers like <Text as='b'>Homebrew</Text> (macOS) or{' '}
+                        <Text as='b'>apt</Text> (Linux).
+                    </Text>
+                </ListItem>
+                <ListItem>
+                    <Text>
+                        <Text as='b'>Saving the Assembly Code:</Text> When saving the assembly code, make sure the file
+                        extension is correct (e.g.,{' '}
+                        <Code borderRadius='md' colorScheme='teal'>
+                            .s
+                        </Code>
+                        ) and the file is saved in the directory where you will run the compilation command.
+                    </Text>
+                </ListItem>
+                <ListItem>
+                    <Text>
+                        <Text as='b'>Understanding Error Messages:</Text> If you receive any errors during compilation
+                        or execution, carefully read the error messages. They often provide clues on how to resolve the
+                        issues.
+                    </Text>
+                </ListItem>
+                <ListItem>
+                    <Text>
+                        <Text as='b'>Permissions:</Text> Ensure that you have the necessary permissions to execute
+                        files. On Unix-like systems, you may need to run{' '}
+                        <Code borderRadius='md' colorScheme='teal'>
+                            chmod +x test
+                        </Code>{' '}
+                        to make the file executable.
+                    </Text>
+                </ListItem>
+                <ListItem>
+                    <Text>
+                        <Text as='b'>Further Assistance:</Text> Don't hesitate to search online for tutorials on using
+                        the command line or compiling code. There are many resources available for beginners.
+                    </Text>
+                </ListItem>
+            </UnorderedList>
         </VStack>
     );
 }
