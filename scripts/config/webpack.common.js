@@ -13,6 +13,8 @@ const WebpackBar = require('webpackbar');
 const ForkTsCheckerWebpackPlugin = require('fork-ts-checker-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const CssMinimizerPlugin = require('css-minimizer-webpack-plugin');
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+const TerserPlugin = require('terser-webpack-plugin');
 const { isDev, PROJECT_PATH } = require('../constant');
 
 const getCssLoaders = (importLoaders) => [
@@ -111,6 +113,12 @@ module.exports = {
             name: isDev ? 'running' : 'building',
             color: '#fa8c16',
         }),
+
+        new BundleAnalyzerPlugin({
+            openAnalyzer: false,
+            analyzerMode: 'static',
+        }),
+
         new CopyPlugin({
             patterns: [
                 {
@@ -216,6 +224,7 @@ module.exports = {
     },
     devServer: {
         historyApiFallback: true,
+        allowedHosts: 'all',
     },
     externals: {
         // react: 'React',

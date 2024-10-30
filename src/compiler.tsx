@@ -30,7 +30,6 @@ import CustomAlert from 'Components/Alert';
 import { tokenize } from './utils/token';
 import { parse } from './utils/parse';
 import { generateCode, getGenerated } from './utils/generate';
-import { logMessage } from './utils/logger';
 
 interface Location {
     pathname: string;
@@ -89,9 +88,10 @@ function Compiler(): JSX.Element {
         event.preventDefault();
         setIsLoading(true);
         const tokens = tokenize(code);
-        logMessage('info', 'Tokens', { tokens: JSON.stringify(tokens) });
+        // logMessage('info', 'Tokens', { tokens: JSON.stringify(tokens) });
         const { functionNode, quadrupleOutput } = parse(tokens);
-        logMessage('info', 'AST', { program: JSON.stringify(functionNode) });
+        // logMessage('info', 'Quadruple', { quadruple : JSON.stringify(quadrupleOutput) });
+        // logMessage('info', 'AST', { program: JSON.stringify(functionNode) });
 
         generateCode(functionNode)
             .then(() => {

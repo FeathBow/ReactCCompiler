@@ -61,7 +61,7 @@ function HelpsPage(): JSX.Element {
 
             <Heading size='md'>1. 类C语言代码转换</Heading>
             <Text>
-            在访问{' '}
+                在访问{' '}
                 <Link
                     as={RouterLink}
                     to='/Assembly'

@@ -159,7 +159,7 @@ export const functionFeatures = [
         title: 'Recursive Fibonacci',
         description:
             'Challenges the fib function with a classic recursion scenario, calculating Fibonacci numbers effectively.',
-        example: `int fib(int x) {\n\t// Recursive implementation\n}`,
+        example: `int main(void) {\n\treturn fib(7); \n} \nint fib(int x) { \n\tif (x<=1) \n\t{\n\t\treturn 1;\n\t}\n\treturn fib(x-1) + fib(x-2);\n}`,
         result: '21 (from fib(7))',
         icon: CheckCircleIcon,
         iconColor: 'green.500',

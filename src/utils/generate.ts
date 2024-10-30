@@ -479,13 +479,9 @@ export async function generateCode(prog: FunctionNode): Promise<void> {
 
                 localFunction = localFunction.returnFunc;
             }
-
-            // setTimeout(() => {
-            //     resolve();
-            // }, 1000);
             resolve();
         } catch (error) {
-            reject(error);
+            reject(error instanceof Error ? error : new Error(String(error)));
         }
     });
 }

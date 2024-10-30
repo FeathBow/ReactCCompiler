@@ -9,9 +9,9 @@ import Separator from 'Components/Separator';
 const socialLinks = [
     { href: '#', label: 'Facebook', icon: FaFacebook },
     { href: '#', label: 'Twitter', icon: FaTwitter },
-    { href: '#', label: 'Github', icon: FaGithub },
+    { href: 'https://github.com/FeathBow', label: 'Github', icon: FaGithub },
 ];
-
+    
 /**
  * main layout
  * @param {React.ReactNode} children - children components
