@@ -1,0 +1,13 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "chrome",
+            "request": "launch",
+            "name": "Debug React in Chrome",
+            "url": "http://127.0.0.1:9000",
+            "webRoot": "${workspaceFolder}",
+            "skipFiles": ["${workspaceFolder}/node_modules/**/*.js", "<node_internals>/**/*.js"]
+        }
+    ]
+}
