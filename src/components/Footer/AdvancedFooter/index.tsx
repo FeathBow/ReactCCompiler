@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
     Box,
     Stack,
@@ -106,6 +106,34 @@ function SocialButton({ href, icon, ariaLabel }: Readonly<SocialLinkProperties>)
 function AdvancedFooter({ logoSrc, logoAlt, menuItems, socialLinks }: Readonly<AdvancedFooterProperties>): JSX.Element {
     const { colorMode } = useColorMode();
 
+    const [siteRunTime, setSiteRunTime] = useState<string>('');
+
+    useEffect(() => {
+        const siteLaunchDate = new Date('2024-10-30T20:49:26');
+
+        const updateSiteRunTime = () => {
+            const now = new Date();
+            const diff = now.getTime() - siteLaunchDate.getTime();
+
+            if (diff < 0) {
+                setSiteRunTime('Site launch date is in the future.');
+                return;
+            }
+            const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((diff / (1000 * 60 * 60)) % 24);
+            const minutes = Math.floor((diff / (1000 * 60)) % 60);
+
+            setSiteRunTime(`${days} days ${hours} hours ${minutes} minutes`);
+        };
+
+        updateSiteRunTime();
+        const intervalId = setInterval(updateSiteRunTime, 60000);
+
+        return () => clearInterval(intervalId);
+    }, []);
+
+    const currentYear = new Date().getFullYear();
+
     return (
         <Box bg={colorMode === 'light' ? 'white' : 'gray.600'}>
             <Stack direction={{ base: 'column', lg: 'row' }} w='full' justify='space-between' p={10}>
@@ -139,9 +167,14 @@ function AdvancedFooter({ logoSrc, logoAlt, menuItems, socialLinks }: Readonly<A
                         />
                     ))}
                 </HStack>
-                <Text textAlign='center' fontSize='smaller' color={colorMode === 'light' ? 'gray.800' : 'white'}>
-                    &copy; Copyright. All rights reserved.
-                </Text>
+                <Flex direction='column' align='center' py={2}>
+                    <Text textAlign='center' fontSize='smaller' color={colorMode === 'light' ? 'gray.800' : 'white'}>
+                        Site running for: {siteRunTime}
+                    </Text>
+                    <Text textAlign='center' fontSize='smaller' color={colorMode === 'light' ? 'gray.800' : 'white'}>
+                        &copy; {currentYear} CCompiler. All rights reserved.
+                    </Text>
+                </Flex>
             </VStack>
         </Box>
     );
