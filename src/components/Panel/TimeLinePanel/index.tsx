@@ -73,13 +73,11 @@ function Timeline({
     const iconColor = color;
     const lineColor = useColorModeValue('gray.200', 'gray.600');
 
-
     const shouldShowLine = index <= arrLength - 1 || (children !== undefined && children?.length > 0);
     const lineEnd = index === arrLength - 1 ? '15px' : '50%';
 
     return (
         <Flex direction='column' mb='5px'>
-
             <Flex alignItems='center' minH='78px' justifyContent='start' position='relative'>
                 <Flex direction='column' h='100%' alignItems='center' mr='12px' position='relative'>
                     <Icon as={logo} color={iconColor} h='30px' w='26px' zIndex='1' />
@@ -113,7 +111,6 @@ function Timeline({
 
             {children && (
                 <Flex direction='column' pl='4rem' position='relative'>
-               
                     {children.map((child, childIndex) => (
                         <Timeline
                             key={`${child.date}-${childIndex}`}

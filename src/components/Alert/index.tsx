@@ -1,104 +1,55 @@
 import React from 'react';
-import { useToast, Flex, Icon, Box, chakra, Avatar, CloseButton } from '@chakra-ui/react';
-import { IoMdCheckmarkCircle, IoMdAlert } from 'react-icons/io';
-import { BsLightningFill } from 'react-icons/bs';
+import { position, useToast, Fade } from '@chakra-ui/react';
+import AlertBody, { AlertBodyProperties } from './alert-body';
 
 /**
  * CustomAlertProperties interface.
- * @interface
- * @property {string} type - The type of the alert.
- * @property {string} title - The title of the alert.
- * @property {string} description - The description of the alert.
- * @property {string} [avatarSrc] - The source of the avatar.
- * @property {string} [avatarName] - The name of the avatar.
- * @property {boolean} [isClosable] - Whether the alert is closable.
+ * @interface CustomAlertProperties
+ * @extends AlertBodyProperties
+ * @property {number} [duration] - toast duration.
+ * @property {boolean} [isToast] - whether the alert is a toast.
+ * @property {'top' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right'} [position] - toast position.
  */
-export interface CustomAlertProperties {
-    type: 'success' | 'info' | 'warning' | 'error' | 'notification';
-    title: string;
-    description: string;
-    avatarSrc?: string;
-    avatarName?: string;
-    isClosable?: boolean;
+export interface CustomAlertProperties extends AlertBodyProperties {
+    duration?: number;
+    isToast?: boolean;
+    position?: 'top' | 'bottom' | 'top-left' | 'top-right' | 'bottom-left' | 'bottom-right';
 }
 
-const bgColors = {
-    success: 'green.500',
-    info: 'blue.500',
-    warning: 'yellow.500',
-    error: 'red.500',
-    notification: 'gray.800',
-};
-
 /**
- * CustomAlert component.
- * @param {CustomAlertProperties} properties - The properties of the component.
- * @returns {undefined} Since the toast is being handled by useToast, we don't need to return anything here.
+ * CustomAlert component to show a toast notification.
+ * @param {CustomAlertProperties} props - The properties of the component.
+ * @returns {JSX.Element | undefined } The CustomAlert component.
  */
-function CustomAlert({
-    type,
-    title,
-    description,
-    avatarSrc,
-    avatarName,
-    isClosable = true,
-}: CustomAlertProperties): undefined {
+function CustomAlert(props: CustomAlertProperties): JSX.Element | undefined {
+    const { duration = 5000, isClosable = true, isToast = true, ...alertProps } = props;
+    const [visible, setVisible] = React.useState(true);
     const toast = useToast();
 
-    const icons = React.useMemo(
-        () => ({
-            success: <Icon as={IoMdCheckmarkCircle} color='white' boxSize={6} />,
-            info: <Icon as={IoMdAlert} color='white' boxSize={6} />,
-            warning: <Icon as={IoMdAlert} color='white' boxSize={6} />,
-            error: <Icon as={BsLightningFill} color='white' boxSize={6} />,
-            notification: <Avatar boxSize={10} name={avatarName ?? ''} src={avatarSrc ?? ''} />,
-        }),
-        [avatarName, avatarSrc],
-    );
     React.useEffect(() => {
-        toast({
-            duration: 5000,
-            isClosable,
-            render: ({ onClose }) => (
-                <Flex
-                    maxW='sm'
-                    w='full'
-                    bg='white'
-                    _dark={{ bg: 'gray.800' }}
-                    rounded='lg'
-                    overflow='hidden'
-                    shadow='md'
-                    position='relative'
-                >
-                    <Flex justifyContent='center' alignItems='center' w={12} bg={bgColors[type]}>
-                        {icons[type]}
-                    </Flex>
+        if (isToast) {
+            toast({
+                duration,
+                isClosable,
+                position: 'bottom',
+                render: ({ onClose }) => <AlertBody {...alertProps} isClosable={isClosable} onClose={onClose} />,
+            });
+        }
+    }, [toast, duration, isClosable, alertProps, useToast, position]);
 
-                    <Box mx={-3} py={2} px={4}>
-                        <Box mx={3}>
-                            <chakra.span color={`${bgColors[type]}.400`} fontWeight='bold'>
-                                {title}
-                            </chakra.span>
-                            <chakra.p color='gray.600' _dark={{ color: 'gray.200' }} fontSize='sm'>
-                                {description}
-                            </chakra.p>
-                        </Box>
-                    </Box>
-                    {isClosable && (
-                        <CloseButton
-                            position='absolute'
-                            right='4'
-                            top='50%'
-                            transform='translateY(-50%)'
-                            onClick={onClose}
-                        />
-                    )}
-                </Flex>
-            ),
-        });
-    }, [toast, type, title, description, avatarSrc, avatarName, isClosable, icons]);
+    if (!isToast) {
+        const handleClose = (): void => {
+            setVisible(false);
+        };
 
-    return undefined; // Since the toast is being handled by useToast, we don't need to return anything here.
+        return (
+            <Fade in={visible} unmountOnExit transition={{ enter: { duration: 0.3 }, exit: { duration: 0.5 } }}>
+                <AlertBody {...alertProps} isClosable={isClosable} onClose={handleClose} />
+            </Fade>
+        );
+    }
+
+    return undefined;
 }
 
 export default CustomAlert;

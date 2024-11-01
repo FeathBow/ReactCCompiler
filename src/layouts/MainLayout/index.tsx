@@ -11,7 +11,7 @@ const socialLinks = [
     { href: '#', label: 'Twitter', icon: FaTwitter },
     { href: 'https://github.com/FeathBow', label: 'Github', icon: FaGithub },
 ];
-    
+
 /**
  * main layout
  * @param {React.ReactNode} children - children components
@@ -20,19 +20,23 @@ const socialLinks = [
 function MainLayout({ children }: Readonly<{ children: React.ReactNode }>): JSX.Element {
     return (
         <>
-        <Grid templateColumns='1fr 13fr' gap={10} minHeight='100vh'>
-            <GridItem>
-                <SideMenu menuList={sideMenuList} />
-            </GridItem>
-            <Grid templateColumns='12fr 1fr' gap={10} height='full'>
-                <GridItem>{children}</GridItem>
-                <GridItem />
+            <Grid templateColumns='1fr 13fr' gap={10} minHeight='100vh'>
+                <GridItem>
+                    <SideMenu menuList={sideMenuList} />
+                </GridItem>
+                <Grid templateColumns='12fr 1fr' gap={10} height='full'>
+                    <GridItem>{children}</GridItem>
+                    <GridItem />
+                </Grid>
             </Grid>
-        </Grid>
-        <Separator />
-        <BaseFooter brandText='CCompiler' brandLink='#' rightsText='All rights reserved' socialLinks={socialLinks} />
-      </>
-
+            <Separator />
+            <BaseFooter
+                brandText='CCompiler'
+                brandLink='#'
+                rightsText='All rights reserved'
+                socialLinks={socialLinks}
+            />
+        </>
     );
 }
 

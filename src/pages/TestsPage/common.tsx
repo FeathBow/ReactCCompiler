@@ -169,7 +169,8 @@ export const functionFeatures = [
 export const pointerArrayFeatures = [
     {
         title: 'Basic Pointer Manipulation',
-        description: 'Demonstrates fundamental pointer operations, highlighting the ability to modify data directly through memory addresses.',
+        description:
+            'Demonstrates fundamental pointer operations, highlighting the ability to modify data directly through memory addresses.',
         example: `int main() {\n\tint x=5;\n\tint *y=&x;\n\t*y=6;\n\treturn x;\n}`,
         result: '6',
         icon: CheckCircleIcon,
@@ -178,7 +179,8 @@ export const pointerArrayFeatures = [
     },
     {
         title: 'Pointer Arithmetic and Array Navigation',
-        description: 'Explores pointer arithmetic alongside array indexing, emphasizing precision in navigating and manipulating contiguous memory spaces.',
+        description:
+            'Explores pointer arithmetic alongside array indexing, emphasizing precision in navigating and manipulating contiguous memory spaces.',
         example: `int main() {\n\tint x[2][3];\n\tint *y=x;\n\ty[3]=7;\n\treturn x[1][0];\n}`,
         result: '7',
         icon: CheckCircleIcon,
@@ -187,11 +189,12 @@ export const pointerArrayFeatures = [
     },
     {
         title: 'Multidimensional Data Handling',
-        description: 'Tests complex data structures using pointers to multidimensional arrays, proving the robustness in handling nested data arrays efficiently.',
+        description:
+            'Tests complex data structures using pointers to multidimensional arrays, proving the robustness in handling nested data arrays efficiently.',
         example: `int main() {\n\tint x[2][3][2];\n\tx[0][0][0]=1;\n\tx[0][0][1]=2;\n\tx[0][1][0]=3;\n\tx[0][1][1]=4;\n\tx[0][2][0]=5;\n\tx[0][2][1]=6;\n\tx[1][0][0]=7;\n\tx[1][0][1]=8;\n\tx[1][1][0]=9;\n\tx[1][1][1]=10;\n\tx[1][2][0]=11;\n\tx[1][2][1]=12;\n\treturn x[1][2][1];\n}`,
         result: '12',
         icon: CheckCircleIcon,
         iconColor: 'green.500',
         contentType: 'code',
-    }
+    },
 ];

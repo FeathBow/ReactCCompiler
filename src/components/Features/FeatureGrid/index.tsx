@@ -85,7 +85,7 @@ function Feature({
         );
     };
     return (
-        <Flex justifyContent='center' align='start' mb={5} >
+        <Flex justifyContent='center' align='start' mb={5}>
             <Icon
                 as={IconComponent}
                 boxSize={6}

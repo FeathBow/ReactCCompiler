@@ -20,6 +20,9 @@ import {
     useToast,
     useColorMode,
     Text,
+    VStack,
+    Container,
+    Heading,
 } from '@chakra-ui/react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
@@ -65,6 +68,7 @@ function Compiler(): JSX.Element {
     const location: Location = useLocation();
     const debouncedHandleInput = useRef<((event: FormEvent<HTMLTextAreaElement>) => void) & { cancel?: () => void }>();
     const { colorMode } = useColorMode();
+    const [errorMessage, setErrorMessage] = useState<string>('');
 
     useEffect(() => {
         debouncedHandleInput.current = debounce((event: FormEvent<HTMLTextAreaElement>) => {
@@ -87,142 +91,206 @@ function Compiler(): JSX.Element {
     const handleSubmit = (event: React.FormEvent): void => {
         event.preventDefault();
         setIsLoading(true);
-        const tokens = tokenize(code);
+        setErrorMessage('');
+        // const tokens = tokenize(code);
         // logMessage('info', 'Tokens', { tokens: JSON.stringify(tokens) });
-        const { functionNode, quadrupleOutput } = parse(tokens);
+        // const { functionNode, quadrupleOutput } = parse(tokens);
         // logMessage('info', 'Quadruple', { quadruple : JSON.stringify(quadrupleOutput) });
         // logMessage('info', 'AST', { program: JSON.stringify(functionNode) });
 
-        generateCode(functionNode)
-            .then(() => {
-                setOutput(getGenerated());
-                setQuadruple(quadrupleOutput);
-                setIsLoading(false);
-            })
-            .catch((error) => {
-                console.error('An error occurred:', error);
-                setIsLoading(false);
-            });
+        try {
+            const tokens = tokenize(code);
+            const { functionNode, quadrupleOutput } = parse(tokens);
+            generateCode(functionNode)
+                .then(() => {
+                    setOutput(getGenerated());
+                    setQuadruple(quadrupleOutput);
+                    setIsLoading(false);
+                })
+                .catch((error) => {
+                    console.error('An error occurred during code generation:', error);
+                    setIsLoading(false);
+                    setErrorMessage('An error occurred during code generation. Please check your code and try again.');
+                });
+        } catch (error) {
+            console.error('An error occurred during parsing:', error);
+            setIsLoading(false);
+            setErrorMessage('Syntax error: Please ensure your code follows standard C syntax.');
+        }
     };
 
     const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
 
+    const isAssemblyPage = location.pathname === '/assembly';
+    const isQuadruplePage = location.pathname === '/quadruple';
+    const pageTitle = isAssemblyPage ? 'C Code to Assembly Converter' : 'C Code to Quadruple Converter';
+    const pageDescription = isAssemblyPage
+        ? 'Enter standard C code in the input box below and click the submit button. The code will be converted to the corresponding assembly code.'
+        : 'Enter standard C code in the input box below and click the submit button. The code will be converted to the corresponding quadruple representation.';
+
     return (
-        <Box>
-            <Box as='form' onSubmit={handleSubmit}>
-                <Grid templateColumns='repeat(1, 1fr)' gap={6} height='full'>
-                    <GridItem>
-                        <Textarea
-                            aria-label='Code Input'
-                            value={code}
-                            onInput={handleInput}
-                            onChange={(event) => {
-                                setCode(event.target.value);
-                            }}
-                            onKeyDown={(event) => {
-                                if (event.key === 'Tab') {
-                                    event.preventDefault();
-                                    const target = event.target as HTMLTextAreaElement;
-                                    const start = target.selectionStart;
-                                    const end = target.selectionEnd;
-                                    const newCode = `${code.slice(0, start)}\t${code.slice(end)}`;
-                                    setCode(newCode);
-                                    setTimeout(() => {
-                                        target.selectionStart = target.selectionEnd = start + 1;
-                                    }, 0);
-                                }
-                            }}
-                            minHeight='100px'
-                            resize='none'
-                        />
-                    </GridItem>
+        <Container maxW='container.lg' py={8}>
+            {' '}
+            <VStack spacing={6} align='stretch'>
+                <Box textAlign='center'>
+                    <Heading size='lg' mb={2}>
+                        {pageTitle}
+                    </Heading>{' '}
+                    <Text fontSize='md' color='gray.600'>
+                        {pageDescription}
+                    </Text>{' '}
+                </Box>
+                <Box>
+                    <Box as='form' onSubmit={handleSubmit}>
+                        <Grid templateColumns='repeat(1, 1fr)' gap={6} height='full'>
+                            <GridItem>
+                                <Textarea
+                                    aria-label='Code Input'
+                                    value={code}
+                                    onInput={handleInput}
+                                    onChange={(event) => {
+                                        setCode(event.target.value);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Tab') {
+                                            event.preventDefault();
+                                            const target = event.target as HTMLTextAreaElement;
+                                            const start = target.selectionStart;
+                                            const end = target.selectionEnd;
+                                            const newCode = `${code.slice(0, start)}\t${code.slice(end)}`;
+                                            setCode(newCode);
+                                            setTimeout(() => {
+                                                target.selectionStart = target.selectionEnd = start + 1;
+                                            }, 0);
+                                        }
+                                    }}
+                                    minHeight='200px'
+                                    resize='vertical'
+                                    placeholder='Please enter your C code here...'
+                                    fontFamily='monaco'
+                                    borderColor='gray.300'
+                                    _hover={{ borderColor: 'gray.400' }}
+                                    _focus={{ borderColor: 'teal.500', boxShadow: '0 0 0 1px teal.500' }}
+                                />
+                            </GridItem>
 
-                    <Button
-                        rightIcon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                        colorScheme='teal'
-                        onClick={onToggle}
-                    >
-                        {isOpen ? 'Hide Code' : 'Show Code'}
-                    </Button>
-                    <Collapse in={isOpen} animateOpacity>
-                        {isOpen && (code === null || code.length === 0) ? (
-                            <CustomAlert
-                                type='warning'
-                                title='No Code Found'
-                                description='Please provide the code to display the syntax highlighting.'
-                            />
-                        ) : (
-                            <Box width='100%' overflowX='hidden'>
-                                {code !== null && code.length > 0 && (
-                                    <>
-                                        <Box
-                                            display='flex'
-                                            justifyContent='center'
-                                            alignItems='center'
-                                            p={2}
-                                            bg={colorMode === 'light' ? 'gray.200' : 'gray.700'}
-                                            color={colorMode === 'light' ? 'black' : 'white'}
-                                            borderRadius='md'
-                                            _hover={{
-                                                bg: colorMode === 'light' ? 'gray.300' : 'gray.600',
-                                                transform: 'scale(1.05)',
-                                                transition: 'all 0.2s ease-in-out',
-                                                borderRadius: 'md',
-                                            }}
-                                        >
-                                            <Text fontSize='sm'>CPP</Text>
-                                        </Box>
-                                        <SyntaxHighlighter
-                                            language='cpp'
-                                            style={currentStyle}
-                                            showLineNumbers
-                                            wrapLines
-                                            wrapLongLines
-                                            customStyle={{ whiteSpace: 'pre-wrap', marginTop: 0 }}
-                                            lineProps={(lineNumber) => {
-                                                const style: React.CSSProperties = { display: 'block' };
-                                                if (lineNumber % 2 === 0) {
-                                                    style.backgroundColor =
-                                                        colorMode === 'light' ? '#ede5cf' : '#2c2c2c';
-                                                }
-                                                return { style };
-                                            }}
-                                        >
-                                            {code}
-                                        </SyntaxHighlighter>
-                                    </>
+                            <Button
+                                rightIcon={isOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+                                colorScheme='teal'
+                                onClick={onToggle}
+                            >
+                                {isOpen ? 'Hide Code' : 'Show Code'}
+                            </Button>
+
+                            <Collapse in={isOpen} animateOpacity>
+                                {isOpen && (code === null || code.length === 0) ? (
+                                    <CustomAlert
+                                        type='warning'
+                                        title='No Code Found'
+                                        description='Please provide the code to display the syntax highlighting.'
+                                    />
+                                ) : (
+                                    <Box width='100%' overflowX='hidden'>
+                                        {code !== null && code.length > 0 && (
+                                            <>
+                                                <Box
+                                                    display='flex'
+                                                    justifyContent='center'
+                                                    alignItems='center'
+                                                    p={2}
+                                                    bg={colorMode === 'light' ? 'gray.200' : 'gray.700'}
+                                                    color={colorMode === 'light' ? 'black' : 'white'}
+                                                    borderRadius='md'
+                                                    _hover={{
+                                                        bg: colorMode === 'light' ? 'gray.300' : 'gray.600',
+                                                        transform: 'scale(1.05)',
+                                                        transition: 'all 0.2s ease-in-out',
+                                                        borderRadius: 'md',
+                                                    }}
+                                                >
+                                                    <Text fontSize='sm'>CPP</Text>
+                                                </Box>
+                                                <SyntaxHighlighter
+                                                    language='cpp'
+                                                    style={currentStyle}
+                                                    showLineNumbers
+                                                    wrapLines
+                                                    wrapLongLines
+                                                    customStyle={{ whiteSpace: 'pre-wrap', marginTop: 0 }}
+                                                    lineProps={(lineNumber) => {
+                                                        const style: React.CSSProperties = { display: 'block' };
+                                                        if (lineNumber % 2 === 0) {
+                                                            style.backgroundColor =
+                                                                colorMode === 'light' ? '#ede5cf' : '#2c2c2c';
+                                                        }
+                                                        return { style };
+                                                    }}
+                                                >
+                                                    {code}
+                                                </SyntaxHighlighter>
+                                            </>
+                                        )}
+                                    </Box>
                                 )}
-                            </Box>
-                        )}
-                    </Collapse>
-                </Grid>
-                <Separator />
-                <Button
-                    type='submit'
-                    rightIcon={<ArrowForwardIcon />}
-                    colorScheme='teal'
-                    variant='outline'
-                    width='full'
-                >
-                    Submit
-                </Button>
-            </Box>
+                            </Collapse>
+                        </Grid>
+                        <Separator />
+                        <Button
+                            type='submit'
+                            rightIcon={<ArrowForwardIcon />}
+                            colorScheme='teal'
+                            variant='outline'
+                            width='full'
+                        >
+                            Submit
+                        </Button>
+                    </Box>
 
-            {isLoading ? (
-                <Flex justify='center' align='center' h='200px'>
-                    <Spinner size='xl' color='teal.500' />
-                </Flex>
-            ) : (
-                <>
-                    {location.pathname === '/assembly' && output !== undefined && output.length > 0 && (
-                        <OutputComponent output={output} />
+                    {isLoading ? (
+                        <Flex justify='center' align='center' h='200px'>
+                            <Spinner size='xl' color='teal.500' />
+                        </Flex>
+                    ) : (
+                        <>
+                            {errorMessage && (
+                                <CustomAlert
+                                    type='error'
+                                    title='Compilation Error'
+                                    description={errorMessage}
+                                    isClosable={true}
+                                    isToast={true}
+                                    fullWidth={false}
+                                />
+                            )}
+                            {isAssemblyPage && output !== undefined && output.length > 0 && (
+                                <Box>
+                                    <Heading size='md' mt={4} mb={2}>
+                                        Converted Assembly Code
+                                    </Heading>{' '}
+                                    <OutputComponent output={output} />
+                                </Box>
+                            )}
+                            {isQuadruplePage && quadruple !== undefined && quadruple.length > 0 && (
+                                <Box>
+                                    <Heading size='md' mt={4} mb={2}>
+                                        Converted Quadruple Representation
+                                    </Heading>
+                                    <QuadrupleOutputComponent quadrupleOutput={quadruple} />
+                                </Box>
+                            )}
+                        </>
                     )}
-                    {location.pathname === '/quadruple' && quadruple !== undefined && quadruple.length > 0 && (
-                        <QuadrupleOutputComponent quadrupleOutput={quadruple} />
-                    )}
-                </>
-            )}
-        </Box>
+                </Box>
+                <CustomAlert
+                    type='info'
+                    title='Note'
+                    description='Please ensure your code follows standard C syntax to obtain correct conversion results.'
+                    isClosable={false}
+                    isToast={false}
+                    fullWidth={true}
+                />
+            </VStack>
+        </Container>
     );
 }
 
