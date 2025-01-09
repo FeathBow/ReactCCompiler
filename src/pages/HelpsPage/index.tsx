@@ -14,7 +14,7 @@ import {
     ListItem,
     Container,
 } from '@chakra-ui/react';
-import React, { useState } from 'react';
+import React from 'react';
 import { CopyIcon } from '@chakra-ui/icons';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/cjs/styles/prism';

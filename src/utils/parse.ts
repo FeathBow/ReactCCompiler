@@ -1544,7 +1544,7 @@ export function parse(tokens: Token[]): { functionNode: FunctionNode; quadrupleO
             (code, index) =>
                 `${(100 + index).toString().padEnd(13)}${code
                     .map((item) => {
-                        if (item !== null && item !== undefined && item.startsWith('N')) {
+                        if (item?.startsWith('N')) {
                             if (!nodeToQuadrupleMap.has(item)) {
                                 nodeToQuadrupleMap.set(item, `N${nextQuadrupleNumber}`);
                                 nextQuadrupleNumber += 1;

@@ -21,13 +21,14 @@ export interface CustomAlertProperties extends AlertBodyProperties {
  * @param {CustomAlertProperties} props - The properties of the component.
  * @returns {JSX.Element | undefined } The CustomAlert component.
  */
-function CustomAlert(props: CustomAlertProperties): JSX.Element | undefined {
+function CustomAlert(props: Readonly<CustomAlertProperties>): JSX.Element | undefined {
     const { duration = 5000, isClosable = true, isToast = true, ...alertProps } = props;
     const [visible, setVisible] = React.useState(true);
     const toast = useToast();
-
+    const isTriggered = React.useRef(false);
     React.useEffect(() => {
-        if (isToast) {
+        if (isToast && !isTriggered.current) {
+            isTriggered.current = true;
             toast({
                 duration,
                 isClosable,
@@ -35,7 +36,7 @@ function CustomAlert(props: CustomAlertProperties): JSX.Element | undefined {
                 render: ({ onClose }) => <AlertBody {...alertProps} isClosable={isClosable} onClose={onClose} />,
             });
         }
-    }, [toast, duration, isClosable, alertProps, useToast, position]);
+    }, [toast, duration, isClosable, alertProps, isToast]);
 
     if (!isToast) {
         const handleClose = (): void => {

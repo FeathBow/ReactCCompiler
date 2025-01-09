@@ -3,7 +3,6 @@ import * as React from 'react';
 import ReactDOM from 'react-dom';
 import { ChakraProvider } from '@chakra-ui/react';
 import Header from 'Components/Header';
-// import { BrowserRouter } from 'react-router-dom';
 import { HashRouter as Router } from 'react-router-dom';
 import AppRoutes from './routes';
 /* eslint-enable import/no-import-module-exports */

@@ -92,12 +92,6 @@ function Compiler(): JSX.Element {
         event.preventDefault();
         setIsLoading(true);
         setErrorMessage('');
-        // const tokens = tokenize(code);
-        // logMessage('info', 'Tokens', { tokens: JSON.stringify(tokens) });
-        // const { functionNode, quadrupleOutput } = parse(tokens);
-        // logMessage('info', 'Quadruple', { quadruple : JSON.stringify(quadrupleOutput) });
-        // logMessage('info', 'AST', { program: JSON.stringify(functionNode) });
-
         try {
             const tokens = tokenize(code);
             const { functionNode, quadrupleOutput } = parse(tokens);

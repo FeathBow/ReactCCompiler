@@ -48,7 +48,7 @@ function AlertBody({
     isClosable = true,
     onClose,
     fullWidth = false,
-}: AlertBodyProperties): JSX.Element {
+}: Readonly<AlertBodyProperties>): JSX.Element {
     const icons = {
         success: <Icon as={IoMdCheckmarkCircle} color='white' boxSize={6} />,
         info: <Icon as={IoMdAlert} color='white' boxSize={6} />,
