@@ -2,7 +2,7 @@ import * as React from 'react';
 import { Routes, Route } from 'react-router-dom';
 import HomeLayout from 'Layouts/HomeLayout';
 import MainLayout from 'Layouts/MainLayout';
-import Compiler from './compiler';
+import Compiler from 'Components/Compiler';
 import HelpsPage from './pages/HelpsPage';
 import HomePage from './pages/HomePage';
 import TestsPage from './pages/TestsPage';
