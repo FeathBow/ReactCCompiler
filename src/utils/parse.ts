@@ -16,15 +16,18 @@ import {
 import type TypeDefinition from './classes/typedef-class';
 import type ASTNode from './classes/astnode-class';
 import FunctionNode from './classes/functionnode-class';
-import LocalVariable from './classes/localvariable-class';
+import Variable from './classes/localvariable-class';
 import type Token from './classes/token-class';
 import { logMessage } from './logger';
 import { skipToken, isEqual, isVariableTypeDefinition } from './token';
 import { IntermediateCodeList, makelist, getNodeValue } from './quadruple';
+import SymbolEntry from './classes/symbolentry-class';
 
 let intermediateCodeList = new IntermediateCodeList();
 
-let locals: LocalVariable | undefined;
+let locals: Variable | undefined;
+
+let globals: SymbolEntry | undefined;
 
 let nowToken: Token;
 
@@ -54,20 +57,22 @@ function consumeToken(token: Token, tokenName: string): boolean {
 /**
  * 在当前的局部变量列表中查找一个变量。Find a variable in the current list of local variables.
  * @param {Token} token 代表变量的令牌。The token representing the variable.
- * @returns {LocalVariable | undefined} 如果找到了变量，则返回该变量的节点，否则返回undefined。The node of the variable if found, otherwise undefined.
+ * @returns {Variable | undefined} 如果找到了变量，则返回该变量的节点，否则返回undefined。The node of the variable if found, otherwise undefined.
  */
-function findVariable(token: Token): LocalVariable | undefined {
-    let variableNode = locals;
-
-    while (variableNode !== undefined) {
-        if (
-            token.location !== undefined &&
-            variableNode.varName.length === token.length &&
-            variableNode.varName === token.location.slice(0, Math.max(0, token.length))
-        ) {
-            return variableNode;
+function findVariable(token: Token): Variable | undefined {
+    let variableSet = [locals, globals as Variable];
+    for (const variable of variableSet) {
+        let variableNode = variable;
+        while (variableNode !== undefined) {
+            if (
+                token.location !== undefined &&
+                variableNode.name.length === token.length &&
+                variableNode.name === token.location.slice(0, Math.max(0, token.length))
+            ) {
+                return variableNode;
+            }
+            variableNode = variableNode.nextEntry as Variable;
         }
-        variableNode = variableNode.nextVar;
     }
     return undefined;
 }
@@ -133,10 +138,10 @@ function newNumber(value: number): ASTNode {
 
 /**
  * 创建一个新的变量节点。Create a new variable node.
- * @param {LocalVariable} variableNode 代表变量的节点。The node representing the variable.
+ * @param {Variable} variableNode 代表变量的节点。The node representing the variable.
  * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
  */
-function newVariableNode(variableNode: LocalVariable): ASTNode {
+function newVariableNode(variableNode: Variable): ASTNode {
     astNodeNumber += 1;
     return {
         nodeKind: ASTNodeKind.Variable,
@@ -149,12 +154,27 @@ function newVariableNode(variableNode: LocalVariable): ASTNode {
  * 创建一个新的局部变量。Create a new local variable.
  * @param {string} name 变量名。The name of the variable.
  * @param {TypeDefinition} type 变量类型。The type of the variable.
- * @returns {LocalVariable} 新创建的局部变量。The newly created local variable.
+ * @returns {Variable} 新创建的局部变量。The newly created local variable.
  */
-function newLocalVariable(name: string, type: TypeDefinition): LocalVariable {
-    const localVariable = new LocalVariable(name, 0, type, locals);
+function newLocalVariable(name: string, type: TypeDefinition): Variable {
+    const localVariable = new Variable(name, 0, false, type, locals);
     locals = localVariable;
     return localVariable;
+}
+
+/**
+ * 创建一个新的全局 entry。Create a new global entry.
+ * @param {string} name entry 名。The name of the entry.
+ * @param {TypeDefinition} type 类型定义。The type definition.
+ * @param {boolean} isFunctionNode 是否是函数节点。Whether it is a function node.
+ * @returns {SymbolEntry} 新创建的全局 entry。The newly created global entry.
+ */
+function newGlobalEntry(name: string, type: TypeDefinition, isFunctionNode: boolean): SymbolEntry {
+    const globalEntry = isFunctionNode
+        ? new FunctionNode(name, undefined, locals, 0, undefined, globals, type)
+        : new Variable(name, 0, true, type, globals as Variable);
+    globals = globalEntry;
+    return globalEntry;
 }
 
 /**
@@ -188,6 +208,7 @@ type TypeDefinitionHandler = (token: Token, type: string) => TypeDefinition;
 
 /**
  * 类型到 TypeDefinition 的映射。Mapping from type to TypeDefinition.
+ * @type {Record<string, TypeDefinition>}
  */
 const typeDefinitions: Record<string, TypeDefinition> = {
     int: intTypeDefinition,
@@ -269,6 +290,7 @@ const handleMulOperation: MulHandler = (token: Token, kind: ASTNodeKind, left: A
 
 /**
  * 乘法操作符到 ASTNodeKind 的映射。Mapping from multiplication operators to ASTNodeKind.
+ * @type {Record<string, ASTNodeKind>}
  */
 const mulOperators: Record<string, ASTNodeKind> = {
     '*': ASTNodeKind.Multiplication,
@@ -356,6 +378,7 @@ const handleUnaryOperation: UnaryHandler = (token: Token, kind: ASTNodeKind) => 
 
 /**
  * 一元操作符到 ASTNodeKind 的映射。Mapping from unary operators to ASTNodeKind.
+ * @type {Record<string, ASTNodeKind>}
  */
 const unaryOperators: Record<string, ASTNodeKind> = {
     '+': ASTNodeKind.Addition,
@@ -756,10 +779,10 @@ function parseDeclaration(token: Token): ASTNode {
             current = current.nextNode = newUnary(ASTNodeKind.ExpressionStatement, node);
 
             if (rightNode.functionDef === undefined) {
-                intermediateCodeList.emit(':=', 'call', getNodeValue(rightNode), variable.varName);
-            } else intermediateCodeList.emit(':=', getNodeValue(rightNode), undefined, variable.varName);
+                intermediateCodeList.emit(':=', 'call', getNodeValue(rightNode), variable.name);
+            } else intermediateCodeList.emit(':=', getNodeValue(rightNode), undefined, variable.name);
         } else {
-            intermediateCodeList.emit('declare', String(variable?.varType?.type), undefined, variable.varName);
+            intermediateCodeList.emit('declare', String(variable?.type?.type), undefined, variable.name);
         }
     }
 
@@ -1213,6 +1236,7 @@ function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
 /**
  * 为函数参数创建局部变量。Create local variables for function parameters.
  * @param {TypeDefinition | undefined} type 函数参数类型。The function parameter type.
+ * @returns {void} 无返回值。No return value.
  */
 function createLocalVariablesForParameters(type: TypeDefinition | undefined): void {
     if (type !== undefined) {
@@ -1230,27 +1254,23 @@ function createLocalVariablesForParameters(type: TypeDefinition | undefined): vo
 /**
  * 解析函数定义。Parse a function definition.
  * @param {Token} token 当前的令牌。The current token.
- * @returns {FunctionNode} 解析出的函数定义。The parsed function definition.
+ * @param {TypeDefinition} type 函数类型。The function type.
+ * @returns {Token} 下一个令牌。The next token.
  */
-function parseFunction(token: Token): FunctionNode {
-    let type = declareType(token);
-    token = nowToken;
+function parseFunction(token: Token, type: TypeDefinition): Token {
     type = declare(token, type);
     token = nowToken;
-    locals = undefined;
-
-    const functionNode = new FunctionNode();
-
     if (type.tokens === undefined) {
         logMessage('error', 'Token is undefined', { token, position: parseFunction });
         throw new Error('Token is undefined');
     }
-    functionNode.funcName = getIdentifier(type.tokens);
+    let nowEntry = newGlobalEntry(getIdentifier(type.tokens), type, true) as FunctionNode;
+    locals = undefined;
 
-    intermediateCodeList.emit('begin', functionNode.funcName, type.type);
+    intermediateCodeList.emit('begin', nowEntry.name, type.type);
 
     createLocalVariablesForParameters(type.parameters);
-    functionNode.Arguments = locals;
+    nowEntry.Arguments = locals;
 
     const nextToken = skipToken(token, '{');
     if (nextToken === undefined) {
@@ -1258,9 +1278,10 @@ function parseFunction(token: Token): FunctionNode {
         throw new Error('Unexpected end of input');
     }
     token = nextToken;
-    functionNode.body = blockStatement(token);
-    functionNode.locals = locals;
-    return functionNode;
+    nowEntry.body = blockStatement(token);
+    token = nowToken;
+    nowEntry.locals = locals;
+    return token;
 }
 
 /**
@@ -1310,6 +1331,40 @@ function functionCall(token: Token): ASTNode {
     node.functionDef = getIdentifier(token);
     node.functionArgs = head.nextNode;
     return node;
+}
+
+/**
+ * 解析一个全局变量。Parse a global variable.
+ * 产生式为：全局变量 ::= 类型标识符 ('*' 类型标识符)* 变量名 (',' 变量名)* ';'
+ * Production rule: globalVariable ::= typeIdentifier ('*' typeIdentifier)* identifier (',' identifier)* ';'
+ * @param {Token} token 代表全局变量的令牌。The token representing the global variable.
+ * @param {TypeDefinition} type 初始类型。The initial type.
+ * @returns {Token} 下一个令牌。The next token.
+ */
+function parseGlobalVariable(token: Token, type: TypeDefinition): Token {
+    let judgeFirst = true;
+    while (true) {
+        let judge = consumeToken(token, ';');
+        token = nowToken;
+        if (judge) break;
+        if (!judgeFirst) {
+            const nextToken = skipToken(token, ',');
+            if (nextToken === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: parseGlobalVariable });
+                throw new Error('Unexpected end of input');
+            }
+            token = nextToken;
+        }
+        judgeFirst = false;
+        let nowType = declare(token, type);
+        token = nowToken;
+        if (nowType.tokens === undefined) {
+            logMessage('error', 'Token is undefined', { token, position: parseFunction });
+            throw new Error('Token is undefined');
+        }
+        newGlobalEntry(getIdentifier(nowType.tokens), nowType, false);
+    }
+    return token;
 }
 
 /**
@@ -1515,29 +1570,24 @@ function bracketsPrimary(token: Token): { returnNode: ASTNode; token: Token } {
 /**
  * 解析代码段。Parse a piece of code.
  * @param {Token[]} tokens 代表代码的令牌流。The token stream representing the code.
- * @returns { functionNode: FunctionNode, quadrupleOutput: string } 代表代码的抽象语法树节点簇。The abstract syntax tree node representing the code.
+ * @returns { { globalVar: SymbolEntry | undefined, quadrupleOutput: string } } 解析得到的全局 entry 和四元式输出。The parsed global entry and quadruple output.
  */
-export function parse(tokens: Token[]): { functionNode: FunctionNode; quadrupleOutput: string } {
+export function parse(tokens: Token[]): { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } {
     locals = undefined;
-
+    globals = undefined;
     intermediateCodeList = new IntermediateCodeList();
     astNodeNumber = 0;
 
-    const head: FunctionNode = { stackSize: 0, funcName: '' };
-    let current: FunctionNode = head;
-
     let token = tokens[0];
     while (token.kind !== TokenType.EndOfFile) {
-        current = current.returnFunc = parseFunction(token);
+        let type = declareType(token);
         token = nowToken;
-    }
-    if (head.returnFunc === undefined) {
-        logMessage('error', 'Unexpected end of input', { token, position: parse });
-        throw new Error('Unexpected end of input');
+        let judgeFunction =
+            token.next !== undefined && !isEqual(token.next, ';') && declare(token, type).type == ASTNodeType.Function;
+        token = judgeFunction ? parseFunction(token, type) : parseGlobalVariable(token, type);
     }
 
     const nodeToQuadrupleMap = new Map<string, string>();
-
     let nextQuadrupleNumber = 1;
     const quadrupleOutput = `${['id', 'op', 'argument1', 'argument2', 'result'].map((header) => header.padEnd(13)).join('')}\n${intermediateCodeList.codes
         .map(
@@ -1560,5 +1610,5 @@ export function parse(tokens: Token[]): { functionNode: FunctionNode; quadrupleO
         )
         .join('\n')}`;
 
-    return { functionNode: head.returnFunc, quadrupleOutput };
+    return { globalEntry: globals, quadrupleOutput };
 }

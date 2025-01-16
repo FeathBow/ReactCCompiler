@@ -1,35 +1,37 @@
-import TypeDefinition from './typedef-class';
-
+import SymbolEntry from './symbolentry-class';
+import type TypeDefinition from './typedef-class';
 /**
- * 代表一个局部变量的类。
- * Class representing a local variable.
+ * 代表一个变量的类。
+ * Class representing a variable.
  */
-class LocalVariable {
-    /** 下一个局部变量。The next local variable. */
-    nextVar?: LocalVariable;
-    /** 变量名。Variable name. */
-    varName: string;
+class Variable extends SymbolEntry {
     /** RBP的偏移量。Offset from RBP. */
     offsetFromRBP: number;
-    /** 变量类型。Variable type. */
-    varType?: TypeDefinition;
+    /** 全局标识符。Global identifier. */
+    isGlobal: boolean;
 
     /**
      * 类构造函数。
      * Class constructor
      * @param {string} variableName - 变量名。Variable name.
      * @param {number} offsetFromRBP - RBP的偏移量。Offset from RBP.
+     * @param {boolean} isGlobal - 全局标识符。Global identifier.
      * @param {TypeDefinition} variableType - 变量类型。Variable type.
-     * @param {LocalVariable} nextVariable - 下一个局部变量。The next local variable.
-     * @returns {LocalVariable} 类实例（Class instance）。
+     * @param {Variable} nextVariable - 下一个变量。Next variable.
+     * @returns {Variable} 类实例（Class instance）。
      * @class
      */
-    constructor(variableName = '', offsetFromRBP = 0, variableType?: TypeDefinition, nextVariable?: LocalVariable) {
-        this.varName = variableName;
+    constructor(
+        variableName = '',
+        offsetFromRBP = 0,
+        isGlobal = false,
+        variableType?: TypeDefinition,
+        nextVariable?: Variable,
+    ) {
+        super(variableName, variableType, nextVariable);
         this.offsetFromRBP = offsetFromRBP;
-        this.varType = variableType;
-        this.nextVar = nextVariable;
+        this.isGlobal = isGlobal;
     }
 }
 
-export default LocalVariable;
+export default Variable;

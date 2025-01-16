@@ -1,4 +1,4 @@
-import type LocalVariable from './localvariable-class';
+import type Variable from './localvariable-class';
 import { ASTNodeKind } from '../commons';
 import type TypeDefinition from './typedef-class';
 
@@ -16,7 +16,7 @@ class ASTNode {
     /** 右节点。Right node. */
     rightNode?: ASTNode;
     /** 局部变量。Local variable. */
-    localVar?: LocalVariable;
+    localVar?: Variable;
     /** 数字值。Number value. */
     numberValue?: number;
     /** 语句块体。Block body. */

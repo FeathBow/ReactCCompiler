@@ -1,5 +1,5 @@
 import { exec as execCallback } from 'node:child_process';
-import { writeFile } from 'node:fs/promises';
+import { writeFile, unlink } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { tokenize } from '../../src/utils/token';
 import { parse } from '../../src/utils/parse';
@@ -9,6 +9,22 @@ const exec = promisify(execCallback);
 interface ExecError extends Error {
     code?: number;
 }
+
+/**
+ * 清理 dist 目录中的文件。Cleanup files in the dist directory.
+ * @param {string} filename - 要清理的文件名。The filename to cleanup.
+ * @returns {Promise<void>} Promise。
+ */
+async function cleanupDistFiles(filename: string): Promise<void> {
+    try {
+        await unlink(`dist/${filename}.s`);
+        await unlink(`dist/${filename}.exe`);
+    } catch (e) {
+        console.error('Error cleaning up dist files:', e);
+        throw e;
+    }
+}
+
 /**
  * 运行汇编代码并返回退出状态。Execute the assembly code and return the exit status.
  * @param {string[]} assemblyCode - 汇编代码的数组，每个元素代表一行代码。An array of assembly code, each element represents a line of code.
@@ -20,7 +36,7 @@ async function runAssemblyCode(assemblyCode: string[], filename: string): Promis
         await writeFile(`dist/${filename}.s`, assemblyCode.join('\n'));
         await exec(`gcc -o dist/${filename} dist/${filename}.s`);
         try {
-            await exec(`dist\\${filename}.exe`, { timeout: 3500 });
+            await exec(`dist\\${filename}.exe`, { timeout: 3000 });
         } catch (error: unknown) {
             const execError = error as ExecError;
             if (execError.code !== undefined) return execError.code.toString();
@@ -41,8 +57,9 @@ async function runAssemblyCode(assemblyCode: string[], filename: string): Promis
  */
 async function testCode(code: string, expectedExitStatus: string, filename: string): Promise<void> {
     const tokens = tokenize(code);
-    const { functionNode } = parse(tokens);
-    await generateCode(functionNode);
+    const { globalEntry } = parse(tokens);
+    if (globalEntry === undefined) throw new Error('Global entry is undefined');
+    await generateCode(globalEntry);
     const assemblyCode = getGenerated();
     const exitStatus = await runAssemblyCode(assemblyCode, filename);
     expect(exitStatus).toBe(expectedExitStatus);
@@ -60,10 +77,13 @@ function runTestCases(
     filename = 'test',
 ): void {
     describe(testName, () => {
+        afterEach(async () => {
+            await cleanupDistFiles(filename);
+        });
         for (const { code, expectedExitStatus } of testCases) {
             test(`Code: ${code}\n\tshould return correct exit status [${expectedExitStatus}]`, async () => {
                 await testCode(code, expectedExitStatus, filename);
-            });
+            }, 3000);
         }
     });
 }

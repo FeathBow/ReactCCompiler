@@ -59,7 +59,7 @@ export function makelist(index: string): string[] {
 export function getNodeValue(node: ASTNode | undefined): string | undefined {
     if (node === undefined) return undefined;
 
-    if (node.localVar?.varName !== undefined) return node.localVar?.varName;
+    if (node.localVar?.name !== undefined) return node.localVar?.name;
     else if (node.functionDef !== undefined) return node.functionDef;
     else if (node.nodeNumber !== undefined) return `N${node.nodeNumber}`
     else if (node.numberValue !== undefined) return String(node.numberValue);

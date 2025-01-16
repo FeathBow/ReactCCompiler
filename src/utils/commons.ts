@@ -1,5 +1,5 @@
 import type ASTNode from './classes/astnode-class';
-import LocalVariable from './classes/localvariable-class';
+import Variable from './classes/localvariable-class';
 import type Token from './classes/token-class';
 import TypeDefinition from './classes/typedef-class';
 import { logMessage } from './logger';
@@ -246,7 +246,7 @@ export function addType(node: ASTNode | undefined): void {
         if (
             typeof nodeProperty !== 'number' &&
             typeof nodeProperty !== 'string' &&
-            !(nodeProperty instanceof LocalVariable) &&
+            !(nodeProperty instanceof Variable) &&
             !(nodeProperty instanceof TypeDefinition)
         ) {
             addType(nodeProperty);
@@ -275,7 +275,7 @@ export function addType(node: ASTNode | undefined): void {
         }
         case ASTNodeKind.Assignment: {
             if (node.leftNode?.typeDef?.type === ASTNodeType.Array) {
-                logMessage('error', 'Not an lvalue', { token: node.leftNode.localVar?.varName });
+                logMessage('error', 'Not an lvalue', { token: node.leftNode.localVar?.name });
                 throw new Error('Not an lvalue');
             }
             node.typeDef = node.leftNode?.typeDef;
@@ -291,13 +291,13 @@ export function addType(node: ASTNode | undefined): void {
             return;
         }
         case ASTNodeKind.Variable: {
-            node.typeDef = node.localVar?.varType;
+            node.typeDef = node.localVar?.type;
             return;
         }
         case ASTNodeKind.AddressOf: {
             if (node.leftNode?.typeDef?.type === ASTNodeType.Array) {
                 if (node.leftNode.typeDef.ptr === undefined) {
-                    logMessage('error', 'Invalid array address', { token: node.leftNode.localVar?.varName });
+                    logMessage('error', 'Invalid array address', { token: node.leftNode.localVar?.name });
                     throw new Error('Invalid array address');
                 }
                 node.typeDef = pointerTo(node.leftNode.typeDef.ptr);
@@ -308,11 +308,11 @@ export function addType(node: ASTNode | undefined): void {
         }
         case ASTNodeKind.Dereference: {
             if (node.leftNode?.typeDef?.ptr === undefined) {
-                logMessage('error', 'Invalid pointer dereference', { token: node.leftNode?.localVar?.varName });
+                logMessage('error', 'Invalid pointer dereference', { token: node.leftNode?.localVar?.name });
                 throw new Error('Invalid pointer dereference');
             }
             if (node.leftNode.typeDef.ptr.type === ASTNodeType.Void) {
-                logMessage('error', 'Invalid pointer dereference', { token: node.leftNode.localVar?.varName });
+                logMessage('error', 'Invalid pointer dereference', { token: node.leftNode.localVar?.name });
                 throw new Error('Invalid pointer dereference');
             }
             node.typeDef = node.leftNode.typeDef.ptr;

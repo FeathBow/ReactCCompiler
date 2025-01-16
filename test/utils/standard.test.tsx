@@ -7,15 +7,25 @@ describe('Standard operations', () => {
     const standardTestCases = [
         { code: 'int main(){ int x = 2 + 3 * 4 - 5 / 3; return x; }', expectedExitStatus: '13' },
         { code: 'int main(){ int a[3]; a[2] = 1; int x = a[2]; return x; }', expectedExitStatus: '1' },
-        { code: 'int main() { return sub(4,3); } int sub(int x, int y) { return x-y; }', expectedExitStatus: '1' },
+        { code: 'int main(){ return sub(4,3); } int sub(int x, int y) { return x-y; }', expectedExitStatus: '1' },
         { code: 'int main(){ int x=5; int *y=&x; int **z=&y; **z=7; return x; }', expectedExitStatus: '7' },
         { code: 'int main(){ int x; if (1 < 0) {x=2;} else {x=3;} return x; }', expectedExitStatus: '3' },
         { code: 'int main(){ int i=0; while(i + 1 < 3) {i=i+1;} return i; }', expectedExitStatus: '2' },
-        { code: 'int main(){ int i = 0;int j = 0; for (i=0; i<3; i=i+1) {j= i + j;} return j; }', expectedExitStatus: '3' },
         { code: 'int main(){ return sizeof(void); }', expectedExitStatus: '1' },
         { code: 'int main(){ return sizeof(i64*); }', expectedExitStatus: '8' },
         { code: 'int main(){ int (x[2])[2]; return sizeof(x); }', expectedExitStatus: '16' },
+
+        { code: 'int x; int main(){ x = 2 + 3 * 4 - 5 / 3; return x; }', expectedExitStatus: '13' },
+        { code: 'int a[3], x; int main(){ a[2] = 1; x = a[2]; return x; }', expectedExitStatus: '1' },
+        { code: 'int (x[2])[2]; int main(){ return sizeof(x); }', expectedExitStatus: '16' },
+        { code: 'char (x[2])[2]; int main(){ return sizeof(x); }', expectedExitStatus: '4' },
+        { code: 'i64 (x[2])[2]; int main(){ return sizeof(x); }', expectedExitStatus: '32' },
+
         { code: 'int main(){ return 20>=30; }', expectedExitStatus: '0' },
+        {
+            code: 'int main(){ int i = 0;int j = 0; for (i=0; i<3; i=i+1) {j= i + j;} return j; }',
+            expectedExitStatus: '3',
+        },
         {
             code: 'int main(){int x;if(1){x=2;int i=0;while(i<5){if(i-i/2*2==0){x=x+2;}else{x=x+1;}i=i+1;}}else{x=3;int i=0;for(i=0;i<5;i=i+1){if(i-i/2*2==0){x=x+2;}else{x=x+1;}}}return x;}',
             expectedExitStatus: '10',

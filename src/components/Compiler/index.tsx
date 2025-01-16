@@ -82,8 +82,9 @@ function Compiler(): JSX.Element {
         setIsLoading(true);
         try {
             const tokens = tokenize(code);
-            const { functionNode, quadrupleOutput } = parse(tokens);
-            generateCode(functionNode).then(() => {
+            const { globalEntry, quadrupleOutput } = parse(tokens);
+            if (globalEntry === undefined) throw new Error('Global entry is undefined');
+            generateCode(globalEntry).then(() => {
                 setOutput(getGenerated());
                 setQuadruple(quadrupleOutput);
                 setIsLoading(false);

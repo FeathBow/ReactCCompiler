@@ -1,9 +1,10 @@
 import { ASTNodeKind, ASTNodeType } from './commons';
 import type TypeDefinition from './classes/typedef-class';
 import type ASTNode from './classes/astnode-class';
-import type FunctionNode from './classes/functionnode-class';
-import type LocalVariable from './classes/localvariable-class';
+import FunctionNode from './classes/functionnode-class';
+import Variable from './classes/localvariable-class';
 import { logMessage } from './logger';
+import SymbolEntry from './classes/symbolentry-class';
 
 /**
  * 用于追踪当前的嵌套深度。
@@ -84,6 +85,7 @@ const sizeToStoreOperation: Record<number | 'default', string> = {
 /**
  * 根据给定的类型定义，将值存储到内存中。Store a value into memory based on the given type definition.
  * @param {TypeDefinition} type 要存储的值的类型定义。The type definition of the value to store.
+ * @returns {void} 无返回值。No return value.
  */
 function store(type: TypeDefinition): void {
     popFromStack('%rdi');
@@ -99,6 +101,11 @@ type generateExpressionHandlerMap = {
     [K in ASTNodeKind]?: generateExpressionHandler;
 };
 
+/**
+ * 生成表达式的处理程序映射。
+ * Expression handler map.
+ * @type {generateExpressionHandlerMap}
+ */
 const generateExpressionHandlers: generateExpressionHandlerMap = {
     [ASTNodeKind.Number]: (node: ASTNode) => {
         if (node.numberValue === undefined) {
@@ -208,12 +215,12 @@ const generateExpressionHandlers: generateExpressionHandlerMap = {
         }
         generated.push(`  mov $0, %rax`, `  call ${node.functionDef}`);
     },
-    // TODO: Add other cases
 };
 
 /**
  * 根据给定的 AST 节点生成表达式。Generate an expression based on the given AST node.
  * @param {ASTNode} node 要生成表达式的 AST 节点。The AST node to generate the expression for.
+ * @returns {void} 无返回值。No return value.
  */
 function generateExpression(node: ASTNode): void {
     const handler = generateExpressionHandlers[node.nodeKind];
@@ -286,12 +293,12 @@ function generateExpression(node: ASTNode): void {
             throw new Error('invalid expression');
         }
     }
-    // TODO: Add other cases
 }
 
 /**
  * 生成给定抽象语法树节点的语句。Generate a statement for the given abstract syntax tree node.
  * @param {ASTNode} node 要生成语句的抽象语法树节点。The abstract syntax tree node to generate the statement for.
+ * @returns {void} 无返回值。No return value.
  */
 function generateStatement(node: ASTNode): void {
     switch (node.nodeKind) {
@@ -302,7 +309,7 @@ function generateStatement(node: ASTNode): void {
             }
 
             generateExpression(node.leftNode);
-            generated.push(`  jmp .L.return.${nowFunction?.funcName}`);
+            generated.push(`  jmp .L.return.${nowFunction?.name}`);
             return;
         }
         case ASTNodeKind.ExpressionStatement: {
@@ -375,36 +382,39 @@ function generateStatement(node: ASTNode): void {
 /**
  * 为函数中的局部变量分配偏移量。Assign offsets for local variables in functions.
  * @param {FunctionNode} prog 要处理的函数节点。The function node to process.
+ * @returns {void} 无返回值。No return value.
  */
-function assignLocalVariableOffsets(prog: FunctionNode): void {
-    let localFunction: FunctionNode | undefined = prog;
+function assignLocalVariableOffsets(prog: SymbolEntry): void {
+    let localFunction: SymbolEntry | undefined = prog;
     while (localFunction !== undefined) {
-        let offset = 0;
-        let localVariable: LocalVariable | undefined = localFunction.locals;
-        while (localVariable !== undefined) {
-            if (localVariable?.varType?.size === undefined) {
-                logMessage('error', 'Invalid variable type', {
-                    position: assignLocalVariableOffsets,
-                    function: localFunction,
-                    variable: localVariable,
-                });
-                throw new Error('invalid variable type');
+        if (localFunction instanceof FunctionNode) {
+            let offset = 0;
+            let localVariable: Variable | undefined = localFunction.locals;
+            while (localVariable !== undefined) {
+                if (localVariable?.type?.size === undefined) {
+                    logMessage('error', 'Invalid variable type', {
+                        position: assignLocalVariableOffsets,
+                        function: localFunction,
+                        variable: localVariable,
+                    });
+                    throw new Error('invalid variable type');
+                }
+                offset += localVariable.type.size;
+                if (localVariable.type.alignment === undefined) {
+                    logMessage('error', 'Invalid variable type', {
+                        position: assignLocalVariableOffsets,
+                        function: localFunction,
+                        variable: localVariable,
+                    });
+                    throw new Error('invalid variable type');
+                }
+                offset = alignToNearest(offset, localVariable.type.alignment);
+                localVariable.offsetFromRBP = -offset;
+                localVariable = localVariable.nextEntry as Variable;
             }
-            offset += localVariable.varType.size;
-            if (localVariable.varType.alignment === undefined) {
-                logMessage('error', 'Invalid variable type', {
-                    position: assignLocalVariableOffsets,
-                    function: localFunction,
-                    variable: localVariable,
-                });
-                throw new Error('invalid variable type');
-            }
-            offset = alignToNearest(offset, localVariable.varType.alignment);
-            localVariable.offsetFromRBP = -offset;
-            localVariable = localVariable.nextVar;
+            localFunction.stackSize = alignToNearest(offset, 16);
         }
-        localFunction.stackSize = alignToNearest(offset, 16);
-        localFunction = localFunction.returnFunc;
+        localFunction = localFunction.nextEntry;
     }
 }
 
@@ -420,11 +430,92 @@ const sizeToRegForArguments: Record<number | 'default', string[]> = {
 };
 
 /**
+ * 为给定函数节点分配数据段。Assign data section for the given function node.
+ * @param {FunctionNode} prog 要处理的函数节点。The function node to process.
+ * @returns {void} 无返回值。No return value.
+ */
+function assignDataSection(prog: SymbolEntry): void {
+    let globalVariable: SymbolEntry | undefined = prog;
+    while (globalVariable !== undefined) {
+        if (globalVariable instanceof Variable) {
+            if (globalVariable?.type?.size === undefined) {
+                logMessage('error', 'Invalid variable type', {
+                    position: generateCode,
+                    function: globalVariable,
+                });
+                throw new Error('invalid variable type');
+            }
+            generated.push(
+                `  .data`,
+                `  .globl ${globalVariable.name}`,
+                `${globalVariable.name}:`,
+                `  .zero ${globalVariable.type.size}`,
+            );
+        }
+        globalVariable = globalVariable.nextEntry;
+    }
+}
+
+/**
+ * 为给定函数节点分配文本段。Assign text section for the given function node.
+ * @param {FunctionNode} prog 要处理的函数节点。The function node to process.
+ * @returns {void} 无返回值。No return value.
+ */
+function assignTextSection(prog: SymbolEntry): void {
+    let localFunction: SymbolEntry | undefined = prog;
+    while (localFunction !== undefined) {
+        if (localFunction instanceof FunctionNode) {
+            nowFunction = localFunction;
+            generated.push(
+                `  .globl ${localFunction.name}`,
+                `  .text`,
+                `${localFunction.name}:`,
+                `  push %rbp`,
+                `  mov %rsp, %rbp`,
+                `  sub $${localFunction.stackSize}, %rsp`,
+            );
+
+            if (localFunction.body === undefined) {
+                logMessage('error', 'Body is undefined', { position: generateCode, function: localFunction });
+                throw new Error('body is undefined');
+            }
+
+            let nowArgument = localFunction.Arguments;
+            if (nowArgument !== undefined) {
+                let argumentNumber = 0;
+                while (nowArgument !== undefined) {
+                    if (nowArgument?.type?.size === undefined) {
+                        logMessage('error', 'Invalid variable type', {
+                            position: generateCode,
+                            function: localFunction,
+                            variable: nowArgument,
+                        });
+                        throw new Error('invalid variable type');
+                    }
+
+                    const regForArguments =
+                        sizeToRegForArguments[nowArgument.type.size] ?? sizeToRegForArguments.default;
+                    const operation = `  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`;
+                    generated.push(operation);
+                    nowArgument = nowArgument.nextEntry as Variable;
+                    argumentNumber += 1;
+                }
+            }
+
+            generateStatement(localFunction.body);
+            console.assert(depth === 0);
+            generated.push(`.L.return.${localFunction.name}:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
+        }
+        localFunction = localFunction.nextEntry;
+    }
+}
+
+/**
  * 生成给定函数节点的汇编代码。Generate assembly code for the given function node.
- * @param {FunctionNode} prog 要生成代码的函数节点。The function node to generate code for.
+ * @param {SymbolEntry} prog 要生成代码的函数节点。The function node to generate code for.
  * @returns {Promise<void>} 生成代码的 Promise。The Promise of generating code.
  */
-export async function generateCode(prog: FunctionNode): Promise<void> {
+export async function generateCode(prog: SymbolEntry): Promise<void> {
     await new Promise<void>((resolve, reject) => {
         try {
             depth = 0;
@@ -433,52 +524,9 @@ export async function generateCode(prog: FunctionNode): Promise<void> {
             nowFunction = undefined;
 
             assignLocalVariableOffsets(prog);
+            assignDataSection(prog);
+            assignTextSection(prog);
 
-            let localFunction: FunctionNode | undefined = prog;
-            while (localFunction !== undefined) {
-                nowFunction = localFunction;
-                generated.push(
-                    `  .globl ${localFunction.funcName}`,
-                    `${localFunction.funcName}:`,
-                    `  push %rbp`,
-                    `  mov %rsp, %rbp`,
-                    `  sub $${localFunction.stackSize}, %rsp`,
-                );
-
-                if (localFunction.body === undefined) {
-                    logMessage('error', 'Body is undefined', { position: generateCode, function: localFunction });
-                    throw new Error('body is undefined');
-                }
-
-                let nowArgument = localFunction.Arguments;
-                if (nowArgument !== undefined) {
-                    let argumentNumber = 0;
-                    while (nowArgument !== undefined) {
-                        if (nowArgument?.varType?.size === undefined) {
-                            logMessage('error', 'Invalid variable type', {
-                                position: generateCode,
-                                function: localFunction,
-                                variable: nowArgument,
-                            });
-                            throw new Error('invalid variable type');
-                        }
-
-                        const regForArguments =
-                            sizeToRegForArguments[nowArgument.varType.size] ?? sizeToRegForArguments.default;
-                        const operation = `  mov ${regForArguments[argumentNumber]}, ${nowArgument.offsetFromRBP}(%rbp)`;
-                        generated.push(operation);
-                        nowArgument = nowArgument.nextVar;
-                        argumentNumber += 1;
-                    }
-                }
-
-                generateStatement(localFunction.body);
-                console.assert(depth === 0);
-
-                generated.push(`.L.return.${localFunction.funcName}:`, `  mov %rbp, %rsp`, `  pop %rbp`, `  ret`);
-
-                localFunction = localFunction.returnFunc;
-            }
             resolve();
         } catch (error) {
             reject(error instanceof Error ? error : new Error(String(error)));
@@ -488,6 +536,7 @@ export async function generateCode(prog: FunctionNode): Promise<void> {
 
 /**
  * 从堆栈中弹出一个元素。Pop an element from the stack.
+ * @returns {void} 无返回值。No return value.
  */
 function pushToStack(): void {
     generated.push('  push %rax');
@@ -497,6 +546,7 @@ function pushToStack(): void {
 /**
  * 从堆栈中弹出一个元素。Pop an element from the stack.
  * @param {string} argument 要弹出的元素的名称。The name of the element to pop.
+ * @returns {void} 无返回值。No return value.
  */
 function popFromStack(argument: string): void {
     generated.push(`  pop ${argument}`);
@@ -516,10 +566,12 @@ function alignToNearest(n: number, align: number): number {
 /**
  * 生成给定抽象语法树节点的地址。Generate the address of the given abstract syntax tree node.
  * @param {ASTNode} node 要生成地址的抽象语法树节点。The abstract syntax tree node to generate the address for.
+ * @returns {void} 无返回值。No return value.
  */
 function generateAddress(node: ASTNode): void {
     if (node.nodeKind === ASTNodeKind.Variable && node.localVar !== undefined) {
-        generated.push(`  lea ${node.localVar.offsetFromRBP}(%rbp), %rax`);
+        const address = node.localVar.isGlobal ? `${node.localVar.name}(%rip)` : `${node.localVar.offsetFromRBP}(%rbp)`;
+        generated.push(`  lea ${address}, %rax`);
         return;
     }
     if (node.nodeKind === ASTNodeKind.Dereference) {
