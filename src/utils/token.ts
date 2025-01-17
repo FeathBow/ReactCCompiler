@@ -1,4 +1,4 @@
-import { Keywords, VariableTypeDefinition, TokenType } from './commons';
+import { Keywords, VariableTypeDefinition, TokenType, charTypeDefinition, addArray } from './commons';
 import Token from './classes/token-class';
 import { logMessage } from './logger';
 
@@ -155,8 +155,8 @@ export function tokenize(p: string): Token[] {
             const current = new Token();
             current.kind = TokenType.NumericLiteral;
             current.location = p;
-            current.value = Number.parseInt(p, 10);
-            current.length = current.value.toString().length;
+            current.numericValue = Number.parseInt(p, 10);
+            current.length = current.numericValue.toString().length;
             tokens.push(current);
             p = p.slice(current.length);
         } else if (isValidFirstCharOfIdentifier(p.charAt(0))) {
@@ -169,6 +169,50 @@ export function tokenize(p: string): Token[] {
             current.location = start;
             current.length = start.length - p.length;
             tokens.push(current);
+        } else if (p.startsWith('"')) {
+            let str = p.slice(1);
+            let endIndex = str.indexOf('"');
+            if (endIndex === -1) {
+                logMessage('error', 'Unclosed string literal', { position: tokenize });
+                throw new Error('Unclosed string literal');
+            }
+
+            const value =
+                str.slice(0, endIndex).replace(/\\(.)/g, (_, e) => {
+                    switch (e) {
+                        case 'n':
+                            return '\n';
+                        case 't':
+                            return '\t';
+                        case 'r':
+                            return '\r';
+                        case 'b':
+                            return '\b';
+                        case 'f':
+                            return '\f';
+                        case 'v':
+                            return '\v';
+                        case '0':
+                            return '\0';
+                        case '\\':
+                            return '\\';
+                        case '"':
+                            return '"';
+                        case "'":
+                            return "'";
+                        default:
+                            return e;
+                    }
+                }) + '\0';
+            const len = value.length;
+            const current = new Token();
+            current.kind = TokenType.StringLiteral;
+            current.location = p;
+            current.length = endIndex + 2;
+            current.stringValue = value;
+            current.stringType = addArray(charTypeDefinition, len);
+            tokens.push(current);
+            p = p.slice(current.length);
         } else if (readPunctuation(p) > 0) {
             const punctLength = readPunctuation(p);
             const current = new Token();

@@ -1,4 +1,4 @@
-import type Variable from './localvariable-class';
+import type Variable from './variable-class';
 import { ASTNodeKind } from '../commons';
 import type TypeDefinition from './typedef-class';
 

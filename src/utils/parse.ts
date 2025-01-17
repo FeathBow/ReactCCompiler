@@ -16,22 +16,30 @@ import {
 import type TypeDefinition from './classes/typedef-class';
 import type ASTNode from './classes/astnode-class';
 import FunctionNode from './classes/functionnode-class';
-import Variable from './classes/localvariable-class';
+import Variable from './classes/variable-class';
 import type Token from './classes/token-class';
 import { logMessage } from './logger';
 import { skipToken, isEqual, isVariableTypeDefinition } from './token';
 import { IntermediateCodeList, makelist, getNodeValue } from './quadruple';
 import SymbolEntry from './classes/symbolentry-class';
+import {
+    getLocals,
+    getGlobals,
+    setLocals,
+    newBinary,
+    newUnary,
+    newNode,
+    newLocalVariable,
+    newVariableNode,
+    newNumber,
+    newGlobalEntry,
+    initialParse,
+    newStringLiteral,
+} from './creater';
 
 let intermediateCodeList = new IntermediateCodeList();
 
-let locals: Variable | undefined;
-
-let globals: SymbolEntry | undefined;
-
 let nowToken: Token;
-
-let astNodeNumber = 0;
 
 /**
  * 消费一个令牌，如果令牌的值与给定的字符串匹配。
@@ -60,7 +68,9 @@ function consumeToken(token: Token, tokenName: string): boolean {
  * @returns {Variable | undefined} 如果找到了变量，则返回该变量的节点，否则返回undefined。The node of the variable if found, otherwise undefined.
  */
 function findVariable(token: Token): Variable | undefined {
-    let variableSet = [locals, globals as Variable];
+    let variableSet = [getLocals()];
+    let globalSet = getGlobals();
+    if (globalSet !== undefined) variableSet.push(globalSet as Variable);
     for (const variable of variableSet) {
         let variableNode = variable;
         while (variableNode !== undefined) {
@@ -75,106 +85,6 @@ function findVariable(token: Token): Variable | undefined {
         }
     }
     return undefined;
-}
-
-/**
- * 创建一个新的抽象语法树节点。Create a new abstract syntax tree node.
- * @param {ASTNodeKind} kind 节点的类型。The kind of the node.
- * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
- */
-function newNode(kind: ASTNodeKind): ASTNode {
-    astNodeNumber += 1;
-    return {
-        nodeKind: kind,
-        nodeNumber: astNodeNumber,
-    };
-}
-
-/**
- * 创建一个新的二元操作符节点。Create a new binary operator node.
- * @param {ASTNodeKind} kind 节点的类型。The kind of the node.
- * @param {ASTNode} lhs 左操作数。The left operand.
- * @param {ASTNode} rhs 右操作数。The right operand.
- * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
- */
-function newBinary(kind: ASTNodeKind, lhs: ASTNode, rhs: ASTNode): ASTNode {
-    astNodeNumber += 1;
-    return {
-        nodeKind: kind,
-        leftNode: lhs,
-        rightNode: rhs,
-        nodeNumber: astNodeNumber,
-    };
-}
-
-/**
- * 创建一个新的一元操作符节点。Create a new unary operator node.
- * @param {ASTNodeKind} kind 节点的类型。The kind of the node.
- * @param {ASTNode} expr 操作数。The operand.
- * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
- */
-function newUnary(kind: ASTNodeKind, expr: ASTNode): ASTNode {
-    astNodeNumber += 1;
-    return {
-        nodeKind: kind,
-        leftNode: expr,
-        nodeNumber: astNodeNumber,
-    };
-}
-
-/**
- * 创建一个新的数字节点。Create a new number node.
- * @param {number} value 数字的值。The value of the number.
- * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
- */
-function newNumber(value: number): ASTNode {
-    astNodeNumber += 1;
-    return {
-        nodeKind: ASTNodeKind.Number,
-        numberValue: value,
-        nodeNumber: astNodeNumber,
-    };
-}
-
-/**
- * 创建一个新的变量节点。Create a new variable node.
- * @param {Variable} variableNode 代表变量的节点。The node representing the variable.
- * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
- */
-function newVariableNode(variableNode: Variable): ASTNode {
-    astNodeNumber += 1;
-    return {
-        nodeKind: ASTNodeKind.Variable,
-        localVar: variableNode,
-        nodeNumber: astNodeNumber,
-    };
-}
-
-/**
- * 创建一个新的局部变量。Create a new local variable.
- * @param {string} name 变量名。The name of the variable.
- * @param {TypeDefinition} type 变量类型。The type of the variable.
- * @returns {Variable} 新创建的局部变量。The newly created local variable.
- */
-function newLocalVariable(name: string, type: TypeDefinition): Variable {
-    const localVariable = new Variable(name, 0, false, type, locals);
-    locals = localVariable;
-    return localVariable;
-}
-
-/**
- * 创建一个新的全局 entry。Create a new global entry.
- * @param {string} name entry 名。The name of the entry.
- * @param {TypeDefinition} type 类型定义。The type definition.
- * @param {boolean} isFunctionNode 是否是函数节点。Whether it is a function node.
- * @returns {SymbolEntry} 新创建的全局 entry。The newly created global entry.
- */
-function newGlobalEntry(name: string, type: TypeDefinition, isFunctionNode: boolean): SymbolEntry {
-    const globalEntry = isFunctionNode
-        ? new FunctionNode(name, undefined, locals, 0, undefined, globals, type)
-        : new Variable(name, 0, true, type, globals as Variable);
-    globals = globalEntry;
-    return globalEntry;
 }
 
 /**
@@ -1030,20 +940,19 @@ function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     addType(leftNode);
     addType(rightNode);
 
-    if (leftNode.typeDef === undefined || rightNode.typeDef === undefined) {
+    if (leftNode.typeDef === undefined || rightNode.typeDef === undefined)
         throw new Error('TypeDefinition is undefined');
-    }
 
-    if (isNumberType(leftNode.typeDef) && isNumberType(rightNode.typeDef)) {
+    if (isNumberType(leftNode.typeDef) && isNumberType(rightNode.typeDef))
         return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
-    }
+
     if (leftNode.typeDef.ptr !== undefined && rightNode.typeDef.ptr !== undefined) {
         logMessage('error', 'Invalid operands', { leftNode, rightNode, position: ptrAdd });
         throw new Error('Invalid operands');
     }
-    if (leftNode.typeDef.ptr === undefined && rightNode.typeDef.ptr !== undefined) {
+    if (leftNode.typeDef.ptr === undefined && rightNode.typeDef.ptr !== undefined)
         [leftNode, rightNode] = [rightNode, leftNode];
-    }
+
     if (leftNode.typeDef?.ptr?.size !== undefined) {
         rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(leftNode.typeDef.ptr.size));
         return newBinary(ASTNodeKind.Addition, leftNode, rightNode);
@@ -1062,13 +971,11 @@ function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
     addType(leftNode);
     addType(rightNode);
 
-    if (leftNode.typeDef === undefined || rightNode.typeDef === undefined) {
+    if (leftNode.typeDef === undefined || rightNode.typeDef === undefined)
         throw new Error('TypeDefinition is undefined');
-    }
 
-    if (isNumberType(leftNode.typeDef) && isNumberType(rightNode.typeDef)) {
+    if (isNumberType(leftNode.typeDef) && isNumberType(rightNode.typeDef))
         return newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
-    }
 
     if (leftNode.typeDef.ptr?.size !== undefined && isNumberType(rightNode.typeDef)) {
         rightNode = newBinary(ASTNodeKind.Multiplication, rightNode, newNumber(leftNode.typeDef.ptr.size));
@@ -1161,9 +1068,8 @@ function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
             token = nextToken;
         }
 
-        if (isEqual(token, 'void') && token.next !== undefined && isEqual(token.next, ')')) {
-            token = token.next;
-        } else {
+        if (isEqual(token, 'void') && token.next !== undefined && isEqual(token.next, ')')) token = token.next;
+        else {
             let nowType = declareType(token);
             token = nowToken;
 
@@ -1211,7 +1117,7 @@ function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
             logMessage('error', 'Invalid array size', { token, position: checkTypeSuffix });
             throw new Error('Invalid array size');
         }
-        const { value } = token.next;
+        const { numericValue: value } = token.next;
         if (value === undefined) {
             logMessage('error', 'Number is undefined', { token, position: checkTypeSuffix });
             throw new Error('Number is undefined');
@@ -1265,12 +1171,12 @@ function parseFunction(token: Token, type: TypeDefinition): Token {
         throw new Error('Token is undefined');
     }
     let nowEntry = newGlobalEntry(getIdentifier(type.tokens), type, true) as FunctionNode;
-    locals = undefined;
+    setLocals(undefined);
 
     intermediateCodeList.emit('begin', nowEntry.name, type.type);
 
     createLocalVariablesForParameters(type.parameters);
-    nowEntry.Arguments = locals;
+    nowEntry.Arguments = getLocals();
 
     const nextToken = skipToken(token, '{');
     if (nextToken === undefined) {
@@ -1280,7 +1186,7 @@ function parseFunction(token: Token, type: TypeDefinition): Token {
     token = nextToken;
     nowEntry.body = blockStatement(token);
     token = nowToken;
-    nowEntry.locals = locals;
+    nowEntry.locals = getLocals();
     return token;
 }
 
@@ -1312,11 +1218,8 @@ function functionCall(token: Token): ASTNode {
         }
         current = current.nextNode = assign(startToken);
 
-        if (current.functionDef === undefined) {
-            intermediateCodeList.emit('arg', getNodeValue(current));
-        } else {
-            intermediateCodeList.emit('arg', 'call', getNodeValue(current));
-        }
+        if (current.functionDef === undefined) intermediateCodeList.emit('arg', getNodeValue(current));
+        else intermediateCodeList.emit('arg', 'call', getNodeValue(current));
 
         startToken = nowToken;
     }
@@ -1422,8 +1325,8 @@ function parseType(token: Token): TypeDefinition {
 
 /**
  * 解析一个主表达式。Parse a primary expression.
- * 产生式为：主表达式 ::= '(' 表达式 ')' | 标识符 | 数字字面量 | 函数调用
- * Production rule: primary ::= '(' expression ')' | Identifier | NumericLiteral | functionCall
+ * 产生式为：主表达式 ::= '(' 表达式 ')' | 标识符 | 数字字面量 | 函数调用 | 字符串字面量
+ * Production rule: primary ::= '(' expression ')' | Identifier | NumericLiteral | functionCall | stringLiteral
  * @param {Token} token 代表主表达式的令牌。The token representing the primary expression.
  * @returns {ASTNode} 代表主表达式的抽象语法树节点。The abstract syntax tree node representing the primary expression.
  */
@@ -1452,26 +1355,40 @@ function primary(token: Token): ASTNode {
     }
 
     if (token.kind === TokenType.Identifier) {
-        if (token.next !== undefined && isEqual(token.next, '(')) {
-            return functionCall(token);
-        }
-
+        if (token.next !== undefined && isEqual(token.next, '(')) return functionCall(token);
         return identifierPrimary(token);
     }
 
-    if (token.kind === TokenType.NumericLiteral) {
-        if (token.value === undefined) {
-            logMessage('error', 'Invalid number', { token, position: primary });
-            throw new Error('Invalid number');
+    if (token.kind === TokenType.StringLiteral) {
+        if (token.stringType === undefined) {
+            logMessage('error', 'String type is undefined', { token, position: primary });
+            throw new Error('String type is undefined');
         }
-        const node = newNumber(token.value);
+        const node = newStringLiteral(token.stringValue, token.stringType) as Variable;
         if (token.next === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: primary });
             throw new Error('Unexpected end of input');
         }
         nowToken = token.next;
 
-        intermediateCodeList.emit('=', String(token.value), undefined, `N${node.nodeNumber}`);
+        intermediateCodeList.emit('=', token.stringValue, undefined, `LC${node.name}`);
+
+        return newVariableNode(node);
+    }
+
+    if (token.kind === TokenType.NumericLiteral) {
+        if (token.numericValue === undefined) {
+            logMessage('error', 'Invalid number', { token, position: primary });
+            throw new Error('Invalid number');
+        }
+        const node = newNumber(token.numericValue);
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: primary });
+            throw new Error('Unexpected end of input');
+        }
+        nowToken = token.next;
+
+        intermediateCodeList.emit('=', String(token.numericValue), undefined, `N${node.nodeNumber}`);
 
         return node;
     }
@@ -1492,9 +1409,7 @@ function identifierPrimary(token: Token): ASTNode {
         logMessage('error', 'Variable not defined', { token, position: primary });
         throw new Error('Variable not defined');
     }
-    if (token.next !== undefined) {
-        nowToken = token.next;
-    }
+    if (token.next !== undefined) nowToken = token.next;
     if (variableNode === undefined) {
         logMessage('error', 'Variable not found', { token, position: primary });
         throw new Error('Variable not found');
@@ -1568,25 +1483,10 @@ function bracketsPrimary(token: Token): { returnNode: ASTNode; token: Token } {
 }
 
 /**
- * 解析代码段。Parse a piece of code.
- * @param {Token[]} tokens 代表代码的令牌流。The token stream representing the code.
- * @returns { { globalVar: SymbolEntry | undefined, quadrupleOutput: string } } 解析得到的全局 entry 和四元式输出。The parsed global entry and quadruple output.
+ * 获取四元式。Get the quadruple.
+ * @returns {string} 四元式输出。The quadruple output.
  */
-export function parse(tokens: Token[]): { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } {
-    locals = undefined;
-    globals = undefined;
-    intermediateCodeList = new IntermediateCodeList();
-    astNodeNumber = 0;
-
-    let token = tokens[0];
-    while (token.kind !== TokenType.EndOfFile) {
-        let type = declareType(token);
-        token = nowToken;
-        let judgeFunction =
-            token.next !== undefined && !isEqual(token.next, ';') && declare(token, type).type == ASTNodeType.Function;
-        token = judgeFunction ? parseFunction(token, type) : parseGlobalVariable(token, type);
-    }
-
+function getQuadruple(): string {
     const nodeToQuadrupleMap = new Map<string, string>();
     let nextQuadrupleNumber = 1;
     const quadrupleOutput = `${['id', 'op', 'argument1', 'argument2', 'result'].map((header) => header.padEnd(13)).join('')}\n${intermediateCodeList.codes
@@ -1599,16 +1499,33 @@ export function parse(tokens: Token[]): { globalEntry: SymbolEntry | undefined; 
                                 nodeToQuadrupleMap.set(item, `N${nextQuadrupleNumber}`);
                                 nextQuadrupleNumber += 1;
                             }
-
                             const mappedItem = nodeToQuadrupleMap.get(item);
                             return (mappedItem ?? '').padEnd(13);
                         }
-
                         return (item ?? '').padEnd(13);
                     })
                     .join('')}`,
         )
         .join('\n')}`;
+    return quadrupleOutput;
+}
 
-    return { globalEntry: globals, quadrupleOutput };
+/**
+ * 解析代码段。Parse a piece of code.
+ * @param {Token[]} tokens 代表代码的令牌流。The token stream representing the code.
+ * @returns { { globalVar: SymbolEntry | undefined, quadrupleOutput: string } } 解析得到的全局 entry 和四元式输出。The parsed global entry and quadruple output.
+ */
+export function parse(tokens: Token[]): { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } {
+    initialParse();
+    intermediateCodeList = new IntermediateCodeList();
+    let token = tokens[0];
+    while (token.kind !== TokenType.EndOfFile) {
+        let type = declareType(token);
+        token = nowToken;
+        let judgeFunction =
+            token.next !== undefined && !isEqual(token.next, ';') && declare(token, type).type == ASTNodeType.Function;
+        token = judgeFunction ? parseFunction(token, type) : parseGlobalVariable(token, type);
+    }
+    const quadrupleOutput = getQuadruple();
+    return { globalEntry: getGlobals(), quadrupleOutput };
 }

@@ -1,5 +1,5 @@
 import type ASTNode from './classes/astnode-class';
-import Variable from './classes/localvariable-class';
+import Variable from './classes/variable-class';
 import type Token from './classes/token-class';
 import TypeDefinition from './classes/typedef-class';
 import { logMessage } from './logger';
@@ -17,6 +17,8 @@ export enum TokenType {
     Keyword,
     /** 数字字面量 Numeric Literal */
     NumericLiteral,
+    /** 字符串字面量 String Literal */
+    StringLiteral,
     /** 文件结束标记 End of File */
     EndOfFile,
 }

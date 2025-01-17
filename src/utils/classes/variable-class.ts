@@ -9,6 +9,8 @@ class Variable extends SymbolEntry {
     offsetFromRBP: number;
     /** 全局标识符。Global identifier. */
     isGlobal: boolean;
+    /** 初始值。Initial value. */
+    initialValue: string | undefined;
 
     /**
      * 类构造函数。
@@ -18,6 +20,7 @@ class Variable extends SymbolEntry {
      * @param {boolean} isGlobal - 全局标识符。Global identifier.
      * @param {TypeDefinition} variableType - 变量类型。Variable type.
      * @param {Variable} nextVariable - 下一个变量。Next variable.
+     * @param {string | undefined} initialValue - 初始值。Initial value.
      * @returns {Variable} 类实例（Class instance）。
      * @class
      */
@@ -27,10 +30,12 @@ class Variable extends SymbolEntry {
         isGlobal = false,
         variableType?: TypeDefinition,
         nextVariable?: Variable,
+        initialValue = undefined,
     ) {
         super(variableName, variableType, nextVariable);
         this.offsetFromRBP = offsetFromRBP;
         this.isGlobal = isGlobal;
+        this.initialValue = initialValue;
     }
 }
 

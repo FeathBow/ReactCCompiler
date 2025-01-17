@@ -2,7 +2,7 @@ import { ASTNodeKind, ASTNodeType } from './commons';
 import type TypeDefinition from './classes/typedef-class';
 import type ASTNode from './classes/astnode-class';
 import FunctionNode from './classes/functionnode-class';
-import Variable from './classes/localvariable-class';
+import Variable from './classes/variable-class';
 import { logMessage } from './logger';
 import SymbolEntry from './classes/symbolentry-class';
 
@@ -445,12 +445,13 @@ function assignDataSection(prog: SymbolEntry): void {
                 });
                 throw new Error('invalid variable type');
             }
-            generated.push(
-                `  .data`,
-                `  .globl ${globalVariable.name}`,
-                `${globalVariable.name}:`,
-                `  .zero ${globalVariable.type.size}`,
-            );
+            generated.push(`  .data`, `  .globl ${globalVariable.name}`, `${globalVariable.name}:`);
+            if (globalVariable.initialValue === undefined) {
+                generated.push(`  .zero ${globalVariable.type.size}`);
+            } else {
+                const bytes = Array.from(globalVariable.initialValue).map((char) => `  .byte ${char.charCodeAt(0)}`);
+                generated.push(...bytes);
+            }
         }
         globalVariable = globalVariable.nextEntry;
     }

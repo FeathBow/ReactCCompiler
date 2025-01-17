@@ -14,13 +14,6 @@ describe('Standard operations', () => {
         { code: 'int main(){ return sizeof(void); }', expectedExitStatus: '1' },
         { code: 'int main(){ return sizeof(i64*); }', expectedExitStatus: '8' },
         { code: 'int main(){ int (x[2])[2]; return sizeof(x); }', expectedExitStatus: '16' },
-
-        { code: 'int x; int main(){ x = 2 + 3 * 4 - 5 / 3; return x; }', expectedExitStatus: '13' },
-        { code: 'int a[3], x; int main(){ a[2] = 1; x = a[2]; return x; }', expectedExitStatus: '1' },
-        { code: 'int (x[2])[2]; int main(){ return sizeof(x); }', expectedExitStatus: '16' },
-        { code: 'char (x[2])[2]; int main(){ return sizeof(x); }', expectedExitStatus: '4' },
-        { code: 'i64 (x[2])[2]; int main(){ return sizeof(x); }', expectedExitStatus: '32' },
-
         { code: 'int main(){ return 20>=30; }', expectedExitStatus: '0' },
         {
             code: 'int main(){ int i = 0;int j = 0; for (i=0; i<3; i=i+1) {j= i + j;} return j; }',

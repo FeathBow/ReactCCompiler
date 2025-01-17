@@ -1,4 +1,4 @@
-import type Variable from './localvariable-class';
+import type Variable from './variable-class';
 import type ASTNode from './astnode-class';
 import SymbolEntry from './symbolentry-class';
 import type TypeDefinition from './typedef-class';
