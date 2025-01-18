@@ -178,30 +178,36 @@ export function tokenize(p: string): Token[] {
             }
 
             const value =
-                str.slice(0, endIndex).replace(/\\(.)/g, (_, e) => {
-                    switch (e) {
-                        case 'n':
-                            return '\n';
-                        case 't':
-                            return '\t';
-                        case 'r':
-                            return '\r';
-                        case 'b':
-                            return '\b';
-                        case 'f':
-                            return '\f';
-                        case 'v':
-                            return '\v';
-                        case '0':
-                            return '\0';
-                        case '\\':
-                            return '\\';
-                        case '"':
-                            return '"';
-                        case "'":
-                            return "'";
-                        default:
-                            return e;
+                str.slice(0, endIndex).replace(/\\(x[0-9A-Fa-f]+|[0-7]{1,3}|.)/g, (_, e) => {
+                    if (e.startsWith('x')) {
+                        return String.fromCharCode(parseInt(e.slice(1), 16));
+                    } else if (/^[0-7]{1,3}$/.test(e)) {
+                        return String.fromCharCode(parseInt(e, 8));
+                    } else {
+                        switch (e) {
+                            case 'a':
+                                return '\x07';
+                            case 'n':
+                                return '\n';
+                            case 't':
+                                return '\t';
+                            case 'r':
+                                return '\r';
+                            case 'b':
+                                return '\b';
+                            case 'f':
+                                return '\f';
+                            case 'v':
+                                return '\v';
+                            case '\\':
+                                return '\\';
+                            case '"':
+                                return '"';
+                            case "'":
+                                return "'";
+                            default:
+                                return e;
+                        }
                     }
                 }) + '\0';
             const len = value.length;
