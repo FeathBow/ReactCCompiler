@@ -1,9 +1,6 @@
-import { ASTNodeKind } from './commons';
-import type TypeDefinition from './classes/typedef-class';
-import type ASTNode from './classes/astnode-class';
-import FunctionNode from './classes/functionnode-class';
-import Variable from './classes/variable-class';
-import SymbolEntry from './classes/symbolentry-class';
+import { ASTNodeKind } from '../commons';
+import { FunctionNode, Variable, SymbolEntry, ScopeManager } from '../classes';
+import type { TypeDefinition, ASTNode } from '../classes';
 
 let locals: Variable | undefined;
 let globals: SymbolEntry | undefined;
@@ -120,6 +117,7 @@ export function newVariableNode(variableNode: Variable): ASTNode {
  */
 export function newLocalVariable(name: string, type: TypeDefinition): Variable {
     const localVariable = new Variable(name, 0, false, type, locals);
+    ScopeManager.getInstance().declareEntry(localVariable);
     locals = localVariable;
     return localVariable;
 }
@@ -134,6 +132,7 @@ export function newGlobalEntry(name: string, type: TypeDefinition, isFunctionNod
     const globalEntry = isFunctionNode
         ? new FunctionNode(name, undefined, locals, 0, undefined, globals, type)
         : new Variable(name, 0, true, type, globals as Variable);
+    ScopeManager.getInstance().declareEntry(globalEntry);
     globals = globalEntry;
     return globalEntry;
 }

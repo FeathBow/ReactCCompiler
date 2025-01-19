@@ -1,10 +1,7 @@
 import { ASTNodeKind, ASTNodeType } from './commons';
-import type TypeDefinition from './classes/typedef-class';
-import type ASTNode from './classes/astnode-class';
-import FunctionNode from './classes/functionnode-class';
-import Variable from './classes/variable-class';
+import type { TypeDefinition, ASTNode } from './classes';
+import { FunctionNode, Variable, SymbolEntry } from './classes';
 import { logMessage } from './logger';
-import SymbolEntry from './classes/symbolentry-class';
 
 /**
  * 用于追踪当前的嵌套深度。

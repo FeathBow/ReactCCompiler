@@ -23,4 +23,32 @@ describe('Variable operations', () => {
         { code: 'short (x[2])[2]; int main(){ return sizeof(x); }', expectedExitStatus: '8' },
     ];
     runTestCases(globalVariableTestCases, 'Global variable test');
+
+    const scopeTestCases = [
+        { code: 'int main(){ int x = 1; { int x = 2; return x; } }', expectedExitStatus: '2' },
+        { code: 'int main(){ int x = 1; { int x = 2; } return x; }', expectedExitStatus: '1' },
+        { code: 'int main(){ int x = 1; { x = 2; } return x; }', expectedExitStatus: '2' },
+        { code: 'int main(){ int x = 1; { int y = 2; return x; } }', expectedExitStatus: '1' },
+
+        { code: 'int x; int main(){ x = 1; { x = 2; { int x = 3; return x; } } }', expectedExitStatus: '3' },
+        { code: 'int x; int main(){ x = 1; { x = 2; { int x = 3; } return x; } }', expectedExitStatus: '2' },
+        { code: 'int x; int main(){ x = 1; { x = 2; { x = 3; } return x; } }', expectedExitStatus: '3' },
+        { code: 'int x; int main(){ x = 1; { x = 2; { x = 3; return x; } } }', expectedExitStatus: '3' },
+
+        { code: 'int x; int main(){ x = 1; { int x = 2; { x = 3; return x; } } }', expectedExitStatus: '3' },
+        { code: 'int x; int main(){ x = 1; { int x = 2; { x = 3; } return x; } }', expectedExitStatus: '3' },
+        { code: 'int x; int main(){ x = 1; { int x = 2; { int x = 3; return x; } } }', expectedExitStatus: '3' },
+        { code: 'int x; int main(){ x = 1; { int x = 2; { int x = 3; } return x; } }', expectedExitStatus: '2' },
+
+        { code: 'int x; int main(){ x = 1; { { x = 2; { int x = 3; } } return x; } }', expectedExitStatus: '2' },
+        { code: 'int x; int main(){ x = 1; { { x = 2; { int x = 3; } } return x; } }', expectedExitStatus: '2' },
+        { code: 'int x; int main(){ x = 1; { { x = 2; { x = 3; } } return x; } }', expectedExitStatus: '3' },
+        { code: 'int x; int main(){ x = 1; { { x = 2; { x = 3; } } return x; } }', expectedExitStatus: '3' },
+
+        { code: 'int x; int main(){ x = 1; { { int x = 2; { x = 3; } } return x; } }', expectedExitStatus: '1' },
+        { code: 'int x; int main(){ x = 1; { { int x = 2; { x = 3; } } return x; } }', expectedExitStatus: '1' },
+        { code: 'int x; int main(){ x = 1; { { int x = 2; { int x = 3; } } return x; } }', expectedExitStatus: '1' },
+        { code: 'int x; int main(){ x = 1; { { int x = 2; { int x = 3; } } return x; } }', expectedExitStatus: '1' },
+    ];
+    runTestCases(scopeTestCases, 'Scope test');
 });
