@@ -25,6 +25,7 @@ export type StatementHandler = (token: Token) => { returnNode: ASTNode; token: T
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
 export type TypeDefinitionHandler = (token: Token, type: string) => TypeDefinition;
+
 /**
  * 类型到 TypeDefinition 的映射。Mapping from type to TypeDefinition.
  * @type {Record<string, TypeDefinition>}
@@ -36,6 +37,7 @@ export const typeDefinitions: Record<string, TypeDefinition> = {
     i64: int64TypeDefinition,
     short: shortTypeDefinition,
 };
+
 /**
  * 关系操作处理器类型。Relational operation handler type.
  * @typedef {Function} RelationalHandler
@@ -45,8 +47,8 @@ export const typeDefinitions: Record<string, TypeDefinition> = {
  * @param {boolean} swapNodes - 是否交换节点。Whether to swap nodes.
  * @returns {ASTNode} - 返回新的AST节点。Returns a new AST node.
  */
-
 export type RelationalHandler = (token: Token, kind: ASTNodeKind, node: ASTNode, swapNodes: boolean) => ASTNode;
+
 /**
  * 乘法操作处理器类型。Multiplication operation handler type.
  * @typedef {Function} MulHandler
@@ -55,8 +57,9 @@ export type RelationalHandler = (token: Token, kind: ASTNodeKind, node: ASTNode,
  * @param {ASTNode} left - 左操作数。The left operand.
  * @returns {ASTNode} 代表乘法表达式的抽象语法树节点。The abstract syntax tree node representing the multiplication expression.
  */
+export type MulHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => ASTNode;
 
-export type MulHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => ASTNode; /**
+/**
  * 加法操作处理器类型。Addition operation handler type.
  * @typedef {Function} AddHandler
  * @param {Token} token - 代表加法表达式的令牌。The token representing the addition expression.
@@ -64,8 +67,8 @@ export type MulHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => AST
  * @param {ASTNode} left - 左操作数。The left operand.
  * @returns {ASTNode} 代表加法表达式的抽象语法树节点。The abstract syntax tree node representing the addition expression.
  */
-
 export type AddHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => ASTNode;
+
 /**
  * 一元操作处理器类型。Unary operation handler type.
  * @typedef {Function} UnaryHandler
@@ -73,8 +76,8 @@ export type AddHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => AST
  * @param {ASTNodeKind} kind - 一元操作的种类。The kind of unary operation.
  * @returns {ASTNode} 代表一元表达式的抽象语法树节点。The abstract syntax tree node representing the unary expression.
  */
-
 export type UnaryHandler = (token: Token, kind: ASTNodeKind) => ASTNode;
+
 /**
  * 等式操作处理器类型。Equality operation handler type.
  * @typedef {Function} EqualityHandler
@@ -83,5 +86,15 @@ export type UnaryHandler = (token: Token, kind: ASTNodeKind) => ASTNode;
  * @param {ASTNode} left - 左操作数。The left operand.
  * @returns {ASTNode} 代表等式的抽象语法树节点。The abstract syntax tree node representing the equality.
  */
-
 export type EqualityHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => ASTNode;
+
+type generateExpressionHandler = (node: ASTNode) => void;
+
+/**
+ * 生成表达式处理器映射。Generate expression handler map.
+ * @typedef {object} generateExpressionHandlerMap
+ * @property {generateExpressionHandler} [K in ASTNodeKind] - 生成表达式处理器。Generate expression handler.
+ */
+export type generateExpressionHandlerMap = {
+    [K in ASTNodeKind]?: generateExpressionHandler;
+};

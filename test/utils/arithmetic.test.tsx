@@ -83,4 +83,18 @@ describe('Arithmetic operations', () => {
         { code: 'int main(){ return 20>=30; }', expectedExitStatus: '0' },
     ];
     runTestCases(greaterThanOrEqualTestCases, 'Greater Than or Equal test');
+
+    const commaTestCases = [
+        { code: 'int main(){ return 1, 2, 3; }', expectedExitStatus: '3' },
+        { code: 'int main(){ return (1, 2, 3); }', expectedExitStatus: '3' },
+        { code: 'int main(){ int x = 1, y = 2; return x, y; }', expectedExitStatus: '2' },
+        { code: 'int main(){ int x = 1, y = 2; return y, x; }', expectedExitStatus: '1' },
+        { code: 'int main(){ int x = 1, y = 2; (x = 3, y) = 4; return x, y; }', expectedExitStatus: '4' },
+        { code: 'int main(){ int x = 1, y = 2; (x = 3, y) = 4; return y, x; }', expectedExitStatus: '3' },
+        { code: 'int main(){ int x = 1, y = 2; (x = 3, y = 4); return x, y; }', expectedExitStatus: '4' },
+        { code: 'int main(){ int x = 1, y = 2; (x = 3, y = 4); return y, x; }', expectedExitStatus: '3' },
+        { code: 'int main(){ int x = 1, y = 2; x = 3, y = 4; return x, y; }', expectedExitStatus: '4' },
+        { code: 'int main(){ int x = 1, y = 2; x = 3, y = 4; return y, x; }', expectedExitStatus: '3' },
+    ];
+    runTestCases(commaTestCases, 'Comma test');
 });

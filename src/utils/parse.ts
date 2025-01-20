@@ -445,13 +445,24 @@ function expressionStatement(token: Token): ASTNode {
 
 /**
  * 解析一个表达式。Parse an expression.
- * 产生式为：表达式 ::= 赋值表达式
- * Production rule: expression ::= assign
+ * 产生式为：表达式 ::= 赋值表达式 (',' 表达式)?
+ * Production rule: expression ::= assign (',' expr)?
  * @param {Token} token 代表表达式的令牌。The token representing the expression.
  * @returns {ASTNode} 代表表达式的抽象语法树节点。The abstract syntax tree node representing the expression.
  */
 function expression(token: Token): ASTNode {
-    return assign(token);
+    let node = assign(token);
+    token = TokenManager.getInstance().nowToken;
+    if (isEqual(token, ',')) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: expression });
+            throw new Error('Unexpected end of input');
+        }
+        node = creater.newBinary(commons.ASTNodeKind.Comma, node, expression(token.next));
+        token = TokenManager.getInstance().nowToken;
+    }
+    TokenManager.getInstance().nowToken = token;
+    return node;
 }
 
 /**

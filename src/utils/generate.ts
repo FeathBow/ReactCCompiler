@@ -2,6 +2,7 @@ import { ASTNodeKind, ASTNodeType } from './commons';
 import type { TypeDefinition, ASTNode } from './classes';
 import { FunctionNode, Variable, SymbolEntry } from './classes';
 import { logMessage } from './logger';
+import { generateExpressionHandlerMap } from './parser/handlers';
 
 /**
  * 用于追踪当前的嵌套深度。
@@ -91,12 +92,6 @@ function store(type: TypeDefinition): void {
         generated.push(`  ${operation}`);
     }
 }
-
-type generateExpressionHandler = (node: ASTNode) => void;
-
-type generateExpressionHandlerMap = {
-    [K in ASTNodeKind]?: generateExpressionHandler;
-};
 
 /**
  * 生成表达式的处理程序映射。
@@ -211,6 +206,14 @@ const generateExpressionHandlers: generateExpressionHandlerMap = {
             argumentNumber -= 1;
         }
         generated.push(`  mov $0, %rax`, `  call ${node.functionDef}`);
+    },
+    [ASTNodeKind.Comma]: (node: ASTNode) => {
+        if (node.leftNode === undefined || node.rightNode === undefined) {
+            logMessage('error', 'Invalid comma', { node, position: generateExpression });
+            throw new Error('invalid comma');
+        }
+        generateExpression(node.leftNode);
+        generateExpression(node.rightNode);
     },
 };
 
@@ -578,6 +581,15 @@ function generateAddress(node: ASTNode): void {
             throw new Error('invalid dereference');
         }
         generateExpression(node.leftNode);
+        return;
+    }
+    if (node.nodeKind === ASTNodeKind.Comma) {
+        if (node.leftNode === undefined || node.rightNode === undefined) {
+            logMessage('error', 'Invalid comma', { node, position: generateAddress });
+            throw new Error('invalid comma');
+        }
+        generateExpression(node.leftNode);
+        generateAddress(node.rightNode);
         return;
     }
 

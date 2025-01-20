@@ -1,5 +1,5 @@
-import type {ASTNode, Token} from './classes';
-import {Variable, TypeDefinition, TokenManager, ScopeManager} from './classes';
+import type { ASTNode, Token } from './classes';
+import { Variable, TypeDefinition, TokenManager, ScopeManager } from './classes';
 import { logMessage } from './logger';
 import { isEqual } from './token';
 
@@ -66,6 +66,8 @@ export enum ASTNodeKind {
     Dereference,
     /** 函数调用。Function call. */
     FunctionCall,
+    /** 逗号。Comma. */
+    Comma,
 }
 
 /**
@@ -219,6 +221,7 @@ export function isNumberType(type: TypeDefinition): boolean {
 
 /**
  * 创建一个指向指定类型的指针。
+ * Create a pointer to the specified type.
  * @param {TypeDefinition} ptr - 要指向的类型（The type to point to）。
  * @returns {TypeDefinition} 指向指定类型的指针（A pointer to the specified type）。
  */
@@ -235,7 +238,9 @@ export function pointerTo(ptr: TypeDefinition): TypeDefinition {
 
 /**
  * 为一个节点添加类型。
+ * Add a type to a node.
  * @param {ASTNode | undefined} node - 要添加类型的节点（The node to add type）。
+ * @returns {void}
  */
 export function addType(node: ASTNode | undefined): void {
     if (node === undefined || node.typeDef !== undefined) {
@@ -266,6 +271,10 @@ export function addType(node: ASTNode | undefined): void {
         functionArgs = functionArgs.nextNode;
     }
     switch (node.nodeKind) {
+        case ASTNodeKind.Comma: {
+            node.typeDef = node.rightNode?.typeDef;
+            return;
+        }
         case ASTNodeKind.Addition:
         case ASTNodeKind.Subtraction:
         case ASTNodeKind.Multiplication:
@@ -327,6 +336,7 @@ export function addType(node: ASTNode | undefined): void {
 
 /**
  * 创建一个新的函数类型。
+ * Create a new function type.
  * @param {TypeDefinition} type - 返回类型（Return type）。
  * @returns {TypeDefinition} 新的函数类型（New function type）。
  */
