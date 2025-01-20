@@ -1,5 +1,5 @@
 import type Token from './token-class';
-import { type ASTNodeType, type TypeDefinitionOptions } from '../commons';
+import type { ASTNodeType, TypeDefinitionOptions } from '../commons';
 
 /**
  * 定义了变量类型的类。

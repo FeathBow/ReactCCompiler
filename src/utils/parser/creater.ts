@@ -128,9 +128,20 @@ export function newLocalVariable(name: string, type: TypeDefinition): Variable {
  * @param {boolean} isFunctionNode 是否是函数节点。Whether it is a function node.
  * @returns {SymbolEntry} 新创建的全局 entry。The newly created global entry.
  */
-export function newGlobalEntry(name: string, type: TypeDefinition, isFunctionNode: boolean): SymbolEntry {
+export function newGlobalEntry(
+    name: string,
+    type: TypeDefinition,
+    isFunctionNode: boolean,
+    isDeclare = false,
+): SymbolEntry {
     const globalEntry = isFunctionNode
-        ? new FunctionNode(name, undefined, locals, 0, undefined, globals, type)
+        ? FunctionNode.create({
+              name: name,
+              locals: locals,
+              returnFunc: globals,
+              type: type,
+              declare: isDeclare,
+          })
         : new Variable(name, 0, true, type, globals as Variable);
     ScopeManager.getInstance().declareEntry(globalEntry);
     globals = globalEntry;

@@ -2,6 +2,31 @@ import type Variable from './variable-class';
 import type ASTNode from './astnode-class';
 import SymbolEntry from './symbolentry-class';
 import type TypeDefinition from './typedef-class';
+
+/**
+ * 函数节点参数接口。
+ * Function node parameters interface.
+ * @interface
+ * @property {string} name - 函数名。Function name.
+ * @property {ASTNode} body - 函数体。Function body.
+ * @property {Variable} locals - 局部变量。Local variables.
+ * @property {number} stackSize - 栈大小。Stack size.
+ * @property {Variable} Arguments - 参数。Arguments.
+ * @property {FunctionNode} returnFunc - 返回函数。Return function.
+ * @property {TypeDefinition} type - 类型。Type.
+ * @property {boolean} declare - 是否声明。Whether to declare.
+ */
+export interface FunctionNodeParams {
+    name?: string;
+    body?: ASTNode;
+    locals?: Variable;
+    stackSize?: number;
+    Arguments?: Variable;
+    returnFunc?: FunctionNode;
+    type?: TypeDefinition;
+    declare?: boolean;
+}
+
 /**
  * 代表一个函数节点的类。
  * Class representing a function node.
@@ -15,34 +40,35 @@ class FunctionNode extends SymbolEntry {
     stackSize?: number = 0;
     /** 参数。Arguments. */
     Arguments?: Variable;
+    /** 函数声明。Function declaration. */
+    declare?: boolean;
 
     /**
      * 类构造函数。
      * Class constructor
-     * @param {string} name - 函数名。Function name.
-     * @param {ASTNode} body - 函数体。Function body.
-     * @param {Variable} locals - 局部变量。Local variables.
-     * @param {number} stackSize - 栈大小。Stack size.
-     * @param {Variable} Arguments - 参数。Arguments.
-     * @param {returnFunc} returnFunc - 返回函数。Return function.
-     * @param {TypeDefinition} type - 类型。Type.
+     * @param {FunctionNodeParams} params - 参数对象。Parameter object.
      * @returns {FunctionNode} 类实例（Class instance）。
      * @class
      */
-    constructor(
-        name = '',
-        body?: ASTNode,
-        locals?: Variable,
-        stackSize = 0,
-        Arguments?: Variable,
-        returnFunc?: FunctionNode,
-        type?: TypeDefinition,
-    ) {
+    constructor(params: FunctionNodeParams = {}) {
+        const { name = '', body, locals, stackSize = 0, Arguments, returnFunc, type, declare = false } = params;
         super(name, type, returnFunc);
         this.body = body;
         this.locals = locals;
         this.stackSize = stackSize;
         this.Arguments = Arguments;
+        this.declare = declare;
+    }
+
+    /**
+     * 创建一个新的 FunctionNode 实例。
+     * Create a new FunctionNode instance.
+     * @param {Partial<FunctionNodeParams>} params - 参数对象。Parameter object.
+     * @returns {FunctionNode} 新的 FunctionNode 实例。New FunctionNode instance.
+     * @static
+     */
+    static create(params: Partial<FunctionNodeParams> = {}): FunctionNode {
+        return new FunctionNode(params);
     }
 }
 

@@ -1,8 +1,7 @@
-import type ASTNode from './classes/astnode-class';
-import Variable from './classes/variable-class';
-import type Token from './classes/token-class';
-import TypeDefinition from './classes/typedef-class';
+import type {ASTNode, Token} from './classes';
+import {Variable, TypeDefinition, TokenManager, ScopeManager} from './classes';
 import { logMessage } from './logger';
+import { isEqual } from './token';
 
 /**
  * 定义了词法单元的类型。
@@ -364,4 +363,52 @@ export function addArray(type: TypeDefinition, length: number): TypeDefinition {
     arrayType.ptr = type;
     arrayType.arrayLength = length;
     return arrayType;
+}
+
+/**
+ * 消费一个令牌，如果令牌的值与给定的字符串匹配。
+ * Consumes a token if the token's value matches the given string.
+ * @param {Token} token 当前的令牌。The current token.
+ * @param {string} tokenName 要匹配的字符串。The string to match.
+ * @returns {boolean} 如果令牌的值与给定的字符串匹配，则返回true并将nowToken设置为下一个令牌，否则返回false并将nowToken设置为当前令牌。
+ * True if the token's value matches the given string and sets nowToken to the next token, false otherwise and sets nowToken to the current token.
+ */
+
+export function consumeToken(token: Token, tokenName: string): boolean {
+    if (isEqual(token, tokenName)) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: consumeToken });
+            throw new Error('Unexpected end of input');
+        }
+        TokenManager.getInstance().nowToken = token.next;
+        return true;
+    }
+    TokenManager.getInstance().nowToken = token;
+    return false;
+}
+/**
+ * 在当前的变量列表中查找一个变量。Find a variable in the current list of local variables.
+ * @param {Token} token 代表变量的令牌。The token representing the variable.
+ * @returns {Variable | undefined} 如果找到了变量，则返回该变量的节点，否则返回undefined。The node of the variable if found, otherwise undefined.
+ */
+export function findVariable(token: Token): Variable | undefined {
+    const result = ScopeManager.getInstance().findEntry(getIdentifier(token));
+    return result instanceof Variable ? result : undefined;
+}
+
+/**
+ * 获取标识符。Get an identifier.
+ * @param {Token} token 代表标识符的令牌。The token representing the identifier.
+ * @returns {string} 标识符的字符串表示。The string representation of the identifier.
+ */
+export function getIdentifier(token: Token): string {
+    if (token.kind !== TokenType.Identifier) {
+        logMessage('error', 'Expected an identifier', { token, position: getIdentifier });
+        throw new Error('Expected an identifier');
+    }
+    if (token.location === undefined || token.length === undefined) {
+        logMessage('error', 'Token location or length is undefined', { token, position: getIdentifier });
+        throw new Error('Token location or length is undefined');
+    }
+    return token.location.slice(0, Math.max(0, token.length));
 }

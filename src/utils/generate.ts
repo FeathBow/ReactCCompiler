@@ -462,7 +462,7 @@ function assignDataSection(prog: SymbolEntry): void {
 function assignTextSection(prog: SymbolEntry): void {
     let localFunction: SymbolEntry | undefined = prog;
     while (localFunction !== undefined) {
-        if (localFunction instanceof FunctionNode) {
+        if (localFunction instanceof FunctionNode && localFunction.declare) {
             nowFunction = localFunction;
             generated.push(
                 `  .globl ${localFunction.name}`,

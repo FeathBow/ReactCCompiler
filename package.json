@@ -144,6 +144,7 @@
         "@types/react-syntax-highlighter": "^15.5.11",
         "axios": "^1.7.4",
         "bootstrap": "^5.3.3",
+        "braces": "^3.0.3",
         "clean-webpack-plugin": "^4.0.0",
         "copy-webpack-plugin": "^12.0.2",
         "css-minimizer-webpack-plugin": "^6.0.0",

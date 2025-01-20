@@ -6,3 +6,4 @@ export { default as Token } from './token-class';
 export { default as SymbolEntry } from './symbolentry-class';
 export { default as ScopeManager } from './scopemanager-class';
 export { default as Scope } from './scope-class';
+export { default as TokenManager } from './tokenmanager-class';

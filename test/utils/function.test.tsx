@@ -42,4 +42,28 @@ describe('Function operations', () => {
         },
     ];
     runTestCases(functionTestCases, 'Function test');
+
+    const functionDeclarationTestCases = [
+        {
+            code: 'int add(int x, int y); int main() { return add(3,4); } int add(int x, int y) { return x+y; }',
+            expectedExitStatus: '7',
+        },
+        {
+            code: 'int sub(int x, int y); int main() { return sub(4,3); } int sub(int x, int y) { return x-y; }',
+            expectedExitStatus: '1',
+        },
+        {
+            code: 'int multiply(int x, int y); int main() { return multiply(2,3); } int multiply(int x, int y) { return x*y; }',
+            expectedExitStatus: '6',
+        },
+        {
+            code: 'int divide(int x, int y); int main() { return divide(10,2); } int divide(int x, int y) { return x/y; }',
+            expectedExitStatus: '5',
+        },
+        {
+            code: 'int power(int base, int exp); int main() { return power(2,3); } int power(int base, int exp) { int result=1; while(exp) { result = result * base; exp = exp - 1; } return result; }',
+            expectedExitStatus: '8',
+        },
+    ];
+    runTestCases(functionDeclarationTestCases, 'Function declaration test');
 });
