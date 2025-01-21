@@ -1,15 +1,14 @@
 import * as commons from './commons';
 import type { TypeDefinition, ASTNode, Token } from './classes';
-import { FunctionNode, Variable, SymbolEntry, ScopeManager } from './classes';
+import { FunctionNode, Variable, SymbolEntry, ScopeManager, TokenManager } from './classes';
 import { logMessage } from './logger';
 import { skipToken, isEqual, isVariableTypeDefinition } from './token';
-import { IntermediateCodeList, makelist, getNodeValue } from './quadruple';
+import { getNodeValue, getQuadruple } from './quadruple';
+import { IntermediateManager } from './classes/intermediate-class';
 import * as parser from './parser';
-import TokenManager from './classes/tokenmanager-class';
+import { createLocalVariablesForParameters } from './parser/creater';
 
 const { creater, operators, operation, handlers } = parser;
-
-let intermediateCodeList = new IntermediateCodeList();
 
 /**
  * 语句处理器映射。Statement handler mapping.
@@ -89,12 +88,12 @@ export function whileStatement(token: Token): { returnNode: ASTNode; token: Toke
         throw new Error('Unexpected end of input');
     }
 
-    const conditionLabel = String(intermediateCodeList.nextquad);
+    const conditionLabel = String(IntermediateManager.getInstance().nextquad);
 
     node.condition = expression(conditionToken);
     token = TokenManager.getInstance().nowToken;
     const conditionValue = getNodeValue(node.condition);
-    const jumpFalseIndex = intermediateCodeList.emit('j=', conditionValue, '0');
+    const jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0');
 
     const outToken: Token | undefined = skipToken(token, ')');
     if (outToken === undefined) {
@@ -103,8 +102,11 @@ export function whileStatement(token: Token): { returnNode: ASTNode; token: Toke
     }
     node.trueBody = statement(outToken);
 
-    intermediateCodeList.emit('j', undefined, undefined, conditionLabel);
-    intermediateCodeList.backpatch(makelist(String(jumpFalseIndex)), String(intermediateCodeList.nextquad));
+    IntermediateManager.getInstance().emit('j', undefined, undefined, conditionLabel);
+    IntermediateManager.getInstance().backpatch(
+        commons.makelist(String(jumpFalseIndex)),
+        String(IntermediateManager.getInstance().nextquad),
+    );
 
     return { returnNode: node, token };
 }
@@ -131,7 +133,7 @@ export function forStatement(token: Token): { returnNode: ASTNode; token: Token 
     node.initBody = expressionStatement(initToken);
     token = TokenManager.getInstance().nowToken;
 
-    const bIndex = intermediateCodeList.nextquad;
+    const bIndex = IntermediateManager.getInstance().nextquad;
 
     if (!isEqual(token, ';')) {
         node.condition = expression(token);
@@ -142,7 +144,7 @@ export function forStatement(token: Token): { returnNode: ASTNode; token: Token 
 
     if (node.condition !== undefined) {
         const conditionValue = getNodeValue(node.condition);
-        jumpFalseIndex = intermediateCodeList.emit('j=', conditionValue, '0');
+        jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0');
     }
 
     let conditionToken: Token | undefined = skipToken(token, ';');
@@ -151,7 +153,7 @@ export function forStatement(token: Token): { returnNode: ASTNode; token: Token 
         throw new Error('Unexpected end of input');
     }
 
-    const jumpTrueIndex = intermediateCodeList.emit('j');
+    const jumpTrueIndex = IntermediateManager.getInstance().emit('j');
 
     if (!isEqual(conditionToken, ')')) {
         node.incrementBody = expression(conditionToken);
@@ -165,16 +167,19 @@ export function forStatement(token: Token): { returnNode: ASTNode; token: Token 
         throw new Error('Unexpected end of input');
     }
 
-    const cIndex = intermediateCodeList.nextquad;
-    intermediateCodeList.emit('j', undefined, undefined, String(bIndex));
+    const cIndex = IntermediateManager.getInstance().nextquad;
+    IntermediateManager.getInstance().emit('j', undefined, undefined, String(bIndex));
 
     node.trueBody = statement(outToken);
 
-    intermediateCodeList.emit('j', undefined, undefined, String(jumpTrueIndex + 1));
-    intermediateCodeList.backpatch(makelist(String(jumpTrueIndex)), String(cIndex + 1));
+    IntermediateManager.getInstance().emit('j', undefined, undefined, String(jumpTrueIndex + 1));
+    IntermediateManager.getInstance().backpatch(commons.makelist(String(jumpTrueIndex)), String(cIndex + 1));
 
     if (node.condition !== undefined && jumpFalseIndex !== undefined) {
-        intermediateCodeList.backpatch(makelist(String(jumpFalseIndex)), String(intermediateCodeList.nextquad));
+        IntermediateManager.getInstance().backpatch(
+            commons.makelist(String(jumpFalseIndex)),
+            String(IntermediateManager.getInstance().nextquad),
+        );
     }
 
     return { returnNode: node, token };
@@ -203,7 +208,7 @@ export function ifStatement(token: Token): { returnNode: ASTNode; token: Token }
     token = TokenManager.getInstance().nowToken;
 
     const conditionValue = getNodeValue(node.condition);
-    const jumpFalseIndex = intermediateCodeList.emit('j=', conditionValue, '0', '-');
+    const jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0', '-');
 
     const elseToken: Token | undefined = skipToken(token, ')');
     if (elseToken === undefined) {
@@ -214,9 +219,12 @@ export function ifStatement(token: Token): { returnNode: ASTNode; token: Token }
     node.trueBody = statement(elseToken);
     token = TokenManager.getInstance().nowToken;
 
-    const jumpIndex = intermediateCodeList.emit('j');
+    const jumpIndex = IntermediateManager.getInstance().emit('j');
 
-    intermediateCodeList.backpatch(makelist(String(jumpFalseIndex)), String(intermediateCodeList.nextquad));
+    IntermediateManager.getInstance().backpatch(
+        commons.makelist(String(jumpFalseIndex)),
+        String(IntermediateManager.getInstance().nextquad),
+    );
 
     if (isEqual(token, 'else')) {
         if (token.next === undefined) {
@@ -228,7 +236,10 @@ export function ifStatement(token: Token): { returnNode: ASTNode; token: Token }
         token = TokenManager.getInstance().nowToken;
     }
 
-    intermediateCodeList.backpatch(makelist(String(jumpIndex)), String(intermediateCodeList.nextquad));
+    IntermediateManager.getInstance().backpatch(
+        commons.makelist(String(jumpIndex)),
+        String(IntermediateManager.getInstance().nextquad),
+    );
 
     TokenManager.getInstance().nowToken = token;
     return { returnNode: node, token };
@@ -256,9 +267,9 @@ export function returnStatement(token: Token): { returnNode: ASTNode; token: Tok
     }
     TokenManager.getInstance().nowToken = nextToken;
     if (node.leftNode?.functionDef === undefined) {
-        intermediateCodeList.emit('return', getNodeValue(node.leftNode));
+        IntermediateManager.getInstance().emit('return', getNodeValue(node.leftNode));
     } else {
-        intermediateCodeList.emit('return', 'call', getNodeValue(node.leftNode));
+        IntermediateManager.getInstance().emit('return', 'call', getNodeValue(node.leftNode));
     }
 
     return { returnNode: node, token };
@@ -375,10 +386,10 @@ function parseDeclaration(token: Token): ASTNode {
             current = current.nextNode = creater.newUnary(commons.ASTNodeKind.ExpressionStatement, node);
 
             if (rightNode.functionDef === undefined) {
-                intermediateCodeList.emit(':=', 'call', getNodeValue(rightNode), variable.name);
-            } else intermediateCodeList.emit(':=', getNodeValue(rightNode), undefined, variable.name);
+                IntermediateManager.getInstance().emit(':=', 'call', getNodeValue(rightNode), variable.name);
+            } else IntermediateManager.getInstance().emit(':=', getNodeValue(rightNode), undefined, variable.name);
         } else {
-            intermediateCodeList.emit('declare', String(variable?.type?.type), undefined, variable.name);
+            IntermediateManager.getInstance().emit('declare', String(variable?.type?.type), undefined, variable.name);
         }
     }
 
@@ -484,9 +495,19 @@ function assign(token: Token): ASTNode {
         node = creater.newBinary(commons.ASTNodeKind.Assignment, node, assign(token.next));
         token = TokenManager.getInstance().nowToken;
         if (node.rightNode?.functionDef === undefined) {
-            intermediateCodeList.emit(':=', getNodeValue(node.rightNode), undefined, getNodeValue(node.leftNode));
+            IntermediateManager.getInstance().emit(
+                ':=',
+                getNodeValue(node.rightNode),
+                undefined,
+                getNodeValue(node.leftNode),
+            );
         } else {
-            intermediateCodeList.emit(':=', 'call', getNodeValue(node.rightNode), getNodeValue(node.leftNode));
+            IntermediateManager.getInstance().emit(
+                ':=',
+                'call',
+                getNodeValue(node.rightNode),
+                getNodeValue(node.leftNode),
+            );
         }
     }
     TokenManager.getInstance().nowToken = token;
@@ -508,7 +529,7 @@ export function equality(token: Token): ASTNode {
             node = operation.handleEqualityOperation(token, kind, node);
             token = TokenManager.getInstance().nowToken;
 
-            intermediateCodeList.emit(
+            IntermediateManager.getInstance().emit(
                 operator,
                 getNodeValue(node.leftNode),
                 getNodeValue(node.rightNode),
@@ -543,7 +564,7 @@ export function relational(token: Token): ASTNode {
             node = operation.handleRelationalOperation(token, kind, node, swapNodes);
             token = TokenManager.getInstance().nowToken;
 
-            intermediateCodeList.emit(
+            IntermediateManager.getInstance().emit(
                 operator,
                 getNodeValue(node.leftNode),
                 getNodeValue(node.rightNode),
@@ -578,7 +599,7 @@ export function add(token: Token): ASTNode {
             node = operation.handleAddOperation(token, kind, node);
             token = TokenManager.getInstance().nowToken;
 
-            intermediateCodeList.emit(
+            IntermediateManager.getInstance().emit(
                 operator,
                 getNodeValue(node.leftNode),
                 getNodeValue(node.rightNode),
@@ -612,7 +633,7 @@ export function mul(token: Token): ASTNode {
             node = operation.handleMulOperation(token, kind, node);
             token = TokenManager.getInstance().nowToken;
 
-            intermediateCodeList.emit(
+            IntermediateManager.getInstance().emit(
                 operator,
                 getNodeValue(node.leftNode),
                 getNodeValue(node.rightNode),
@@ -727,7 +748,12 @@ function parseArrayAccess(token: Token): ASTNode {
         const primaryNode = node;
         node = creater.newUnary(commons.ASTNodeKind.Dereference, ptrAdd(node, nowNode));
 
-        intermediateCodeList.emit('=[]', getNodeValue(primaryNode), getNodeValue(nowNode), getNodeValue(node));
+        IntermediateManager.getInstance().emit(
+            '=[]',
+            getNodeValue(primaryNode),
+            getNodeValue(nowNode),
+            getNodeValue(node),
+        );
     }
     TokenManager.getInstance().nowToken = token;
     return node;
@@ -746,7 +772,12 @@ export function unary(token: Token): ASTNode {
             const kind: commons.ASTNodeKind = operators.unaryOperators[operator];
             const node = operation.handleUnaryOperation(token, kind);
 
-            intermediateCodeList.emit(operator, getNodeValue(node.leftNode), undefined, getNodeValue(node));
+            IntermediateManager.getInstance().emit(
+                operator,
+                getNodeValue(node.leftNode),
+                undefined,
+                getNodeValue(node),
+            );
 
             return node;
         }
@@ -847,24 +878,6 @@ function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
 }
 
 /**
- * 为函数参数创建局部变量。Create local variables for function parameters.
- * @param {TypeDefinition | undefined} type 函数参数类型。The function parameter type.
- * @returns {void} 无返回值。No return value.
- */
-function createLocalVariablesForParameters(type: TypeDefinition | undefined): void {
-    if (type !== undefined) {
-        createLocalVariablesForParameters(type.nextParameters);
-        if (type.tokens === undefined) {
-            logMessage('error', 'Token is undefined', { position: createLocalVariablesForParameters });
-            throw new Error('Token is undefined');
-        }
-        creater.newLocalVariable(commons.getIdentifier(type.tokens), type);
-
-        intermediateCodeList.emit('param', commons.getIdentifier(type.tokens), type.type);
-    }
-}
-
-/**
  * 解析函数定义。Parse a function definition.
  * @param {Token} token 当前的令牌。The current token.
  * @param {TypeDefinition} type 函数类型。The function type.
@@ -883,7 +896,7 @@ function parseFunction(token: Token, type: TypeDefinition): Token {
     if (!nowEntry.declare) return token;
 
     creater.setLocals(undefined);
-    intermediateCodeList.emit('begin', nowEntry.name, type.type);
+    IntermediateManager.getInstance().emit('begin', nowEntry.name, type.type);
     ScopeManager.getInstance().enterScope();
     createLocalVariablesForParameters(type.parameters);
     nowEntry.Arguments = creater.getLocals();
@@ -929,8 +942,8 @@ function functionCall(token: Token): ASTNode {
         }
         current = current.nextNode = assign(startToken);
 
-        if (current.functionDef === undefined) intermediateCodeList.emit('arg', getNodeValue(current));
-        else intermediateCodeList.emit('arg', 'call', getNodeValue(current));
+        if (current.functionDef === undefined) IntermediateManager.getInstance().emit('arg', getNodeValue(current));
+        else IntermediateManager.getInstance().emit('arg', 'call', getNodeValue(current));
 
         startToken = TokenManager.getInstance().nowToken;
     }
@@ -1054,13 +1067,23 @@ function primary(token: Token): ASTNode {
         if (isEqual(token.next, '(') && token.next.next !== undefined && isVariableTypeDefinition(token.next.next)) {
             const { returnNode } = sizeofVariableType(token.next.next);
 
-            intermediateCodeList.emit('sizeof', String(returnNode.numberValue), undefined, getNodeValue(returnNode));
+            IntermediateManager.getInstance().emit(
+                'sizeof',
+                String(returnNode.numberValue),
+                undefined,
+                getNodeValue(returnNode),
+            );
 
             return returnNode;
         }
         const sizeofNode = sizeofVariable(token.next);
 
-        intermediateCodeList.emit('sizeof', String(sizeofNode.numberValue), undefined, getNodeValue(sizeofNode));
+        IntermediateManager.getInstance().emit(
+            'sizeof',
+            String(sizeofNode.numberValue),
+            undefined,
+            getNodeValue(sizeofNode),
+        );
 
         return sizeofNode;
     }
@@ -1082,7 +1105,7 @@ function primary(token: Token): ASTNode {
         }
         TokenManager.getInstance().nowToken = token.next;
 
-        intermediateCodeList.emit('=', token.stringValue, undefined, `LC${node.name}`);
+        IntermediateManager.getInstance().emit('=', token.stringValue, undefined, `LC${node.name}`);
 
         return creater.newVariableNode(node);
     }
@@ -1099,7 +1122,7 @@ function primary(token: Token): ASTNode {
         }
         TokenManager.getInstance().nowToken = token.next;
 
-        intermediateCodeList.emit('=', String(token.numericValue), undefined, `N${node.nodeNumber}`);
+        IntermediateManager.getInstance().emit('=', String(token.numericValue), undefined, `N${node.nodeNumber}`);
 
         return node;
     }
@@ -1194,43 +1217,13 @@ function bracketsPrimary(token: Token): { returnNode: ASTNode; token: Token } {
 }
 
 /**
- * 获取四元式。Get the quadruple.
- * @returns {string} 四元式输出。The quadruple output.
- */
-function getQuadruple(): string {
-    const nodeToQuadrupleMap = new Map<string, string>();
-    let nextQuadrupleNumber = 1;
-    const quadrupleOutput = `${['id', 'op', 'argument1', 'argument2', 'result'].map((header) => header.padEnd(13)).join('')}\n${intermediateCodeList.codes
-        .map(
-            (code, index) =>
-                `${(100 + index).toString().padEnd(13)}${code
-                    .map((item) => {
-                        if (item?.startsWith('N')) {
-                            if (!nodeToQuadrupleMap.has(item)) {
-                                nodeToQuadrupleMap.set(item, `N${nextQuadrupleNumber}`);
-                                nextQuadrupleNumber += 1;
-                            }
-                            const mappedItem = nodeToQuadrupleMap.get(item);
-                            return (mappedItem ?? '').padEnd(13);
-                        }
-                        return (item ?? '').padEnd(13);
-                    })
-                    .join('')}`,
-        )
-        .join('\n')}`;
-    return quadrupleOutput;
-}
-
-/**
  * 解析代码段。Parse a piece of code.
  * @param {Token[]} tokens 代表代码的令牌流。The token stream representing the code.
  * @returns { { globalVar: SymbolEntry | undefined, quadrupleOutput: string } } 解析得到的全局 entry 和四元式输出。The parsed global entry and quadruple output.
  */
 export function parse(tokens: Token[]): { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } {
     creater.initialParse();
-    intermediateCodeList = new IntermediateCodeList();
-    ScopeManager.resetInstance();
-    TokenManager.resetInstance();
+    IntermediateManager.resetInstance();
     let token = tokens[0];
     while (token.kind !== commons.TokenType.EndOfFile) {
         let type = declareType(token);

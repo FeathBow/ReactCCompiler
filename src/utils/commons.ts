@@ -422,3 +422,13 @@ export function getIdentifier(token: Token): string {
     }
     return token.location.slice(0, Math.max(0, token.length));
 }
+
+/**
+ * 创建一个只包含一个元素的数组
+ * Create an array containing only one element
+ * @param {string} index 元素。The element.
+ * @returns {string[]} 返回包含一个元素的数组。An array containing only one element.
+ */
+export function makelist(index: string): string[] {
+    return [index];
+}

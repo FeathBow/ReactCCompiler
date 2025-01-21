@@ -1,7 +1,7 @@
-import { ASTNodeKind } from '../commons';
-import { FunctionNode, Variable, SymbolEntry, ScopeManager } from '../classes';
+import { ASTNodeKind, getIdentifier } from '../commons';
+import { FunctionNode, Variable, SymbolEntry, ScopeManager, TokenManager, IntermediateManager } from '../classes';
 import type { TypeDefinition, ASTNode } from '../classes';
-
+import { logMessage } from '../logger';
 let locals: Variable | undefined;
 let globals: SymbolEntry | undefined;
 let localConstantNumber = 0;
@@ -167,4 +167,22 @@ export function initialParse(): void {
     globals = undefined;
     astNodeNumber = 0;
     localConstantNumber = 0;
+    ScopeManager.resetInstance();
+    TokenManager.resetInstance();
+} /**
+ * 为函数参数创建局部变量。Create local variables for function parameters.
+ * @param {TypeDefinition | undefined} type 函数参数类型。The function parameter type.
+ * @returns {void} 无返回值。No return value.
+ */
+export function createLocalVariablesForParameters(type: TypeDefinition | undefined): void {
+    if (type !== undefined) {
+        createLocalVariablesForParameters(type.nextParameters);
+        if (type.tokens === undefined) {
+            logMessage('error', 'Token is undefined', { position: createLocalVariablesForParameters });
+            throw new Error('Token is undefined');
+        }
+        newLocalVariable(getIdentifier(type.tokens), type);
+
+        IntermediateManager.getInstance().emit('param', getIdentifier(type.tokens), type.type);
+    }
 }

@@ -94,104 +94,72 @@ function store(type: TypeDefinition): void {
 }
 
 /**
+ * 处理AST错误。
+ * Handle AST errors.
+ * @param {ASTNode} node - 当前的 AST 节点。The current AST node.
+ * @param {string} message - 错误消息。The error message.
+ * @param {ASTNodeKind} kind - AST 节点类型。The AST node kind.
+ * @param {Function} caller - 调用函数。The caller function.
+ * @returns {never} 永远不会返回。Never returns.
+ */
+function handleASTError(node: ASTNode, message: string, kind: ASTNodeKind, caller: Function): never {
+    logMessage('error', message, {
+        node,
+        position: caller,
+        case: kind,
+    });
+    throw new Error(message);
+}
+
+/**
  * 生成表达式的处理程序映射。
  * Expression handler map.
  * @type {generateExpressionHandlerMap}
  */
 const generateExpressionHandlers: generateExpressionHandlerMap = {
     [ASTNodeKind.Number]: (node: ASTNode) => {
-        if (node.numberValue === undefined) {
-            logMessage('error', 'Invalid number', { node, position: generateExpression, case: ASTNodeKind.Number });
-            throw new Error('invalid number');
-        }
+        if (node.numberValue === undefined) handleASTError(node, 'Invalid number', ASTNodeKind.Number, generateExpression);
         generated.push(`  mov $${node.numberValue}, %rax`);
     },
     [ASTNodeKind.Negation]: (node: ASTNode) => {
-        if (node.leftNode === undefined) {
-            logMessage('error', 'Invalid negation', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.Negation,
-            });
-            throw new Error('invalid negation');
-        }
+        if (node.leftNode === undefined)
+            handleASTError(node, 'Invalid negation', ASTNodeKind.Negation, generateExpression);
         generateExpression(node.leftNode);
         generated.push(`  neg %rax`);
     },
     [ASTNodeKind.Dereference]: (node: ASTNode) => {
-        if (node.leftNode === undefined) {
-            logMessage('error', 'Invalid dereference', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.Dereference,
-            });
-            throw new Error('invalid dereference');
-        }
+        if (node.leftNode === undefined)
+            handleASTError(node, 'Invalid dereference', ASTNodeKind.Dereference, generateExpression);
         generateExpression(node.leftNode);
-        if (node.typeDef === undefined) {
-            logMessage('error', 'Invalid variable', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.Variable,
-            });
-            throw new Error('invalid variable');
-        }
+        if (node.typeDef === undefined)
+            handleASTError(node, 'Invalid type', ASTNodeKind.Dereference, generateExpression);
         load(node.typeDef);
     },
     [ASTNodeKind.AddressOf]: (node: ASTNode) => {
-        if (node.leftNode === undefined) {
-            logMessage('error', 'Invalid address', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.AddressOf,
-            });
-            throw new Error('invalid address');
-        }
+        if (node.leftNode === undefined)
+            handleASTError(node, 'Invalid address', ASTNodeKind.AddressOf, generateExpression);
         generateAddress(node.leftNode);
     },
     [ASTNodeKind.Variable]: (node: ASTNode) => {
         generateAddress(node);
-        if (node.typeDef === undefined) {
-            logMessage('error', 'Invalid variable', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.Variable,
-            });
-            throw new Error('invalid variable');
-        }
+        if (node.typeDef === undefined)
+            handleASTError(node, 'Invalid variable', ASTNodeKind.Variable, generateExpression);
         load(node.typeDef);
     },
     [ASTNodeKind.Assignment]: (node: ASTNode) => {
-        if (node.leftNode === undefined || node.rightNode === undefined) {
-            logMessage('error', 'Invalid assignment', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.Assignment,
-            });
-            throw new Error('invalid assignment');
-        }
+        if (node.leftNode === undefined || node.rightNode === undefined)
+            handleASTError(node, 'Invalid assignment', ASTNodeKind.Assignment, generateExpression);
         generateAddress(node.leftNode);
         pushToStack();
         generateExpression(node.rightNode);
-        if (node.typeDef === undefined) {
-            logMessage('error', 'Invalid variable', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.Variable,
-            });
-            throw new Error('invalid variable');
-        }
+        if (node.typeDef === undefined)
+            handleASTError(node, 'Invalid type', ASTNodeKind.Assignment, generateExpression);
         store(node.typeDef);
     },
     [ASTNodeKind.FunctionCall]: (node: ASTNode) => {
-        if (node.functionDef === undefined) {
-            logMessage('error', 'Invalid function call', {
-                node,
-                position: generateExpression,
-                case: ASTNodeKind.FunctionCall,
-            });
-            throw new Error('invalid function call');
-        }
+        if (node.functionDef === undefined)
+            handleASTError(node, 'Invalid function call', ASTNodeKind.FunctionCall, generateExpression);
+
         let nowArgument = node.functionArgs;
         let argumentNumber = -1;
         while (nowArgument !== undefined) {
@@ -208,10 +176,8 @@ const generateExpressionHandlers: generateExpressionHandlerMap = {
         generated.push(`  mov $0, %rax`, `  call ${node.functionDef}`);
     },
     [ASTNodeKind.Comma]: (node: ASTNode) => {
-        if (node.leftNode === undefined || node.rightNode === undefined) {
-            logMessage('error', 'Invalid comma', { node, position: generateExpression });
-            throw new Error('invalid comma');
-        }
+        if (node.leftNode === undefined || node.rightNode === undefined)
+            handleASTError(node, 'Invalid comma', ASTNodeKind.Comma, generateExpression);
         generateExpression(node.leftNode);
         generateExpression(node.rightNode);
     },
@@ -228,14 +194,8 @@ function generateExpression(node: ASTNode): void {
         handler(node);
         return;
     }
-    if (node.leftNode === undefined || node.rightNode === undefined) {
-        logMessage('error', 'Invalid binary expression', {
-            node,
-            position: generateExpression,
-            case: ASTNodeKind.Addition,
-        });
-        throw new Error('invalid binary expression');
-    }
+    if (node.leftNode === undefined || node.rightNode === undefined)
+        handleASTError(node, 'Invalid expression', node.nodeKind, generateExpression);
     generateExpression(node.rightNode);
     pushToStack();
     generateExpression(node.leftNode);
@@ -281,16 +241,14 @@ function generateExpression(node: ASTNode): void {
                     break;
                 }
                 default: {
-                    logMessage('error', 'Invalid expression', { node, position: generateExpression });
-                    throw new Error('invalid expression');
+                    handleASTError(node, 'Invalid expression', node.nodeKind, generateExpression);
                 }
             }
             generated.push(`  movzb %al, %rax`);
             return;
         }
         default: {
-            logMessage('error', 'Invalid expression', { node, position: generateExpression });
-            throw new Error('invalid expression');
+            handleASTError(node, 'Invalid expression', node.nodeKind, generateExpression);
         }
     }
 }
@@ -303,24 +261,16 @@ function generateExpression(node: ASTNode): void {
 function generateStatement(node: ASTNode): void {
     switch (node.nodeKind) {
         case ASTNodeKind.Return: {
-            if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid return', { node, position: generateStatement, case: ASTNodeKind.Return });
-                throw new Error('invalid return');
-            }
+            if (node.leftNode === undefined)
+                handleASTError(node, 'Invalid return', ASTNodeKind.Return, generateStatement);
 
             generateExpression(node.leftNode);
             generated.push(`  jmp .L.return.${nowFunction?.name}`);
             return;
         }
         case ASTNodeKind.ExpressionStatement: {
-            if (node.leftNode === undefined) {
-                logMessage('error', 'Invalid expression statement', {
-                    node,
-                    position: generateStatement,
-                    case: ASTNodeKind.ExpressionStatement,
-                });
-                throw new Error('invalid expression statement');
-            }
+            if (node.leftNode === undefined)
+                handleASTError(node, 'Invalid statement', ASTNodeKind.ExpressionStatement, generateStatement);
 
             generateExpression(node.leftNode);
             return;
@@ -337,45 +287,32 @@ function generateStatement(node: ASTNode): void {
         }
         case ASTNodeKind.If: {
             const c = addCount();
-            if (node.condition === undefined || node.trueBody === undefined) {
-                logMessage('error', 'Invalid if', { node, position: generateExpression, case: ASTNodeKind.If });
-                throw new Error('invalid if');
-            }
+            if (node.condition === undefined || node.trueBody === undefined)
+                handleASTError(node, 'Invalid if', ASTNodeKind.If, generateStatement);
             generateExpression(node.condition);
             generated.push(`  cmp $0, %rax`, `  je  .L.else.${c}`);
             generateStatement(node.trueBody);
             generated.push(`  jmp .L.end.${c}`, `.L.else.${c}:`);
-            if (node.elseBody !== undefined) {
-                generateStatement(node.elseBody);
-            }
+            if (node.elseBody !== undefined) generateStatement(node.elseBody);
             generated.push(`.L.end.${c}:`);
             return;
         }
         case ASTNodeKind.For: {
             const c = addCount();
-            if (node.trueBody === undefined) {
-                logMessage('error', 'Invalid for', { node, position: generateStatement, case: ASTNodeKind.For });
-                throw new Error('invalid for');
-            }
-            if (node.initBody !== undefined) {
-                generateStatement(node.initBody);
-            }
+            if (node.trueBody === undefined) handleASTError(node, 'Invalid for', ASTNodeKind.For, generateStatement);
+            if (node.initBody !== undefined) generateStatement(node.initBody);
             generated.push(`.L.begin.${c}:`);
             if (node.condition !== undefined) {
                 generateExpression(node.condition);
                 generated.push(`  cmp $0, %rax`, `  je  .L.end.${c}`);
             }
             generateStatement(node.trueBody);
-            if (node.incrementBody !== undefined) {
-                generateExpression(node.incrementBody);
-            }
+            if (node.incrementBody !== undefined) generateExpression(node.incrementBody);
             generated.push(`  jmp .L.begin.${c}`, `.L.end.${c}:`);
             return;
         }
-        default: {
-            logMessage('error', 'Invalid statement', { node, position: generateStatement });
-            throw new Error('invalid statement');
-        }
+        default:
+            handleASTError(node, 'Invalid statement', node.nodeKind, generateStatement);
     }
 }
 
@@ -576,18 +513,14 @@ function generateAddress(node: ASTNode): void {
         return;
     }
     if (node.nodeKind === ASTNodeKind.Dereference) {
-        if (node.leftNode === undefined) {
-            logMessage('error', 'Invalid dereference', { node, position: generateAddress });
-            throw new Error('invalid dereference');
-        }
+        if (node.leftNode === undefined)
+            handleASTError(node, 'Invalid dereference', ASTNodeKind.Dereference, generateAddress);
         generateExpression(node.leftNode);
         return;
     }
     if (node.nodeKind === ASTNodeKind.Comma) {
-        if (node.leftNode === undefined || node.rightNode === undefined) {
-            logMessage('error', 'Invalid comma', { node, position: generateAddress });
-            throw new Error('invalid comma');
-        }
+        if (node.leftNode === undefined || node.rightNode === undefined)
+            handleASTError(node, 'Invalid comma', ASTNodeKind.Comma, generateAddress);
         generateExpression(node.leftNode);
         generateAddress(node.rightNode);
         return;
