@@ -650,6 +650,7 @@ export function mul(token: Token): ASTNode {
     TokenManager.getInstance().nowToken = token;
     return node;
 }
+
 /**
  * 处理指针加法。Handle pointer addition.
  * @param {ASTNode} leftNode 左节点。The left node.

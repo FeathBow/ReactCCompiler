@@ -432,3 +432,13 @@ export function getIdentifier(token: Token): string {
 export function makelist(index: string): string[] {
     return [index];
 }
+
+/**
+ * 将给定的数字向上舍入到最接近的对齐值。Round the given number up to the nearest alignment value.
+ * @param {number} n 要舍入的数字。The number to round.
+ * @param {number} align 对齐值。The alignment value.
+ * @returns {number} 舍入后的数字。The rounded number.
+ */
+export function alignToNearest(n: number, align: number): number {
+    return Math.floor((n + align - 1) / align) * align;
+}

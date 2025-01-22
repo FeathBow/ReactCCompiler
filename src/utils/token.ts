@@ -95,8 +95,12 @@ function isValidNonFirstCharOfIdentifier(c: string): boolean {
  * @returns {number} 返回标点符号的长度。Return the length of the punctuation.
  */
 function readPunctuation(p: string): number {
-    if (startsWith(p, '==') || startsWith(p, '!=') || startsWith(p, '<=') || startsWith(p, '>=')) {
-        return 2;
+    const punctuations = ['==', '!=', '<=', '>='];
+
+    for (const punctuation of punctuations) {
+        if (startsWith(p, punctuation)) {
+            return punctuation.length;
+        }
     }
 
     return isPunctuation(p.charAt(0)) ? 1 : 0;

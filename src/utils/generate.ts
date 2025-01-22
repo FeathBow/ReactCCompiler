@@ -1,8 +1,9 @@
-import { ASTNodeKind, ASTNodeType } from './commons';
+import { ASTNodeKind, ASTNodeType, alignToNearest } from './commons';
 import type { TypeDefinition, ASTNode } from './classes';
 import { FunctionNode, Variable, SymbolEntry } from './classes';
 import { logMessage } from './logger';
 import { generateExpressionHandlerMap } from './parser/handlers';
+import { sizeToStoreOperation, sizeToLoadOperation } from './parser/operation';
 
 /**
  * 用于追踪当前的嵌套深度。
@@ -47,18 +48,6 @@ function addCount(): number {
 }
 
 /**
- * 类型定义的大小到 Load 操作的映射。
- * A mapping from the size of a type definition to load operation.
- * @type {Record<number | 'default', string>}
- */
-const sizeToLoadOperation: Record<number | 'default', string> = {
-    1: 'movsbq (%rax), %rax',
-    2: 'movswq (%rax), %rax',
-    4: 'movsxd (%rax), %rax',
-    default: 'mov (%rax), %rax',
-};
-
-/**
  * 根据给定的类型定义，将值加载到寄存器中。Load a value into a register based on the given type definition.
  * @param {TypeDefinition} type 要加载的值的类型定义。The type definition of the value to load.
  */
@@ -69,17 +58,6 @@ function load(type: TypeDefinition): void {
     }
 }
 
-/**
- * 类型定义的大小到 Store 操作的映射。
- * A mapping from the size of a type definition to store operation.
- * @type {Record<number | 'default', string>}
- */
-const sizeToStoreOperation: Record<number | 'default', string> = {
-    1: 'mov %al, (%rdi)',
-    2: 'mov %ax, (%rdi)',
-    4: 'mov %eax, (%rdi)',
-    default: 'mov %rax, (%rdi)',
-};
 /**
  * 根据给定的类型定义，将值存储到内存中。Store a value into memory based on the given type definition.
  * @param {TypeDefinition} type 要存储的值的类型定义。The type definition of the value to store.
@@ -118,7 +96,8 @@ function handleASTError(node: ASTNode, message: string, kind: ASTNodeKind, calle
  */
 const generateExpressionHandlers: generateExpressionHandlerMap = {
     [ASTNodeKind.Number]: (node: ASTNode) => {
-        if (node.numberValue === undefined) handleASTError(node, 'Invalid number', ASTNodeKind.Number, generateExpression);
+        if (node.numberValue === undefined)
+            handleASTError(node, 'Invalid number', ASTNodeKind.Number, generateExpression);
         generated.push(`  mov $${node.numberValue}, %rax`);
     },
     [ASTNodeKind.Negation]: (node: ASTNode) => {
@@ -489,16 +468,6 @@ function pushToStack(): void {
 function popFromStack(argument: string): void {
     generated.push(`  pop ${argument}`);
     depth -= 1;
-}
-
-/**
- * 将给定的数字向上舍入到最接近的对齐值。Round the given number up to the nearest alignment value.
- * @param {number} n 要舍入的数字。The number to round.
- * @param {number} align 对齐值。The alignment value.
- * @returns {number} 舍入后的数字。The rounded number.
- */
-function alignToNearest(n: number, align: number): number {
-    return Math.floor((n + align - 1) / align) * align;
 }
 
 /**
