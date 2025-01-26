@@ -19,6 +19,9 @@ describe('Others operations', () => {
         { code: 'int main(){ int (x[2])[2]; return sizeof(x); }', expectedExitStatus: '16' },
         { code: 'int main(){ int (x[2])[2]; return sizeof(x[0]); }', expectedExitStatus: '8' },
         { code: 'int main(){ int (*x)[2]; return sizeof(x[0]); }', expectedExitStatus: '8' },
+
+        { code: 'int main(){ struct {char a;int b;} x[10]; return sizeof(x); }', expectedExitStatus: '80' },
+        { code: 'int main(){ struct {char a;int b;} x[10]; return sizeof(x[0]); }', expectedExitStatus: '8' },
     ];
     runTestCases(typeTestCases, 'Type test');
 
@@ -36,4 +39,10 @@ describe('Others operations', () => {
     ];
     runTestCases(sizeofTestCases, 'Sizeof test');
 
+    const memoryAlignmentTestCases = [
+        { code: 'int main(){ struct {char a;int b[3];} x[10]; return sizeof(x[0]); }', expectedExitStatus: '16' },
+        { code: 'int main(){ struct {char a;int b[3];} x[10]; return sizeof(x[0].a); }', expectedExitStatus: '1' },
+        { code: 'int main(){ struct {char a;int b[3];} x[10]; return sizeof(x[0].b); }', expectedExitStatus: '12' },
+    ];
+    runTestCases(memoryAlignmentTestCases, 'Memory alignment test');
 });

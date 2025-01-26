@@ -1,5 +1,5 @@
 import SymbolEntry from './symbolentry-class';
-import type TypeDefinition from './typedef-class';
+import TypeDefinition from './typedef-class';
 /**
  * 代表一个变量的类。
  * Class representing a variable.
@@ -30,7 +30,7 @@ class Variable extends SymbolEntry {
         isGlobal = false,
         variableType?: TypeDefinition,
         nextVariable?: Variable,
-        initialValue = undefined,
+        initialValue?: string | undefined,
     ) {
         super(variableName, variableType, nextVariable);
         this.offsetFromRBP = offsetFromRBP;

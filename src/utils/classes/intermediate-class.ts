@@ -5,9 +5,14 @@
 export class IntermediateManager {
     private static instance: IntermediateManager;
     codes: IntermediateCode[] = [];
-    nextquad = 100;
-    nowVariable = 0;
-    private constructor() {}
+    nextquad: number;
+    nowVariable: number;
+    /** Private constructor to enforce singleton pattern */
+    private constructor() {
+        this.nowVariable = 0;
+        this.nextquad = 100;
+        this.codes = [];
+    }
 
     /**
      * 获取四元式列表的单例实例
@@ -16,7 +21,7 @@ export class IntermediateManager {
      * @static
      */
     public static getInstance(): IntermediateManager {
-        if (!IntermediateManager.instance) {
+        if (IntermediateManager.instance === undefined) {
             IntermediateManager.instance = new IntermediateManager();
         }
         return IntermediateManager.instance;
@@ -25,6 +30,7 @@ export class IntermediateManager {
     public static resetInstance(): void {
         IntermediateManager.instance = new IntermediateManager();
     }
+
     /**
      * 生成新的四元式并添加到数组中
      * @param {string} op 操作符

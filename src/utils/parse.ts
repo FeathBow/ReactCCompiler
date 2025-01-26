@@ -1,20 +1,32 @@
 import * as commons from './commons';
-import type { TypeDefinition, ASTNode, Token } from './classes';
-import { FunctionNode, Variable, SymbolEntry, ScopeManager, TokenManager } from './classes';
+import { ASTNodeType, ASTNodeKind, TokenType } from './enums';
+import {
+    type ASTNode,
+    type Token,
+    type FunctionNode,
+    type Variable,
+    type SymbolEntry,
+    ScopeManager,
+    TokenManager,
+    Member,
+    TypeDefinition,
+} from './classes';
 import { logMessage } from './logger';
-import { skipToken, isEqual, isVariableTypeDefinition } from './token';
+import { skipToken, isEqual, isVariableTypeDefinition, consumeToken } from './token';
 import { getNodeValue, getQuadruple } from './quadruple';
 import { IntermediateManager } from './classes/intermediate-class';
 import * as parser from './parser';
-import { createLocalVariablesForParameters } from './parser/creater';
+import { newUnary } from './parser/creater';
+import { handlers } from './parser';
+import Tag from './classes/tag-class';
 
-const { creater, operators, operation, handlers } = parser;
+const { creater, operators } = parser;
 
 /**
  * 语句处理器映射。Statement handler mapping.
  * @type {Record<string, handlers.StatementHandler>}
  */
-export const statementHandlers: Record<string, parser.handlers.StatementHandler> = {
+export const statementHandlers: Record<string, handlers.StatementHandler> = {
     return: returnStatement,
     if: ifStatement,
     for: forStatement,
@@ -27,7 +39,7 @@ export const statementHandlers: Record<string, parser.handlers.StatementHandler>
  * @param {TypeDefinition} type - 类型定义。The type definition.
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
-const handleTypeDefinition: parser.handlers.TypeDefinitionHandler = (token: Token, type: string) => {
+const handleTypeDefinition: parser.handlers.TypeDefinitionHandler = (token: Token, type: string): TypeDefinition => {
     const nextToken = skipToken(token, type);
     if (nextToken === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: declareType });
@@ -77,7 +89,7 @@ function statement(token: Token): ASTNode {
  * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
  */
 export function whileStatement(token: Token): { returnNode: ASTNode; token: Token } {
-    const node = creater.newNode(commons.ASTNodeKind.For);
+    const node = creater.newNode(ASTNodeKind.For);
     if (token.next === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'while' });
         throw new Error('Unexpected end of input');
@@ -120,7 +132,7 @@ export function whileStatement(token: Token): { returnNode: ASTNode; token: Toke
  * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
  */
 export function forStatement(token: Token): { returnNode: ASTNode; token: Token } {
-    const node = creater.newNode(commons.ASTNodeKind.For);
+    const node = creater.newNode(ASTNodeKind.For);
     if (token.next === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'for' });
         throw new Error('Unexpected end of input');
@@ -194,7 +206,7 @@ export function forStatement(token: Token): { returnNode: ASTNode; token: Token 
  * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
  */
 export function ifStatement(token: Token): { returnNode: ASTNode; token: Token } {
-    const node = creater.newNode(commons.ASTNodeKind.If);
+    const node = creater.newNode(ASTNodeKind.If);
     if (token.next === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
         throw new Error('Unexpected end of input');
@@ -258,7 +270,7 @@ export function returnStatement(token: Token): { returnNode: ASTNode; token: Tok
         logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'return' });
         throw new Error('Unexpected end of input');
     }
-    const node = creater.newUnary(commons.ASTNodeKind.Return, expression(token.next));
+    const node = creater.newUnary(ASTNodeKind.Return, expression(token.next));
     token = TokenManager.getInstance().nowToken;
     const nextToken = skipToken(token, ';');
     if (nextToken === undefined) {
@@ -276,15 +288,117 @@ export function returnStatement(token: Token): { returnNode: ASTNode; token: Tok
 }
 
 /**
+ * 为结构体中的成员分配偏移量。Assign offsets for members in a struct.
+ * @param {TypeDefinition} type - 要处理的结构体类型。The struct type to process.
+ * @returns {TypeDefinition} 类型定义。The type definition.
+ */
+function assignMemberOffsets(type: TypeDefinition): TypeDefinition {
+    let offset = 0;
+    let member: Member | undefined = type.members;
+    while (member !== undefined) {
+        const memberType = member.type;
+        if (memberType?.alignment === undefined) {
+            logMessage('error', 'Invalid variable type', {
+                position: assignMemberOffsets,
+                type: memberType,
+            });
+            throw new Error('Invalid variable type');
+        }
+        offset = commons.alignToNearest(offset, memberType.alignment);
+        member.offset = offset;
+        offset += memberType.size ?? 0;
+        member = member.nextMember;
+        type.alignment = Math.max(type.alignment ?? 1, memberType.alignment);
+    }
+    type.size = commons.alignToNearest(offset, type.alignment ?? 1);
+    return type;
+}
+
+/**
+ * 解析结构体。Parse a struct.
+ * 产生式为：结构体 ::= '{' 成员* '}'
+ * @param {Token} token 代表结构体的令牌。The token representing the struct.
+ * @param {TypeDefinition} type 类型定义。The type definition.
+ * @returns {TypeDefinition} 类型定义。The type definition.
+ */
+function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
+    let tag: Tag | undefined;
+    if (token.kind === TokenType.Identifier) {
+        tag = new Tag(commons.getIdentifier(token), type);
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: parseStruct });
+            throw new Error('Unexpected end of input');
+        }
+        token = token.next;
+    }
+
+    if (tag !== undefined && !isEqual(token, '{')) {
+        const foundTag = ScopeManager.getInstance().findTag(tag.name);
+        if (foundTag !== undefined) {
+            TokenManager.getInstance().nowToken = token;
+            return foundTag.type;
+        }
+        logMessage('error', 'Tag not found', { token, position: parseStruct });
+        throw new Error('Tag not found');
+    }
+
+    let nextToken = skipToken(token, '{');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: declareType });
+        throw new Error('Unexpected end of input');
+    }
+    token = nextToken;
+    const head: Member = new Member(undefined, undefined, undefined, 0);
+    let current: Member = head;
+
+    while (!isEqual(token, '}')) {
+        const nowType = declareType(token);
+        token = TokenManager.getInstance().nowToken;
+        let parseFirst = false;
+        while (true) {
+            const successConsume = consumeToken(token, ';');
+            token = TokenManager.getInstance().nowToken;
+            if (successConsume) break;
+            if (parseFirst) {
+                nextToken = skipToken(token, ',');
+                if (nextToken === undefined) {
+                    logMessage('error', 'Unexpected end of input', { token, position: declareType });
+                    throw new Error('Unexpected end of input');
+                }
+                token = nextToken;
+            }
+            parseFirst = true;
+            const memberType = declare(token, nowType);
+            token = TokenManager.getInstance().nowToken;
+            const member: Member = new Member(memberType, memberType.tokens, undefined, 0);
+            current = current.nextMember = member;
+        }
+    }
+    type.members = head.nextMember?.deepCopy();
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
+        throw new Error('Unexpected end of input');
+    }
+    TokenManager.getInstance().nowToken = token.next;
+    if (tag !== undefined) ScopeManager.getInstance().declareTag(tag);
+    return assignMemberOffsets(type);
+}
+
+/**
  * 声明类型。Declare a type.
- * 产生式为：类型定义 ::= 'int' | 'void' | 'char' | 'i64' | 'short'
- * Production rule: typeDefinition ::= 'int' | 'void' | 'char' | 'i64' | 'short'
+ * 产生式为：类型定义 ::= 'int' | 'void' | 'char' | 'i64' | 'short' | 'struct'
+ * Production rule: typeDefinition ::= 'int' | 'void' | 'char' | 'i64' | 'short' | 'struct'
  * @param {Token} token 代表类型的令牌。The token representing the type.
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
 export function declareType(token: Token): TypeDefinition {
     for (const type in handlers.typeDefinitions) {
         if (isEqual(token, type)) {
+            if (isEqual(token, 'struct')) {
+                const structType = handleTypeDefinition(token, type);
+                token = TokenManager.getInstance().nowToken;
+                return parseStruct(token, structType);
+            }
             return handleTypeDefinition(token, type);
         }
     }
@@ -299,7 +413,7 @@ export function declareType(token: Token): TypeDefinition {
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
 export function declare(token: Token, type: TypeDefinition): TypeDefinition {
-    while (commons.consumeToken(token, '*')) {
+    while (consumeToken(token, '*')) {
         token = TokenManager.getInstance().nowToken;
         type = commons.pointerTo(type);
     }
@@ -323,7 +437,7 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
         TokenManager.getInstance().nowToken = nextToken;
         return type;
     }
-    if (token.kind !== commons.TokenType.Identifier) {
+    if (token.kind !== TokenType.Identifier) {
         logMessage('error', 'Expected an identifier', { token, position: declare });
         throw new Error('Expected an identifier');
     }
@@ -332,9 +446,9 @@ export function declare(token: Token, type: TypeDefinition): TypeDefinition {
         logMessage('error', 'Unexpected end of input', { token, position: declare });
         throw new Error('Unexpected end of input');
     }
-    type = checkTypeSuffix(token.next, type);
-    type.tokens = token;
-    return type;
+    const nowType = checkTypeSuffix(token.next, type);
+    nowType.tokens = token;
+    return nowType;
 }
 
 /**
@@ -348,7 +462,7 @@ function parseDeclaration(token: Token): ASTNode {
     const baseType = declareType(token);
     token = TokenManager.getInstance().nowToken;
 
-    const head: ASTNode = { nodeKind: commons.ASTNodeKind.Return, nodeNumber: -1 };
+    const head: ASTNode = { nodeKind: ASTNodeKind.Return, nodeNumber: -1 };
     let current: ASTNode = head;
     let parseFirst = false;
 
@@ -363,7 +477,7 @@ function parseDeclaration(token: Token): ASTNode {
         }
         parseFirst = true;
         const type = declare(token, baseType);
-        if (type.type === commons.ASTNodeType.Void) {
+        if (type.type === ASTNodeType.Void) {
             logMessage('error', 'Variable cannot be of type void', { token, position: parseDeclaration });
             throw new Error('Variable cannot be of type void');
         }
@@ -382,8 +496,8 @@ function parseDeclaration(token: Token): ASTNode {
             }
             const rightNode = assign(token.next);
             token = TokenManager.getInstance().nowToken;
-            const node = creater.newBinary(commons.ASTNodeKind.Assignment, leftNode, rightNode);
-            current = current.nextNode = creater.newUnary(commons.ASTNodeKind.ExpressionStatement, node);
+            const node = creater.newBinary(ASTNodeKind.Assignment, leftNode, rightNode);
+            current = current.nextNode = creater.newUnary(ASTNodeKind.ExpressionStatement, node);
 
             if (rightNode.functionDef === undefined) {
                 IntermediateManager.getInstance().emit(':=', 'call', getNodeValue(rightNode), variable.name);
@@ -393,7 +507,7 @@ function parseDeclaration(token: Token): ASTNode {
         }
     }
 
-    const node = creater.newNode(commons.ASTNodeKind.Block);
+    const node = creater.newNode(ASTNodeKind.Block);
     node.blockBody = head.nextNode;
     if (token.next === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
@@ -411,7 +525,7 @@ function parseDeclaration(token: Token): ASTNode {
  * @returns {ASTNode} 代表块语句的抽象语法树节点。The abstract syntax tree node representing the block statement.
  */
 function blockStatement(token: Token): ASTNode {
-    const head: ASTNode = { nodeKind: commons.ASTNodeKind.Return, nodeNumber: -1 };
+    const head: ASTNode = { nodeKind: ASTNodeKind.Return, nodeNumber: -1 };
     let current: ASTNode = head;
     ScopeManager.getInstance().enterScope();
     while (!isEqual(token, '}')) {
@@ -420,7 +534,7 @@ function blockStatement(token: Token): ASTNode {
         commons.addType(current);
     }
     ScopeManager.getInstance().leaveScope();
-    const node = creater.newNode(commons.ASTNodeKind.Block);
+    const node = creater.newNode(ASTNodeKind.Block);
     node.blockBody = head.nextNode;
     if (token.next === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: blockStatement });
@@ -440,9 +554,9 @@ function blockStatement(token: Token): ASTNode {
 function expressionStatement(token: Token): ASTNode {
     let node: ASTNode;
     if (isEqual(token, ';')) {
-        node = creater.newNode(commons.ASTNodeKind.Block);
+        node = creater.newNode(ASTNodeKind.Block);
     } else {
-        node = creater.newUnary(commons.ASTNodeKind.ExpressionStatement, expression(token));
+        node = creater.newUnary(ASTNodeKind.ExpressionStatement, expression(token));
         token = TokenManager.getInstance().nowToken;
     }
     const nextToken = skipToken(token, ';');
@@ -469,7 +583,7 @@ function expression(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: expression });
             throw new Error('Unexpected end of input');
         }
-        node = creater.newBinary(commons.ASTNodeKind.Comma, node, expression(token.next));
+        node = creater.newBinary(ASTNodeKind.Comma, node, expression(token.next));
         token = TokenManager.getInstance().nowToken;
     }
     TokenManager.getInstance().nowToken = token;
@@ -492,7 +606,7 @@ function assign(token: Token): ASTNode {
             logMessage('error', 'Unexpected end of input', { token, position: assign });
             throw new Error('Unexpected end of input');
         }
-        node = creater.newBinary(commons.ASTNodeKind.Assignment, node, assign(token.next));
+        node = creater.newBinary(ASTNodeKind.Assignment, node, assign(token.next));
         token = TokenManager.getInstance().nowToken;
         if (node.rightNode?.functionDef === undefined) {
             IntermediateManager.getInstance().emit(
@@ -525,8 +639,8 @@ export function equality(token: Token): ASTNode {
     token = TokenManager.getInstance().nowToken;
     const processOperator = (operator: string): boolean => {
         if (isEqual(token, operator)) {
-            const kind: commons.ASTNodeKind = operators.equalityOperators[operator];
-            node = operation.handleEqualityOperation(token, kind, node);
+            const kind: ASTNodeKind = operators.equalityOperators[operator];
+            node = handleEqualityOperation(token, kind, node);
             token = TokenManager.getInstance().nowToken;
 
             IntermediateManager.getInstance().emit(
@@ -561,7 +675,7 @@ export function relational(token: Token): ASTNode {
     const processOperator = (operator: string): boolean => {
         if (isEqual(token, operator)) {
             const [kind, swapNodes] = operators.relationalOperators[operator];
-            node = operation.handleRelationalOperation(token, kind, node, swapNodes);
+            node = handleRelationalOperation(token, kind, node, swapNodes);
             token = TokenManager.getInstance().nowToken;
 
             IntermediateManager.getInstance().emit(
@@ -595,8 +709,8 @@ export function add(token: Token): ASTNode {
     token = TokenManager.getInstance().nowToken;
     const processOperator = (operator: string): boolean => {
         if (isEqual(token, operator)) {
-            const kind: commons.ASTNodeKind = operators.addOperators[operator];
-            node = operation.handleAddOperation(token, kind, node);
+            const kind: ASTNodeKind = operators.addOperators[operator];
+            node = handleAddOperation(token, kind, node);
             token = TokenManager.getInstance().nowToken;
 
             IntermediateManager.getInstance().emit(
@@ -629,8 +743,8 @@ export function mul(token: Token): ASTNode {
     token = TokenManager.getInstance().nowToken;
     const processOperator = (operator: string): boolean => {
         if (isEqual(token, operator)) {
-            const kind: commons.ASTNodeKind = operators.mulOperators[operator];
-            node = operation.handleMulOperation(token, kind, node);
+            const kind: ASTNodeKind = operators.mulOperators[operator];
+            node = handleMulOperation(token, kind, node);
             token = TokenManager.getInstance().nowToken;
 
             IntermediateManager.getInstance().emit(
@@ -665,7 +779,7 @@ export function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
         throw new Error('TypeDefinition is undefined');
 
     if (commons.isNumberType(leftNode.typeDef) && commons.isNumberType(rightNode.typeDef))
-        return creater.newBinary(commons.ASTNodeKind.Addition, leftNode, rightNode);
+        return creater.newBinary(ASTNodeKind.Addition, leftNode, rightNode);
 
     if (leftNode.typeDef.ptr !== undefined && rightNode.typeDef.ptr !== undefined) {
         logMessage('error', 'Invalid operands', { leftNode, rightNode, position: ptrAdd });
@@ -676,11 +790,11 @@ export function ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
 
     if (leftNode.typeDef?.ptr?.size !== undefined) {
         rightNode = creater.newBinary(
-            commons.ASTNodeKind.Multiplication,
+            ASTNodeKind.Multiplication,
             rightNode,
             creater.newNumber(leftNode.typeDef.ptr.size),
         );
-        return creater.newBinary(commons.ASTNodeKind.Addition, leftNode, rightNode);
+        return creater.newBinary(ASTNodeKind.Addition, leftNode, rightNode);
     }
     logMessage('error', 'Invalid operands', { leftNode, rightNode, position: ptrAdd });
     throw new Error('Invalid operands');
@@ -700,61 +814,113 @@ export function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
         throw new Error('TypeDefinition is undefined');
 
     if (commons.isNumberType(leftNode.typeDef) && commons.isNumberType(rightNode.typeDef))
-        return creater.newBinary(commons.ASTNodeKind.Subtraction, leftNode, rightNode);
+        return creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
 
     if (leftNode.typeDef.ptr?.size !== undefined && commons.isNumberType(rightNode.typeDef)) {
         rightNode = creater.newBinary(
-            commons.ASTNodeKind.Multiplication,
+            ASTNodeKind.Multiplication,
             rightNode,
             creater.newNumber(leftNode.typeDef.ptr.size),
         );
         commons.addType(rightNode);
-        const node = creater.newBinary(commons.ASTNodeKind.Subtraction, leftNode, rightNode);
+        const node = creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
         node.typeDef = leftNode.typeDef;
         return node;
     }
 
     if (leftNode.typeDef.ptr?.size !== undefined && rightNode.typeDef.ptr?.size !== undefined) {
-        const node = creater.newBinary(commons.ASTNodeKind.Subtraction, leftNode, rightNode);
+        const node = creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
         node.typeDef = commons.intTypeDefinition;
-        return creater.newBinary(commons.ASTNodeKind.Division, node, creater.newNumber(leftNode.typeDef.ptr.size));
+        return creater.newBinary(ASTNodeKind.Division, node, creater.newNumber(leftNode.typeDef.ptr.size));
     }
 
     throw new Error('Invalid operands');
 }
 
 /**
- * 解析数组访问表达式。Parses array access expression.
- * 产生式为：数组访问表达式 ::= 主表达式 ('[' 表达式 ']')*
- * Production rule: arrayAccess ::= primary ('[' expression ']')*
+ * 解析数组访问表达式。Parse an array access expression.
+ * 产生式为：数组访问表达式 ::= 主表达式 '[' 表达式 ']'
+ * Production rule: arrayAccess ::= primary '[' expression ']'
+ * @param {Token} token 代表数组访问表达式的令牌。The token representing the array access expression.
+ * @param {ASTNode} node 代表数组访问表达式的抽象语法树节点。The abstract syntax tree node representing the array access expression.
+ * @returns {[ASTNode, Token]} 解析得到的抽象语法树节点和下一个令牌。The parsed abstract syntax tree node and the next token.
+ */
+function parseArrayAccess(token: Token, node: ASTNode): [ASTNode, Token] {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parsePostfix });
+        throw new Error('Unexpected end of input');
+    }
+    const nowNode = expression(token.next);
+    token = TokenManager.getInstance().nowToken;
+    const nextToken = skipToken(token, ']');
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parsePostfix });
+        throw new Error('Unexpected end of input');
+    }
+    token = nextToken;
+    const primaryNode = node;
+    node = creater.newUnary(ASTNodeKind.Dereference, ptrAdd(node, nowNode));
+
+    IntermediateManager.getInstance().emit('=[]', getNodeValue(primaryNode), getNodeValue(nowNode), getNodeValue(node));
+    return [node, token];
+}
+
+/**
+ * 解析点访问表达式。Parse a dot access expression.
+ * 产生式为：点访问表达式 ::= 主表达式 '.' 标识符
+ * Production rule: dotAccess ::= primary '.' identifier
+ * @param {Token} token 代表点访问表达式的令牌。The token representing the dot access expression.
+ * @param {ASTNode} node 代表点访问表达式的抽象语法树节点。The abstract syntax tree node representing the dot access expression.
+ * @returns {[ASTNode, Token]} 解析得到的抽象语法树节点和下一个令牌。The parsed abstract syntax tree node and the next token.
+ */
+function parseDotAccess(token: Token, node: ASTNode): [ASTNode, Token] {
+    const nextToken = token.next;
+    if (nextToken === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parseDotAccess });
+        throw new Error('Unexpected end of input');
+    }
+    token = nextToken;
+    commons.addType(node);
+    if (node.typeDef === undefined) throw new Error('TypeDefinition is undefined');
+    if (node.typeDef.type !== ASTNodeType.Struct) throw new Error('Type is not a struct');
+    const nowNode = newUnary(ASTNodeKind.DotAccess, node);
+    let foundMember: Member | undefined = node.typeDef?.members;
+    while (foundMember !== undefined) {
+        if (foundMember.token === undefined) throw new Error('Token is undefined');
+        if (commons.getIdentifier(token) === commons.getIdentifier(foundMember.token)) break;
+        foundMember = foundMember.nextMember;
+    }
+    if (foundMember === undefined) {
+        logMessage('error', 'Member not found in struct', { token, position: parseDotAccess });
+        throw new Error(`Member ${commons.getIdentifier(token)} not found in struct`);
+    }
+    nowNode.members = foundMember;
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: parseDotAccess });
+        throw new Error('Unexpected end of input');
+    }
+    token = token.next;
+    node = nowNode;
+    return [node, token];
+}
+
+/**
+ * 解析后缀表达式。Parses postfix expression.
+ * 产生式为：后缀表达式 ::= 主表达式 (('[' 表达式 ']') | ('.' 标识符) | ('->' 标识符))*
+ * Production rule: postfix ::= primary (('[' expression ']') | ('.' identifier) | ('->' identifier))*
  * @param {Token} token 要解析的令牌。The token to parse.
  * @returns {ASTNode} 表示解析后表达式的节点。A Node representing the parsed expression.
  */
-function parseArrayAccess(token: Token): ASTNode {
+function parsePostfix(token: Token): ASTNode {
     let node = primary(token);
     token = TokenManager.getInstance().nowToken;
-    while (isEqual(token, '[')) {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: parseArrayAccess });
-            throw new Error('Unexpected end of input');
-        }
-        const nowNode = expression(token.next);
-        token = TokenManager.getInstance().nowToken;
-        const nextToken = skipToken(token, ']');
-        if (nextToken === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: parseArrayAccess });
-            throw new Error('Unexpected end of input');
-        }
-        token = nextToken;
-        const primaryNode = node;
-        node = creater.newUnary(commons.ASTNodeKind.Dereference, ptrAdd(node, nowNode));
-
-        IntermediateManager.getInstance().emit(
-            '=[]',
-            getNodeValue(primaryNode),
-            getNodeValue(nowNode),
-            getNodeValue(node),
-        );
+    while (true) {
+        if (isEqual(token, '[')) [node, token] = parseArrayAccess(token, node);
+        else if (isEqual(token, '.')) [node, token] = parseDotAccess(token, node);
+        else if (isEqual(token, '->')) {
+            node = creater.newUnary(ASTNodeKind.Dereference, node);
+            [node, token] = parseDotAccess(token, node);
+        } else break;
     }
     TokenManager.getInstance().nowToken = token;
     return node;
@@ -770,8 +936,8 @@ function parseArrayAccess(token: Token): ASTNode {
 export function unary(token: Token): ASTNode {
     for (const operator in operators.unaryOperators) {
         if (isEqual(token, operator)) {
-            const kind: commons.ASTNodeKind = operators.unaryOperators[operator];
-            const node = operation.handleUnaryOperation(token, kind);
+            const kind: ASTNodeKind = operators.unaryOperators[operator];
+            const node = handleUnaryOperation(token, kind);
 
             IntermediateManager.getInstance().emit(
                 operator,
@@ -783,7 +949,7 @@ export function unary(token: Token): ASTNode {
             return node;
         }
     }
-    return parseArrayAccess(token);
+    return parsePostfix(token);
 }
 
 /**
@@ -795,7 +961,7 @@ export function unary(token: Token): ASTNode {
  * @returns {TypeDefinition} 存在函数参数列表，返回函数类型。If there is a function parameter list, return the function type.
  */
 function checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
-    const head: TypeDefinition = {};
+    const head: TypeDefinition = new TypeDefinition({ type: ASTNodeType.Void, size: 0, alignment: 0 });
     let current: TypeDefinition = head;
     while (!isEqual(token, ')')) {
         if (current !== head) {
@@ -852,7 +1018,7 @@ function checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
             logMessage('error', 'Unexpected end of input', { token, position: checkTypeSuffix });
             throw new Error('Unexpected end of input');
         }
-        if (token.next.kind !== commons.TokenType.NumericLiteral) {
+        if (token.next.kind !== TokenType.NumericLiteral) {
             logMessage('error', 'Invalid array size', { token, position: checkTypeSuffix });
             throw new Error('Invalid array size');
         }
@@ -891,15 +1057,15 @@ function parseFunction(token: Token, type: TypeDefinition): Token {
         logMessage('error', 'Token is undefined', { token, position: parseFunction });
         throw new Error('Token is undefined');
     }
-    let isDeclare = commons.consumeToken(token, ';');
+    const isDeclare = consumeToken(token, ';');
     token = TokenManager.getInstance().nowToken;
-    let nowEntry = creater.newGlobalEntry(commons.getIdentifier(type.tokens), type, true, !isDeclare) as FunctionNode;
-    if (!nowEntry.declare) return token;
+    const nowEntry = creater.newGlobalEntry(commons.getIdentifier(type.tokens), type, true, !isDeclare) as FunctionNode;
+    if (nowEntry.declare === false) return token;
 
     creater.setLocals(undefined);
     IntermediateManager.getInstance().emit('begin', nowEntry.name, type.type);
     ScopeManager.getInstance().enterScope();
-    createLocalVariablesForParameters(type.parameters);
+    creater.createLocalVariablesForParameters(type.parameters);
     nowEntry.Arguments = creater.getLocals();
 
     const nextToken = skipToken(token, '{');
@@ -929,7 +1095,7 @@ function functionCall(token: Token): ASTNode {
     }
     let startToken = token.next.next;
 
-    const head: ASTNode = { nodeKind: commons.ASTNodeKind.Return, nodeNumber: -1 };
+    const head: ASTNode = { nodeKind: ASTNodeKind.Return, nodeNumber: -1 };
     let current: ASTNode = head;
 
     while (!isEqual(startToken, ')')) {
@@ -955,7 +1121,7 @@ function functionCall(token: Token): ASTNode {
     }
     TokenManager.getInstance().nowToken = nextToken;
 
-    const node = creater.newNode(commons.ASTNodeKind.FunctionCall);
+    const node = creater.newNode(ASTNodeKind.FunctionCall);
     node.functionDef = commons.getIdentifier(token);
     node.functionArgs = head.nextNode;
     return node;
@@ -972,7 +1138,7 @@ function functionCall(token: Token): ASTNode {
 function parseGlobalVariable(token: Token, type: TypeDefinition): Token {
     let judgeFirst = true;
     while (true) {
-        let judge = commons.consumeToken(token, ';');
+        const judge = consumeToken(token, ';');
         token = TokenManager.getInstance().nowToken;
         if (judge) break;
         if (!judgeFirst) {
@@ -984,7 +1150,7 @@ function parseGlobalVariable(token: Token, type: TypeDefinition): Token {
             token = nextToken;
         }
         judgeFirst = false;
-        let nowType = declare(token, type);
+        const nowType = declare(token, type);
         token = TokenManager.getInstance().nowToken;
         if (nowType.tokens === undefined) {
             logMessage('error', 'Token is undefined', { token, position: parseFunction });
@@ -1089,12 +1255,12 @@ function primary(token: Token): ASTNode {
         return sizeofNode;
     }
 
-    if (token.kind === commons.TokenType.Identifier) {
+    if (token.kind === TokenType.Identifier) {
         if (token.next !== undefined && isEqual(token.next, '(')) return functionCall(token);
         return identifierPrimary(token);
     }
 
-    if (token.kind === commons.TokenType.StringLiteral) {
+    if (token.kind === TokenType.StringLiteral) {
         if (token.stringType === undefined) {
             logMessage('error', 'String type is undefined', { token, position: primary });
             throw new Error('String type is undefined');
@@ -1111,7 +1277,7 @@ function primary(token: Token): ASTNode {
         return creater.newVariableNode(node);
     }
 
-    if (token.kind === commons.TokenType.NumericLiteral) {
+    if (token.kind === TokenType.NumericLiteral) {
         if (token.numericValue === undefined) {
             logMessage('error', 'Invalid number', { token, position: primary });
             throw new Error('Invalid number');
@@ -1226,15 +1392,101 @@ export function parse(tokens: Token[]): { globalEntry: SymbolEntry | undefined; 
     creater.initialParse();
     IntermediateManager.resetInstance();
     let token = tokens[0];
-    while (token.kind !== commons.TokenType.EndOfFile) {
-        let type = declareType(token);
+    while (token.kind !== TokenType.EndOfFile) {
+        const type = declareType(token);
         token = TokenManager.getInstance().nowToken;
-        let judgeFunction =
-            token.next !== undefined &&
-            !isEqual(token.next, ';') &&
-            declare(token, type).type == commons.ASTNodeType.Function;
+        const judgeFunction =
+            token.next !== undefined && !isEqual(token.next, ';') && declare(token, type).type === ASTNodeType.Function;
         token = judgeFunction ? parseFunction(token, type) : parseGlobalVariable(token, type);
     }
     const quadrupleOutput = getQuadruple();
     return { globalEntry: creater.getGlobals(), quadrupleOutput };
 }
+
+/**
+ * 处理关系操作。Handle relational operation.
+ * @param {Token} token - 代表类型的令牌。The token representing the type.
+ * @param {ASTNodeKind} kind - AST节点类型。The kind of AST node.
+ * @param {ASTNode} node - 当前的AST节点。The current AST node.
+ * @param {boolean} swapNodes - 是否交换节点。Whether to swap nodes.
+ * @returns {ASTNode} - 返回新的AST节点。Returns a new AST node.
+ */
+export const handleRelationalOperation: handlers.RelationalHandler = (
+    token: Token,
+    kind: ASTNodeKind,
+    node: ASTNode,
+    swapNodes: boolean,
+) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: relational });
+        throw new Error('Unexpected end of input');
+    }
+    const leftNode: ASTNode = swapNodes ? add(token.next) : node;
+    const rightNode: ASTNode = swapNodes ? node : add(token.next);
+    return creater.newBinary(kind, leftNode, rightNode);
+};
+
+/**
+ * 处理加法操作。Handle addition operation.
+ * @param {Token} token - 代表加法表达式的令牌。The token representing the addition expression.
+ * @param {ASTNodeKind} kind - 加法操作的种类。The kind of addition operation.
+ * @param {ASTNode} left - 左操作数。The left operand.
+ * @returns {ASTNode} 代表加法表达式的抽象语法树节点。The abstract syntax tree node representing the addition expression.
+ */
+export const handleAddOperation: handlers.AddHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: add });
+        throw new Error('Unexpected end of input');
+    }
+    if (kind === ASTNodeKind.Addition) {
+        return ptrAdd(left, mul(token.next));
+    }
+    if (kind === ASTNodeKind.Subtraction) {
+        return ptrSub(left, mul(token.next));
+    }
+    throw new Error('Invalid operation');
+};
+
+/**
+ * 处理等式操作。Handle equality operation.
+ * @param {Token} token - 代表等式的令牌。The token representing the equality.
+ * @param {ASTNodeKind} kind - 等式操作的种类。The kind of equality operation.
+ * @param {ASTNode} left - 左操作数。The left operand.
+ * @returns {ASTNode} 代表等式的抽象语法树节点。The abstract syntax tree node representing the equality.
+ */
+export const handleEqualityOperation: handlers.EqualityHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: equality });
+        throw new Error('Unexpected end of input');
+    }
+    return creater.newBinary(kind, left, relational(token.next));
+};
+
+/**
+ * 处理乘法操作。Handle multiplication operation.
+ * @param {Token} token - 代表乘法表达式的令牌。The token representing the multiplication expression.
+ * @param {ASTNodeKind} kind - 乘法操作的种类。The kind of multiplication operation.
+ * @param {ASTNode} left - 左操作数。The left operand.
+ * @returns {ASTNode} 代表乘法表达式的抽象语法树节点。The abstract syntax tree node representing the multiplication expression.
+ */
+export const handleMulOperation: handlers.MulHandler = (token: Token, kind: ASTNodeKind, left: ASTNode) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: mul });
+        throw new Error('Unexpected end of input');
+    }
+    return creater.newBinary(kind, left, unary(token.next));
+};
+
+/**
+ * 处理一元操作。Handle unary operation.
+ * @param {Token} token - 代表一元表达式的令牌。The token representing the unary expression.
+ * @param {ASTNodeKind} kind - 一元操作的种类。The kind of unary operation.
+ * @returns {ASTNode} 代表一元表达式的抽象语法树节点。The abstract syntax tree node representing the unary expression.
+ */
+export const handleUnaryOperation: handlers.UnaryHandler = (token: Token, kind: ASTNodeKind) => {
+    if (token.next === undefined) {
+        logMessage('error', 'Unexpected end of input', { token, position: unary });
+        throw new Error('Unexpected end of input');
+    }
+    return kind === ASTNodeKind.Addition ? unary(token.next) : creater.newUnary(kind, unary(token.next));
+};

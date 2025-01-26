@@ -1,6 +1,7 @@
 import type Variable from './variable-class';
-import { ASTNodeKind } from '../commons';
+import ASTNodeKind from '../enums/astnodekind-enum';
 import type TypeDefinition from './typedef-class';
+import type Member from './member-class';
 
 /**
  * 代表一个抽象语法树节点的类。
@@ -39,6 +40,8 @@ class ASTNode {
     functionArgs?: ASTNode;
     /** 结点编号。Node number. */
     nodeNumber = 0;
+    /** 成员。 Member */
+    members?: Member;
 }
 
 export default ASTNode;

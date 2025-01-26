@@ -1,7 +1,17 @@
-import { ASTNodeKind, getIdentifier } from '../commons';
-import { FunctionNode, Variable, SymbolEntry, ScopeManager, TokenManager, IntermediateManager } from '../classes';
-import type { TypeDefinition, ASTNode } from '../classes';
+import { getIdentifier } from '../commons';
+import ASTNodeKind from '../enums/astnodekind-enum';
+import {
+    type SymbolEntry,
+    type TypeDefinition,
+    type ASTNode,
+    FunctionNode,
+    Variable,
+    ScopeManager,
+    TokenManager,
+    IntermediateManager,
+} from '../classes';
 import { logMessage } from '../logger';
+
 let locals: Variable | undefined;
 let globals: SymbolEntry | undefined;
 let localConstantNumber = 0;
@@ -69,6 +79,7 @@ export function newBinary(kind: ASTNodeKind, lhs: ASTNode, rhs: ASTNode): ASTNod
         nodeNumber: astNodeNumber,
     };
 }
+
 /**
  * 创建一个新的一元操作符节点。Create a new unary operator node.
  * @param {ASTNodeKind} kind 节点的类型。The kind of the node.
@@ -83,6 +94,7 @@ export function newUnary(kind: ASTNodeKind, expr: ASTNode): ASTNode {
         nodeNumber: astNodeNumber,
     };
 }
+
 /**
  * 创建一个新的数字节点。Create a new number node.
  * @param {number} value 数字的值。The value of the number.
@@ -96,6 +108,7 @@ export function newNumber(value: number): ASTNode {
         nodeNumber: astNodeNumber,
     };
 }
+
 /**
  * 创建一个新的变量节点。Create a new variable node.
  * @param {Variable} variableNode 代表变量的节点。The node representing the variable.
@@ -109,6 +122,7 @@ export function newVariableNode(variableNode: Variable): ASTNode {
         nodeNumber: astNodeNumber,
     };
 }
+
 /**
  * 创建一个新的局部变量。Create a new local variable.
  * @param {string} name 变量名。The name of the variable.
@@ -121,11 +135,13 @@ export function newLocalVariable(name: string, type: TypeDefinition): Variable {
     locals = localVariable;
     return localVariable;
 }
+
 /**
  * 创建一个新的全局 entry。Create a new global entry.
  * @param {string} name entry 名。The name of the entry.
  * @param {TypeDefinition} type 类型定义。The type definition.
  * @param {boolean} isFunctionNode 是否是函数节点。Whether it is a function node.
+ * @param {boolean} isDeclare 是否是声明。Whether it is a declaration.
  * @returns {SymbolEntry} 新创建的全局 entry。The newly created global entry.
  */
 export function newGlobalEntry(
@@ -136,10 +152,10 @@ export function newGlobalEntry(
 ): SymbolEntry {
     const globalEntry = isFunctionNode
         ? FunctionNode.create({
-              name: name,
-              locals: locals,
+              name,
+              locals,
               returnFunc: globals,
-              type: type,
+              type,
               declare: isDeclare,
           })
         : new Variable(name, 0, true, type, globals as Variable);
@@ -147,6 +163,7 @@ export function newGlobalEntry(
     globals = globalEntry;
     return globalEntry;
 }
+
 /**
  * 创建一个新的字符串字面量。Create a new string literal.
  * @param {string | undefined} value 字符串的值。The value of the string.
@@ -154,11 +171,15 @@ export function newGlobalEntry(
  * @returns {SymbolEntry} 新创建的全局 entry。The newly created global entry.
  */
 export function newStringLiteral(value: string | undefined, type: TypeDefinition): SymbolEntry {
-    const globalEntry = newGlobalEntry('.LC' + localConstantNumber++, type, false) as Variable;
+    const currentNumber = localConstantNumber;
+    localConstantNumber += 1;
+    const globalEntry = newGlobalEntry(`.LC${currentNumber}`, type, false) as Variable;
     globalEntry.initialValue = value;
     globals = globalEntry;
     return globalEntry;
-} /**
+}
+
+/**
  * 初始化解析变量。Initialize the parsing of a variable.
  * @returns {void} 无返回值。No return value.
  */
@@ -169,7 +190,9 @@ export function initialParse(): void {
     localConstantNumber = 0;
     ScopeManager.resetInstance();
     TokenManager.resetInstance();
-} /**
+}
+
+/**
  * 为函数参数创建局部变量。Create local variables for function parameters.
  * @param {TypeDefinition | undefined} type 函数参数类型。The function parameter type.
  * @returns {void} 无返回值。No return value.

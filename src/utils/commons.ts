@@ -1,159 +1,7 @@
 import type { ASTNode, Token } from './classes';
-import { Variable, TypeDefinition, TokenManager, ScopeManager } from './classes';
+import { Variable, TypeDefinition, ScopeManager, Member } from './classes';
+import { TokenType, ASTNodeType, ASTNodeKind } from './enums';
 import { logMessage } from './logger';
-import { isEqual } from './token';
-
-/**
- * 定义了词法单元的类型。
- * Defination of token type.
- */
-export enum TokenType {
-    /** 标识符 Identifier */
-    Identifier,
-    /** 标点符号 Punctuator */
-    Punctuator,
-    /** 关键字 Keyword */
-    Keyword,
-    /** 数字字面量 Numeric Literal */
-    NumericLiteral,
-    /** 字符串字面量 String Literal */
-    StringLiteral,
-    /** 文件结束标记 End of File */
-    EndOfFile,
-}
-/**
- * 定义了抽象语法树节点的类型。
- * AST node type.
- */
-export enum ASTNodeKind {
-    /** 加法。Addition. */
-    Addition,
-    /** 减法。Subtraction. */
-    Subtraction,
-    /** 乘法。Multiplication. */
-    Multiplication,
-    /** 除法。Division. */
-    Division,
-    /** 取反。Negation. */
-    Negation,
-    /** 等于。Equality. */
-    Equality,
-    /** 不等于。Inequality. */
-    Inequality,
-    /** 小于。Less than. */
-    LessThan,
-    /** 小于等于。Less than or equal. */
-    LessThanOrEqual,
-    /** 赋值。Assignment. */
-    Assignment,
-    /** 返回。Return. */
-    Return,
-    /** 表达式语句。Expression statement. */
-    ExpressionStatement,
-    /** 变量。Variable. */
-    Variable,
-    /** 数字。Number. */
-    Number,
-    /** 语句块。Block. */
-    Block,
-    /** If语句。If statement. */
-    If,
-    /** For语句。For statement. */
-    For,
-    /** 取地址。Address of. */
-    AddressOf,
-    /** 解引用。Dereference. */
-    Dereference,
-    /** 函数调用。Function call. */
-    FunctionCall,
-    /** 逗号。Comma. */
-    Comma,
-}
-
-/**
- * 定义了关键字的类型。
- * Defination of keywords.
- */
-export enum Keywords {
-    /** 返回。Return. */
-    Return = 'return',
-    /** 如果。If. */
-    If = 'if',
-    /** 否则。Else. */
-    Else = 'else',
-    /** For 循环。For. */
-    For = 'for',
-    /** While 循环。While. */
-    While = 'while',
-    /** 整型。Int. */
-    Int = 'int',
-    /** 空。Void. */
-    Void = 'void',
-    /** 字符。char */
-    Char = 'char',
-    /** 长整形 i64(long long) */
-    Int64 = 'i64',
-    /** 短整型。short */
-    Short = 'short',
-    /** 操作数大小。Sizeof. */
-    Sizeof = 'sizeof',
-}
-
-/**
- * 定义了变量类型的关键字。
- * Defination of variable type keywords.
- */
-export enum VariableTypeDefinition {
-    /** 整型。Int. */
-    Int = 'int',
-    /** 空。Void. */
-    Void = 'void',
-    /** 字符。char */
-    Char = 'char',
-    /** 长整形 i64(long long) */
-    Int64 = 'i64',
-    /** 短整型。short */
-    Short = 'short',
-}
-
-/**
- * 定义了抽象语法树节点变量类型。
- * Defination of AST node variable type.
- */
-export enum ASTNodeType {
-    /** 整型。Integer. */
-    Integer = 'Int',
-    /** 指针。Pointer. */
-    Pointer = 'Ptr',
-    /** 函数。Function. */
-    Function = 'Func',
-    /** 数组。Array. */
-    Array = 'Array',
-    /** 空。Void. */
-    Void = 'Void',
-    /** 字符。Char */
-    Char = 'Char',
-    /** 长整形 i64(long long) */
-    Int64 = 'Int64',
-    /** 短整型。Short */
-    Short = 'Short',
-}
-
-/**
- * 定义了类型定义的选项。
- * Defination of type definition options.
- */
-export interface TypeDefinitionOptions {
-    type: ASTNodeType;
-    size: number;
-    alignment: number;
-    ptr?: TypeDefinition;
-    tokens?: Token;
-    functionType?: TypeDefinition;
-    parameters?: TypeDefinition;
-    nextParameters?: TypeDefinition;
-    arrayLength?: number;
-}
 
 /**
  * 定义了整数类型的变量。
@@ -206,6 +54,16 @@ export const shortTypeDefinition = new TypeDefinition({
 });
 
 /**
+ * 定义了结构体类型的变量。
+ * Defination of struct type variable.
+ */
+export const structTypeDefinition = new TypeDefinition({
+    type: ASTNodeType.Struct,
+    size: 0,
+    alignment: 1,
+});
+
+/**
  * 判断一个变量类型是否是数类型。Judge if a variable type is a number type.
  * @param {TypeDefinition} type - 要判断的变量类型（The variable type to evaluate）。
  * @returns {boolean} 如果变量类型是数类型，返回 true，否则返回 false（Return true if the variable type is a number type, otherwise return false）。
@@ -253,7 +111,8 @@ export function addType(node: ASTNode | undefined): void {
             typeof nodeProperty !== 'number' &&
             typeof nodeProperty !== 'string' &&
             !(nodeProperty instanceof Variable) &&
-            !(nodeProperty instanceof TypeDefinition)
+            !(nodeProperty instanceof TypeDefinition) &&
+            !(nodeProperty instanceof Member)
         ) {
             addType(nodeProperty);
         }
@@ -326,6 +185,14 @@ export function addType(node: ASTNode | undefined): void {
                 throw new Error('Invalid pointer dereference');
             }
             node.typeDef = node.leftNode.typeDef.ptr;
+            return;
+        }
+        case ASTNodeKind.DotAccess: {
+            if (node.members?.type === undefined) {
+                logMessage('error', 'Invalid dot access', { token: node.leftNode?.localVar?.name });
+                throw new Error('Invalid dot access');
+            }
+            node.typeDef = node.members.type;
             break;
         }
         default: {
@@ -375,27 +242,6 @@ export function addArray(type: TypeDefinition, length: number): TypeDefinition {
     return arrayType;
 }
 
-/**
- * 消费一个令牌，如果令牌的值与给定的字符串匹配。
- * Consumes a token if the token's value matches the given string.
- * @param {Token} token 当前的令牌。The current token.
- * @param {string} tokenName 要匹配的字符串。The string to match.
- * @returns {boolean} 如果令牌的值与给定的字符串匹配，则返回true并将nowToken设置为下一个令牌，否则返回false并将nowToken设置为当前令牌。
- * True if the token's value matches the given string and sets nowToken to the next token, false otherwise and sets nowToken to the current token.
- */
-
-export function consumeToken(token: Token, tokenName: string): boolean {
-    if (isEqual(token, tokenName)) {
-        if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: consumeToken });
-            throw new Error('Unexpected end of input');
-        }
-        TokenManager.getInstance().nowToken = token.next;
-        return true;
-    }
-    TokenManager.getInstance().nowToken = token;
-    return false;
-}
 /**
  * 在当前的变量列表中查找一个变量。Find a variable in the current list of local variables.
  * @param {Token} token 代表变量的令牌。The token representing the variable.

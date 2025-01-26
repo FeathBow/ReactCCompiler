@@ -1,5 +1,5 @@
-import { TokenType } from '../commons';
-import TypeDefinition from './typedef-class';
+import TokenType from '../enums/tokentype-enum';
+import type TypeDefinition from './typedef-class';
 
 /**
  * 代表一个词法单元的类。

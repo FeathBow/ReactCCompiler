@@ -1,4 +1,4 @@
-import type TypeDefinition from './typedef-class';
+import TypeDefinition from './typedef-class';
 
 /**
  * 代表符号表条目的基类。

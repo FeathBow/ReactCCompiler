@@ -8,3 +8,4 @@ export { default as ScopeManager } from './scopemanager-class';
 export { default as Scope } from './scope-class';
 export { default as TokenManager } from './tokenmanager-class';
 export { default as IntermediateManager } from './intermediate-class';
+export { default as Member } from './member-class';

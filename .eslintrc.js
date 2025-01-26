@@ -1,5 +1,6 @@
 const OFF = 0;
 const WARN = 1;
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const ERROR = 2;
 
 // eslint-disable-next-line unicorn/prefer-module
@@ -91,4 +92,5 @@ module.exports = {
         Atomics: 'readonly',
         SharedArrayBuffer: 'readonly',
     },
+    ignorePatterns: ['deploy.js', 'jest.config.js'],
 };

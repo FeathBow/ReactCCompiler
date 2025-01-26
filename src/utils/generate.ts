@@ -1,4 +1,5 @@
-import { ASTNodeKind, ASTNodeType, alignToNearest } from './commons';
+import { alignToNearest } from './commons';
+import { ASTNodeKind, ASTNodeType } from './enums';
 import type { TypeDefinition, ASTNode } from './classes';
 import { FunctionNode, Variable, SymbolEntry } from './classes';
 import { logMessage } from './logger';
@@ -52,7 +53,8 @@ function addCount(): number {
  * @param {TypeDefinition} type 要加载的值的类型定义。The type definition of the value to load.
  */
 function load(type: TypeDefinition): void {
-    if (type.type !== ASTNodeType.Array && type.size !== undefined) {
+    const returnType = [ASTNodeType.Array, ASTNodeType.Struct, undefined].includes(type.type);
+    if (!returnType) {
         const operation = sizeToLoadOperation[type.size] ?? sizeToLoadOperation.default;
         generated.push(`  ${operation}`);
     }
@@ -65,6 +67,13 @@ function load(type: TypeDefinition): void {
  */
 function store(type: TypeDefinition): void {
     popFromStack('%rdi');
+    if (type.type === ASTNodeType.Struct) {
+        for (let i = 0; i < type.size; i++) {
+            generated.push(`  mov ${i}(%rax), %r8`);
+            generated.push(`  mov %r8, ${i}(%rdi)`);
+        }
+        return;
+    }
     if (type.size !== undefined) {
         const operation = sizeToStoreOperation[type.size] ?? sizeToStoreOperation.default;
         generated.push(`  ${operation}`);
@@ -159,6 +168,12 @@ const generateExpressionHandlers: generateExpressionHandlerMap = {
             handleASTError(node, 'Invalid comma', ASTNodeKind.Comma, generateExpression);
         generateExpression(node.leftNode);
         generateExpression(node.rightNode);
+    },
+    [ASTNodeKind.DotAccess]: (node: ASTNode) => {
+        generateAddress(node);
+        if (node.typeDef === undefined)
+            handleASTError(node, 'Invalid object member', ASTNodeKind.DotAccess, generateExpression);
+        load(node.typeDef);
     },
 };
 
@@ -494,7 +509,13 @@ function generateAddress(node: ASTNode): void {
         generateAddress(node.rightNode);
         return;
     }
-
+    if (node.nodeKind === ASTNodeKind.DotAccess) {
+        if (node.leftNode === undefined || node.members === undefined)
+            handleASTError(node, 'Invalid object member', ASTNodeKind.DotAccess, generateAddress);
+        generateAddress(node.leftNode);
+        generated.push(`  add $${node.members.offset}, %rax`);
+        return;
+    }
     logMessage('error', 'Not an lvalue', { node, position: generateAddress });
     throw new Error('not an lvalue');
 }

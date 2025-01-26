@@ -18,7 +18,7 @@ class TokenManager {
      * @static
      */
     public static getInstance(): TokenManager {
-        if (!TokenManager.instance) {
+        if (TokenManager.instance === undefined) {
             TokenManager.instance = new TokenManager();
         }
         return TokenManager.instance;

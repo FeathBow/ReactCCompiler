@@ -80,46 +80,45 @@ function Compiler(): JSX.Element {
     const handleSubmit = (event: React.FormEvent): void => {
         event.preventDefault();
         setIsLoading(true);
-        try {
-            const tokens = tokenize(code);
-            const { globalEntry, quadrupleOutput } = parse(tokens);
-            if (globalEntry === undefined) throw new Error('Global entry is undefined');
-            generateCode(globalEntry).then(() => {
+        void (async () => {
+            try {
+                const tokens = tokenize(code);
+                const { globalEntry, quadrupleOutput } = parse(tokens);
+                if (globalEntry === undefined) throw new Error('Global entry is undefined');
+                await generateCode(globalEntry);
                 setOutput(getGenerated());
                 setQuadruple(quadrupleOutput);
                 setIsLoading(false);
-            });
-        } catch (error) {
-            console.error('An error occurred during parsing:', error);
-            setIsLoading(false);
-            toast({
-                id: 'copy-toast',
-                duration: 5000,
-                isClosable: true,
-                position: 'bottom',
-                render: () => (
-                    <CustomAlert
-                        type='error'
-                        title='Compilation Error'
-                        description='Syntax error: Please ensure your code follows standard C syntax.'
-                        isClosable={true}
-                        isToast={true}
-                        fullWidth={false}
-                    />
-                ),
-            });
-        }
+            } catch (error) {
+                console.error('An error occurred during parsing:', error);
+                setIsLoading(false);
+                toast({
+                    id: 'copy-toast',
+                    duration: 5000,
+                    isClosable: true,
+                    position: 'bottom',
+                    render: () => (
+                        <CustomAlert
+                            type='error'
+                            title='Compilation Error'
+                            description='Syntax error: Please ensure your code follows standard C syntax.'
+                            isClosable
+                            isToast
+                            fullWidth={false}
+                        />
+                    ),
+                });
+            }
+        })();
     };
 
     const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
     const isAssemblyPage = location.pathname === '/assembly';
     const isQuadruplePage = location.pathname === '/quadruple';
-    const pageTitle = 'C Code to ' + isAssemblyPage ? 'Assembly Converter' : 'Quadruple Converter';
-    const pageDescription =
-        'Enter standard C code in the input box below and click the submit button. The code will be converted to the corresponding ' +
-        isAssemblyPage
-            ? 'assembly code.'
-            : 'quadruple representation.';
+    const pageTitle = isAssemblyPage ? 'C Code to Assembly Converter' : 'C Code to Quadruple Converter';
+    const pageDescription = isAssemblyPage
+        ? 'Enter standard C code in the input box below and click the submit button. The code will be converted to assembly code.'
+        : 'Enter standard C code in the input box below and click the submit button. The code will be converted to quadruple representation.';
 
     return (
         <Container maxW='container.lg' py={8}>
@@ -220,7 +219,7 @@ function Compiler(): JSX.Element {
                     description='Please ensure your code follows standard C syntax to obtain correct conversion results.'
                     isClosable={false}
                     isToast={false}
-                    fullWidth={true}
+                    fullWidth
                 />
             </VStack>
         </Container>

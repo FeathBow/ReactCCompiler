@@ -5,8 +5,9 @@ import {
     charTypeDefinition,
     int64TypeDefinition,
     shortTypeDefinition,
-    ASTNodeKind,
+    structTypeDefinition,
 } from '../commons';
+import ASTNodeKind from '../enums/astnodekind-enum';
 
 /**
  * 语句处理器类型。Statement handler type.
@@ -36,6 +37,7 @@ export const typeDefinitions: Record<string, TypeDefinition> = {
     char: charTypeDefinition,
     i64: int64TypeDefinition,
     short: shortTypeDefinition,
+    struct: structTypeDefinition,
 };
 
 /**

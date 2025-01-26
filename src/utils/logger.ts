@@ -2,7 +2,6 @@ import { logger, consoleTransport } from 'react-native-logs';
 
 /**
  * 日志级别类型，包括 'error'、'warn'、'info'、'debug' 和 'trace'。
- *
  * Log level type, including 'error', 'warn', 'info', 'debug', and 'trace'.
  */
 export type LogLevel = 'error' | 'warn' | 'info' | 'debug' | 'trace';

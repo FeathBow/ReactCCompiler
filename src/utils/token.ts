@@ -1,6 +1,8 @@
-import { Keywords, VariableTypeDefinition, TokenType, charTypeDefinition, addArray } from './commons';
+import { charTypeDefinition, addArray } from './commons';
+import { VariableTypeDefinition, Keywords, TokenType } from './enums';
 import Token from './classes/token-class';
 import { logMessage } from './logger';
+import { TokenManager } from './classes';
 
 /**
  * 判断给定的 token 是否是一个关键字。Evaluate if the given token is a keyword.
@@ -95,7 +97,7 @@ function isValidNonFirstCharOfIdentifier(c: string): boolean {
  * @returns {number} 返回标点符号的长度。Return the length of the punctuation.
  */
 function readPunctuation(p: string): number {
-    const punctuations = ['==', '!=', '<=', '>='];
+    const punctuations = ['==', '!=', '<=', '>=', '->'];
 
     for (const punctuation of punctuations) {
         if (startsWith(p, punctuation)) {
@@ -174,53 +176,65 @@ export function tokenize(p: string): Token[] {
             current.length = start.length - p.length;
             tokens.push(current);
         } else if (p.startsWith('"')) {
-            let str = p.slice(1);
-            let endIndex = str.indexOf('"');
+            const nowString = p.slice(1);
+            const endIndex = nowString.indexOf('"');
             if (endIndex === -1) {
                 logMessage('error', 'Unclosed string literal', { position: tokenize });
                 throw new Error('Unclosed string literal');
             }
 
-            const value =
-                str.slice(0, endIndex).replace(/\\(x[0-9A-Fa-f]+|[0-7]{1,3}|.)/g, (_, e) => {
-                    if (e.startsWith('x')) {
-                        return String.fromCharCode(parseInt(e.slice(1), 16));
-                    } else if (/^[0-7]{1,3}$/.test(e)) {
-                        return String.fromCharCode(parseInt(e, 8));
-                    } else {
-                        switch (e) {
-                            case 'a':
-                                return '\x07';
-                            case 'n':
-                                return '\n';
-                            case 't':
-                                return '\t';
-                            case 'r':
-                                return '\r';
-                            case 'b':
-                                return '\b';
-                            case 'f':
-                                return '\f';
-                            case 'v':
-                                return '\v';
-                            case '\\':
-                                return '\\';
-                            case '"':
-                                return '"';
-                            case "'":
-                                return "'";
-                            default:
-                                return e;
+            const value = `${nowString
+                .slice(0, endIndex)
+                .replaceAll(/\\(x[\dA-Fa-f]+|[0-7]{1,3}|.)/g, (_: string, symbol: string): string => {
+                    if (symbol.startsWith('x')) {
+                        return String.fromCodePoint(Number.parseInt(symbol.slice(1), 16));
+                    }
+                    if (/^[0-7]{1,3}$/.test(symbol)) {
+                        return String.fromCodePoint(Number.parseInt(symbol, 8));
+                    }
+                    switch (symbol) {
+                        case 'a': {
+                            return '\u0007';
+                        }
+                        case 'n': {
+                            return '\n';
+                        }
+                        case 't': {
+                            return '\t';
+                        }
+                        case 'r': {
+                            return '\r';
+                        }
+                        case 'b': {
+                            return '\b';
+                        }
+                        case 'f': {
+                            return '\f';
+                        }
+                        case 'v': {
+                            return '\v';
+                        }
+                        case '\\': {
+                            return '\\';
+                        }
+                        case '"': {
+                            return '"';
+                        }
+                        case "'": {
+                            return "'";
+                        }
+                        default: {
+                            return symbol;
                         }
                     }
-                }) + '\0';
-            const len = value.length;
+                })}\0`;
+            const nowLength = value.length;
             const current = new Token();
             current.kind = TokenType.StringLiteral;
             current.location = p;
             current.length = endIndex + 2;
             current.stringValue = value;
-            current.stringType = addArray(charTypeDefinition, len);
+            current.stringType = addArray(charTypeDefinition, nowLength);
             tokens.push(current);
             p = p.slice(current.length);
         } else if (readPunctuation(p) > 0) {
@@ -248,4 +262,25 @@ export function tokenize(p: string): Token[] {
         tokens[index].next = tokens[index + 1];
     }
     return tokens;
+}
+
+/**
+ * 消费一个令牌，如果令牌的值与给定的字符串匹配。
+ * Consumes a token if the token's value matches the given string.
+ * @param {Token} token 当前的令牌。The current token.
+ * @param {string} tokenName 要匹配的字符串。The string to match.
+ * @returns {boolean} 如果令牌的值与给定的字符串匹配，则返回true并将nowToken设置为下一个令牌，否则返回false并将nowToken设置为当前令牌。
+ * True if the token's value matches the given string and sets nowToken to the next token, false otherwise and sets nowToken to the current token.
+ */
+export function consumeToken(token: Token, tokenName: string): boolean {
+    if (isEqual(token, tokenName)) {
+        if (token.next === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: consumeToken });
+            throw new Error('Unexpected end of input');
+        }
+        TokenManager.getInstance().nowToken = token.next;
+        return true;
+    }
+    TokenManager.getInstance().nowToken = token;
+    return false;
 }

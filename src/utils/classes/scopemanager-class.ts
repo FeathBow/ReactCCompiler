@@ -1,5 +1,6 @@
 import Scope from './scope-class';
-import SymbolEntry from './symbolentry-class';
+import type SymbolEntry from './symbolentry-class';
+import Tag from './tag-class';
 
 /**
  * 代表一个作用域管理器的类。
@@ -42,8 +43,8 @@ class ScopeManager {
         if (this.scopeStack.length === 0) {
             throw new Error(`No scope available to declare entry ${entry.name}.`);
         }
-        const currentScope = this.scopeStack[this.scopeStack.length - 1];
-        currentScope.declareEntry(entry);
+        const currentScope = this.scopeStack.at(-1);
+        if (currentScope !== undefined) currentScope.declareEntry(entry);
     }
 
     /**
@@ -53,12 +54,38 @@ class ScopeManager {
      * @returns {SymbolEntry | undefined} 找到的 entry，如果没有找到则返回 undefined。The found entry, or undefined if not found.
      */
     public findEntry(name: string): SymbolEntry | undefined {
-        for (let i = this.scopeStack.length - 1; i >= 0; i--) {
-            const scope = this.scopeStack[i];
+        for (let index = this.scopeStack.length - 1; index >= 0; index -= 1) {
+            const scope = this.scopeStack[index];
             const found = scope.getEntry(name);
-            if (found) {
-                return found;
-            }
+            if (found !== undefined) return found;
+        }
+        return undefined;
+    }
+
+    /**
+     * 声明一个 Tag
+     * Declare a Tag
+     * @param {Tag} tag - 要声明的 Tag。The tag to declare.
+     */
+    public declareTag(tag: Tag): void {
+        if (this.scopeStack.length === 0) {
+            throw new Error(`No scope available to declare tag ${tag.name}.`);
+        }
+        const currentScope = this.scopeStack.at(-1);
+        if (currentScope !== undefined) currentScope.declareTag(tag);
+    }
+
+    /**
+     * 查找一个 Tag, 从栈顶往下（内层到外层）依次查找
+     * Find a Tag, from the top of the stack to the bottom (inner to outer).
+     * @param {string} name - 要查找的 Tag 的名字。The name of the tag to find.
+     * @returns {Tag | undefined} 找到的 Tag，如果没有找到则返回 undefined。The found tag, or undefined if not found.
+     */
+    public findTag(name: string): Tag | undefined {
+        for (let index = this.scopeStack.length - 1; index >= 0; index -= 1) {
+            const scope = this.scopeStack[index];
+            const found = scope.getTag(name);
+            if (found !== undefined) return found;
         }
         return undefined;
     }
@@ -70,9 +97,7 @@ class ScopeManager {
      * @static
      */
     public static getInstance(): ScopeManager {
-        if (!ScopeManager.instance) {
-            ScopeManager.instance = new ScopeManager();
-        }
+        if (ScopeManager.instance === undefined) ScopeManager.instance = new ScopeManager();
         return ScopeManager.instance;
     }
 

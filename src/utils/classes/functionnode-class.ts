@@ -16,7 +16,7 @@ import type TypeDefinition from './typedef-class';
  * @property {TypeDefinition} type - 类型。Type.
  * @property {boolean} declare - 是否声明。Whether to declare.
  */
-export interface FunctionNodeParams {
+export interface FunctionNodeParameters {
     name?: string;
     body?: ASTNode;
     locals?: Variable;
@@ -46,12 +46,12 @@ class FunctionNode extends SymbolEntry {
     /**
      * 类构造函数。
      * Class constructor
-     * @param {FunctionNodeParams} params - 参数对象。Parameter object.
+     * @param {FunctionNodeParameters} parameters - 参数对象。Parameter object.
      * @returns {FunctionNode} 类实例（Class instance）。
      * @class
      */
-    constructor(params: FunctionNodeParams = {}) {
-        const { name = '', body, locals, stackSize = 0, Arguments, returnFunc, type, declare = false } = params;
+    constructor(parameters: FunctionNodeParameters = {}) {
+        const { name = '', body, locals, stackSize = 0, Arguments, returnFunc, type, declare = false } = parameters;
         super(name, type, returnFunc);
         this.body = body;
         this.locals = locals;
@@ -63,12 +63,12 @@ class FunctionNode extends SymbolEntry {
     /**
      * 创建一个新的 FunctionNode 实例。
      * Create a new FunctionNode instance.
-     * @param {Partial<FunctionNodeParams>} params - 参数对象。Parameter object.
+     * @param {Partial<FunctionNodeParameters>} parameters - 参数对象。Parameter object.
      * @returns {FunctionNode} 新的 FunctionNode 实例。New FunctionNode instance.
      * @static
      */
-    static create(params: Partial<FunctionNodeParams> = {}): FunctionNode {
-        return new FunctionNode(params);
+    static create(parameters: Partial<FunctionNodeParameters> = {}): FunctionNode {
+        return new FunctionNode(parameters);
     }
 }
 

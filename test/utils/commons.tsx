@@ -15,13 +15,13 @@ interface ExecError extends Error {
  * @param {string} filename - 要清理的文件名。The filename to cleanup.
  * @returns {Promise<void>} Promise。
  */
-async function cleanupDistFiles(filename: string): Promise<void> {
+async function cleanupDistributionFiles(filename: string): Promise<void> {
     try {
         await unlink(`dist/${filename}.s`);
         await unlink(`dist/${filename}.exe`);
-    } catch (e) {
-        console.error('Error cleaning up dist files:', e);
-        throw e;
+    } catch (error) {
+        console.error('Error cleaning up dist files:', error);
+        throw error;
     }
 }
 
@@ -78,8 +78,8 @@ function runTestCases(
 ): void {
     describe(testName, () => {
         afterEach(async () => {
-            await cleanupDistFiles(filename);
-        });
+            await cleanupDistributionFiles(filename);
+        }, 3000);
         for (const { code, expectedExitStatus } of testCases) {
             test(`Code: ${code}\n\tshould return correct exit status [${expectedExitStatus}]`, async () => {
                 await testCode(code, expectedExitStatus, filename);
