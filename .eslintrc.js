@@ -92,5 +92,5 @@ module.exports = {
         Atomics: 'readonly',
         SharedArrayBuffer: 'readonly',
     },
-    ignorePatterns: ['deploy.js', 'jest.config.js'],
+    ignorePatterns: ['deploy.js', 'jest.config.js', 'LICENSE'],
 };

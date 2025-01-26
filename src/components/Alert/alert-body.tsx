@@ -56,7 +56,7 @@ function AlertBody({
         error: <Icon as={BsLightningFill} color='white' boxSize={6} />,
         notification: <Avatar boxSize={10} name={avatarName ?? ''} src={avatarSrc ?? ''} />,
     };
-    const handleOnClose = onClose || (() => {});
+    const handleOnClose = onClose ?? (() => {});
     return (
         <Flex
             maxW={fullWidth ? '100%' : 'sm'}

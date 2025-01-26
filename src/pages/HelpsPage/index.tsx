@@ -99,7 +99,7 @@ function HelpsPage(): JSX.Element {
                     description='Ensure that your code adheres to standard C syntax to enable correct conversion.'
                     isClosable={false}
                     isToast={false}
-                    fullWidth={true}
+                    fullWidth
                 />
                 <Button onClick={onToggle} mt='2' borderRadius='md' colorScheme='teal'>
                     {isOpen ? 'Hide Sample Code' : 'Show Sample Code'}
@@ -116,7 +116,9 @@ function HelpsPage(): JSX.Element {
                             textDecoration: 'none',
                         }}
                         cursor='pointer'
-                        onClick={() => handleCopy(codeStringC)}
+                        onClick={() => {
+                            handleCopy(codeStringC);
+                        }}
                     >
                         <SyntaxHighlighter
                             language='cpp'
@@ -137,7 +139,14 @@ function HelpsPage(): JSX.Element {
                         </SyntaxHighlighter>
                     </Box>
                     <Separator />
-                    <Button colorScheme='teal' variant='outline' width='full' onClick={() => handleCopy(codeStringC)}>
+                    <Button
+                        colorScheme='teal'
+                        variant='outline'
+                        width='full'
+                        onClick={() => {
+                            handleCopy(codeStringC);
+                        }}
+                    >
                         <CopyIcon mr={2} /> Copy
                     </Button>
                 </Collapse>
@@ -169,7 +178,9 @@ function HelpsPage(): JSX.Element {
                         textDecoration: 'none',
                     }}
                     cursor='pointer'
-                    onClick={() => handleCopy(codeStringCommand)}
+                    onClick={() => {
+                        handleCopy(codeStringCommand);
+                    }}
                 >
                     <SyntaxHighlighter
                         language='bash'
@@ -182,7 +193,14 @@ function HelpsPage(): JSX.Element {
                         {codeStringCommand}
                     </SyntaxHighlighter>
                 </Box>
-                <Button colorScheme='teal' variant='outline' width='full' onClick={() => handleCopy(codeStringCommand)}>
+                <Button
+                    colorScheme='teal'
+                    variant='outline'
+                    width='full'
+                    onClick={() => {
+                        handleCopy(codeStringCommand);
+                    }}
+                >
                     <CopyIcon mr={2} /> Copy
                 </Button>
 
@@ -213,7 +231,7 @@ function HelpsPage(): JSX.Element {
                     description='Please note that the return value must be between 0 and 255 (an 8-bit unsigned integer).'
                     isClosable={false}
                     isToast={false}
-                    fullWidth={true}
+                    fullWidth
                 />
 
                 <Heading size='md'>3. Additional Information</Heading>
@@ -262,7 +280,7 @@ function HelpsPage(): JSX.Element {
                     description="If you experience delays after clicking 'Submit', it might be due to syntax errors in your code or the use of unsupported features. Please ensure your code follows standard C syntax and avoid using advanced features not yet supported."
                     isClosable={false}
                     isToast={false}
-                    fullWidth={true}
+                    fullWidth
                 />
 
                 <CustomAlert
@@ -271,7 +289,7 @@ function HelpsPage(): JSX.Element {
                     description='Currently, the converter supports basic C syntax including variable declarations, arithmetic operations, and return statements. Complex features like pointers, structs, and dynamic memory allocation may not be fully supported.'
                     isClosable={false}
                     isToast={false}
-                    fullWidth={true}
+                    fullWidth
                 />
 
                 <CustomAlert
@@ -280,7 +298,7 @@ function HelpsPage(): JSX.Element {
                     description='Carefully review your code for missing semicolons, unmatched brackets, or incorrect variable names. Ensure that all variables are declared before use and that your code adheres to C programming conventions.'
                     isClosable={false}
                     isToast={false}
-                    fullWidth={true}
+                    fullWidth
                 />
 
                 {/* Additional guidance for non-technical users */}
@@ -291,7 +309,7 @@ function HelpsPage(): JSX.Element {
                     description="If you're new to command-line operations, please read the following tips carefully."
                     isClosable={false}
                     isToast={false}
-                    fullWidth={true}
+                    fullWidth
                 />
                 <Text>If you are not familiar with command-line operations, here are some helpful tips:</Text>
                 <UnorderedList pl={5} spacing={3}>
@@ -339,7 +357,7 @@ function HelpsPage(): JSX.Element {
                     </ListItem>
                     <ListItem>
                         <Text>
-                            <Text as='b'>Further Assistance:</Text> Don't hesitate to search online for tutorials on
+                            <Text as='b'>Further Assistance:</Text> Don&apos;t hesitate to search online for tutorials on
                             using the command line or compiling code. There are many resources available for beginners.
                         </Text>
                     </ListItem>

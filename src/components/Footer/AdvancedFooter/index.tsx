@@ -111,7 +111,7 @@ function AdvancedFooter({ logoSrc, logoAlt, menuItems, socialLinks }: Readonly<A
     useEffect(() => {
         const siteLaunchDate = new Date('2024-10-30T20:49:26');
 
-        const updateSiteRunTime = () => {
+        const updateSiteRunTime = (): void => {
             const now = new Date();
             const diff = now.getTime() - siteLaunchDate.getTime();
 
@@ -127,9 +127,11 @@ function AdvancedFooter({ logoSrc, logoAlt, menuItems, socialLinks }: Readonly<A
         };
 
         updateSiteRunTime();
-        const intervalId = setInterval(updateSiteRunTime, 60000);
+        const intervalId = setInterval(updateSiteRunTime, 60_000);
 
-        return () => clearInterval(intervalId);
+        return () => {
+            clearInterval(intervalId);
+        };
     }, []);
 
     const currentYear = new Date().getFullYear();

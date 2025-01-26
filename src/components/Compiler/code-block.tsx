@@ -16,7 +16,7 @@ export interface CodeBlockProperties {
     isOpen: boolean;
     code: string;
     colorMode: string;
-    currentStyle: { [key: string]: React.CSSProperties };
+    currentStyle: Record<string, React.CSSProperties>;
     codeLanguage?: string;
 }
 

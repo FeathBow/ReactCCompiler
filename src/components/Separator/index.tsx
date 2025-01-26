@@ -15,7 +15,7 @@ export interface SeparatorProperties {
  * @param {SeparatorProps} properties - The properties of the component.
  * @returns {JSX.Element} The Separator component.
  */
-function Separator({children}: Readonly<SeparatorProperties>): JSX.Element {
+function Separator({ children }: Readonly<SeparatorProperties>): JSX.Element {
     return (
         <Center position='relative' height='20px'>
             <Box

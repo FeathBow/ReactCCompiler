@@ -78,7 +78,9 @@ function CodeModal({ isOpen, onClose, code, result }: Readonly<CodeModalProperti
                                         borderRadius: 'md',
                                     }}
                                 >
-                                    <Text fontWeight='bold' fontSize='sm'>CPP</Text>
+                                    <Text fontWeight='bold' fontSize='sm'>
+                                        CPP
+                                    </Text>
                                 </Box>
                                 <SyntaxHighlighter
                                     language='cpp'

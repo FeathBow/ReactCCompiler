@@ -4,10 +4,9 @@
 const { merge } = require('webpack-merge');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const webpack = require('webpack');
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
+const path = require('node:path');
 const common = require('./webpack.common.js');
-
-// 引入 path 模块
-const path = require('path');
 
 module.exports = merge(common, {
     mode: 'production',
@@ -23,3 +22,7 @@ module.exports = merge(common, {
         }),
     ],
 });
+
+/* eslint-enable @typescript-eslint/no-var-requires */
+/* eslint-enable unicorn/prefer-module */
+/* eslint-enable @typescript-eslint/no-unsafe-call */

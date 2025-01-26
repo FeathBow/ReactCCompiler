@@ -23,9 +23,9 @@ import CustomAlert from 'Components/Alert';
 import { tokenize } from 'Utils/token';
 import { parse } from 'Utils/parse';
 import { generateCode, getGenerated } from 'Utils/generate';
-import OutputComponent from './OutputComponent';
-import QuadrupleOutputComponent from './QuadrupleOutputComponent';
-import CodeBlock from './CodeBlock';
+import OutputComponent from './output-component';
+import QuadrupleOutputComponent from './quadruple-output-component';
+import CodeBlock from './code-block';
 
 interface Location {
     pathname: string;
