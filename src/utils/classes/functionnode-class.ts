@@ -52,7 +52,7 @@ class FunctionNode extends SymbolEntry {
      */
     constructor(parameters: FunctionNodeParameters = {}) {
         const { name = '', body, locals, stackSize = 0, Arguments, returnFunc, type, declare = false } = parameters;
-        super(name, type, returnFunc);
+        super({ name, type, nextEntry: returnFunc });
         this.body = body;
         this.locals = locals;
         this.stackSize = stackSize;

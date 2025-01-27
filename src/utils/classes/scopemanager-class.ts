@@ -1,6 +1,6 @@
 import Scope from './scope-class';
 import type SymbolEntry from './symbolentry-class';
-import Tag from './tag-class';
+import type Tag from './tag-class';
 
 /**
  * 代表一个作用域管理器的类。
@@ -9,6 +9,13 @@ import Tag from './tag-class';
 class ScopeManager {
     private static instance: ScopeManager;
     private readonly scopeStack: Scope[] = [];
+
+    /**
+     * 类构造函数。
+     * Class constructor
+     * @returns {ScopeManager} 类实例（Class instance）。
+     * @class
+     */
     constructor() {
         this.enterScope();
     }

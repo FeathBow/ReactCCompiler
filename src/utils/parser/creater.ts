@@ -130,7 +130,7 @@ export function newVariableNode(variableNode: Variable): ASTNode {
  * @returns {Variable} 新创建的局部变量。The newly created local variable.
  */
 export function newLocalVariable(name: string, type: TypeDefinition): Variable {
-    const localVariable = new Variable(name, 0, false, type, locals);
+    const localVariable = new Variable({ name, offsetFromRBP: 0, isGlobal: false, type, nextEntry: locals });
     ScopeManager.getInstance().declareEntry(localVariable);
     locals = localVariable;
     return localVariable;
@@ -151,14 +151,8 @@ export function newGlobalEntry(
     isDeclare = false,
 ): SymbolEntry {
     const globalEntry = isFunctionNode
-        ? FunctionNode.create({
-              name,
-              locals,
-              returnFunc: globals,
-              type,
-              declare: isDeclare,
-          })
-        : new Variable(name, 0, true, type, globals as Variable);
+        ? new FunctionNode({ name, locals, returnFunc: globals, type, declare: isDeclare })
+        : new Variable({ name, offsetFromRBP: 0, isGlobal: true, type, nextEntry: globals as Variable });
     ScopeManager.getInstance().declareEntry(globalEntry);
     globals = globalEntry;
     return globalEntry;

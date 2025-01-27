@@ -1,5 +1,10 @@
 import TypeDefinition from './typedef-class';
 
+export interface TagOptions {
+    name: string;
+    type: TypeDefinition;
+}
+
 /**
  * 代表一个 tag 的类。可用于结构体和联合体等的定义。
  * Class representing a tag. Can be used for struct and union.
@@ -13,10 +18,10 @@ class Tag {
     /**
      * 类构造函数。
      * Class constructor
-     * @param {string} name - 名字。Name.
-     * @param {TypeDefinition} type - 类型。Type.
+     * @param {TagOptions} options - 选项。Options.
      */
-    constructor(name: string, type: TypeDefinition) {
+    constructor(options: TagOptions) {
+        const { name, type } = options;
         this.name = name;
         this.type = type;
     }

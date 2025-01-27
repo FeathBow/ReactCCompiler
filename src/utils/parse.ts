@@ -324,7 +324,7 @@ function assignMemberOffsets(type: TypeDefinition): TypeDefinition {
 function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
     let tag: Tag | undefined;
     if (token.kind === TokenType.Identifier) {
-        tag = new Tag(commons.getIdentifier(token), type);
+        tag = new Tag({ name: commons.getIdentifier(token), type });
         if (token.next === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: parseStruct });
             throw new Error('Unexpected end of input');
@@ -348,7 +348,7 @@ function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
         throw new Error('Unexpected end of input');
     }
     token = nextToken;
-    const head: Member = new Member(undefined, undefined, undefined, 0);
+    const head: Member = new Member({});
     let current: Member = head;
 
     while (!isEqual(token, '}')) {
@@ -370,7 +370,12 @@ function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
             parseFirst = true;
             const memberType = declare(token, nowType);
             token = TokenManager.getInstance().nowToken;
-            const member: Member = new Member(memberType, memberType.tokens, undefined, 0);
+            const member: Member = new Member({
+                type: memberType,
+                token: memberType.tokens,
+                nextMember: undefined,
+                offset: 0,
+            });
             current = current.nextMember = member;
         }
     }

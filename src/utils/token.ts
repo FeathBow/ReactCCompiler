@@ -158,11 +158,16 @@ export function tokenize(p: string): Token[] {
         if (p.charAt(0).trim() === '') {
             p = p.slice(1);
         } else if (/\d/.test(p.charAt(0))) {
-            const current = new Token();
-            current.kind = TokenType.NumericLiteral;
-            current.location = p;
-            current.numericValue = Number.parseInt(p, 10);
-            current.length = current.numericValue.toString().length;
+            const numericValue = Number.parseInt(p, 10);
+            const current = new Token(
+                TokenType.NumericLiteral,
+                undefined,
+                numericValue,
+                undefined,
+                undefined,
+                p,
+                numericValue.toString().length,
+            );
             tokens.push(current);
             p = p.slice(current.length);
         } else if (isValidFirstCharOfIdentifier(p.charAt(0))) {
@@ -170,10 +175,15 @@ export function tokenize(p: string): Token[] {
             do {
                 p = p.slice(1);
             } while (p.length > 0 && isValidNonFirstCharOfIdentifier(p.charAt(0)));
-            const current = new Token();
-            current.kind = TokenType.Identifier;
-            current.location = start;
-            current.length = start.length - p.length;
+            const current = new Token(
+                TokenType.Identifier,
+                undefined,
+                undefined,
+                undefined,
+                undefined,
+                start,
+                start.length - p.length,
+            );
             tokens.push(current);
         } else if (p.startsWith('"')) {
             const nowString = p.slice(1);
@@ -228,21 +238,20 @@ export function tokenize(p: string): Token[] {
                         }
                     }
                 })}\0`;
-            const nowLength = value.length;
-            const current = new Token();
-            current.kind = TokenType.StringLiteral;
-            current.location = p;
-            current.length = endIndex + 2;
-            current.stringValue = value;
-            current.stringType = addArray(charTypeDefinition, nowLength);
+            const current = new Token(
+                TokenType.StringLiteral,
+                undefined,
+                undefined,
+                value,
+                addArray(charTypeDefinition, value.length),
+                p,
+                endIndex + 2,
+            );
             tokens.push(current);
             p = p.slice(current.length);
         } else if (readPunctuation(p) > 0) {
             const punctLength = readPunctuation(p);
-            const current = new Token();
-            current.kind = TokenType.Punctuator;
-            current.location = p;
-            current.length = punctLength;
+            const current = new Token(TokenType.Punctuator, undefined, undefined, undefined, undefined, p, punctLength);
             tokens.push(current);
             p = p.slice(current.length);
         } else {
@@ -251,9 +260,7 @@ export function tokenize(p: string): Token[] {
         }
     }
 
-    const eofToken = new Token();
-    eofToken.kind = TokenType.EndOfFile;
-    eofToken.location = p;
+    const eofToken = new Token(TokenType.EndOfFile, undefined, undefined, undefined, undefined, p, 0);
     tokens.push(eofToken);
 
     convertKeywords(tokens);

@@ -2,6 +2,22 @@ import Token from './token-class';
 import TypeDefinition from './typedef-class';
 
 /**
+ * 成员选项接口。
+ * Member options interface.
+ * @interface
+ * @property {Token} token - 词法单元。Lexical unit.
+ * @property {TypeDefinition} type - 类型。Type.
+ * @property {Member} nextMember - 下一个成员。Next member.
+ * @property {number} offset - 偏移量。Offset.
+ */
+export interface MemberOptions {
+    token?: Token;
+    type?: TypeDefinition;
+    nextMember?: Member;
+    offset?: number;
+}
+
+/**
  * 代表一个类或结构体的成员
  * Represents a member of a class or struct
  */
@@ -25,11 +41,11 @@ class Member {
      * @returns {Member} 类实例（Class instance）。
      * @class
      */
-    constructor(type?: TypeDefinition, token?: Token, nextMember?: Member, offset = 0) {
-        this.type = type;
-        this.token = token;
-        this.nextMember = nextMember;
-        this.offset = offset;
+    constructor(options: MemberOptions = {}) {
+        this.type = options.type;
+        this.token = options.token;
+        this.nextMember = options.nextMember;
+        this.offset = options.offset ?? 0;
     }
 
     /**
@@ -38,12 +54,12 @@ class Member {
      * @returns {Member} 深拷贝后的成员。Deep copy of the member.
      */
     deepCopy(): Member {
-        return new Member(
-            this.type === undefined ? undefined : this.type.deepCopy(),
-            this.token === undefined ? undefined : { ...this.token },
-            this.nextMember === undefined ? undefined : this.nextMember.deepCopy(),
-            this.offset,
-        );
+        return new Member({
+            type: this.type === undefined ? undefined : this.type.deepCopy(),
+            token: this.token === undefined ? undefined : { ...this.token },
+            nextMember: this.nextMember === undefined ? undefined : this.nextMember.deepCopy(),
+            offset: this.offset,
+        });
     }
 }
 
