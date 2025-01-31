@@ -1,4 +1,4 @@
-import { exec as execCallback } from 'node:child_process';
+import { exec as execCallback, spawn } from 'node:child_process';
 import { writeFile, unlink } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import { tokenize } from '../../src/utils/token';
@@ -6,9 +6,6 @@ import { parse } from '../../src/utils/parse';
 import { generateCode, getGenerated } from '../../src/utils/generate';
 
 const exec = promisify(execCallback);
-interface ExecError extends Error {
-    code?: number;
-}
 
 /**
  * 清理 dist 目录中的文件。Cleanup files in the dist directory.
@@ -17,11 +14,18 @@ interface ExecError extends Error {
  */
 async function cleanupDistributionFiles(filename: string): Promise<void> {
     try {
-        await unlink(`dist/${filename}.s`);
-        await unlink(`dist/${filename}.exe`);
+        if (process.platform === 'win32') {
+            await unlink(`dist/${filename}.exe`);
+            await unlink(`dist/${filename}.s`);
+        } else {
+            await unlink(`dist/${filename}`);
+            await unlink(`dist/${filename}.s`);
+        }
     } catch (error) {
-        console.error('Error cleaning up dist files:', error);
-        throw error;
+        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
+            console.error('Error cleaning up dist files:', error);
+            throw error;
+        }
     }
 }
 
@@ -35,20 +39,35 @@ async function runAssemblyCode(assemblyCode: string[], filename: string): Promis
     try {
         await writeFile(`dist/${filename}.s`, assemblyCode.join('\n'));
         await exec(`gcc -o dist/${filename} dist/${filename}.s`);
-        try {
-            await exec(`dist\\${filename}.exe`, { timeout: 3000 });
-        } catch (error: unknown) {
-            const execError = error as ExecError;
-            if (execError.code !== undefined) return execError.code.toString();
-            throw execError;
-        }
-        const { stdout } = await exec('echo %errorlevel%');
-        return stdout.trim();
+        const executablePath = process.platform === 'win32' ? `dist\\${filename}.exe` : `./dist/${filename}`;
+        return await runBinaryAndGetCode(executablePath);
     } catch (error: unknown) {
         console.error('Error running assembly code:', error);
         throw error;
     }
 }
+
+/**
+ * 运行二进制文件并获取退出状态。Run the binary file and get the exit status.
+ * @param {string} executablePath - 可执行文件的路径。The path to the executable file.
+ * @returns {Promise<string>} Promise，解析为退出状态。A Promise that resolves to the exit status.
+ */
+async function runBinaryAndGetCode(executablePath: string): Promise<string> {
+    return await new Promise((resolve, reject) => {
+        const child = spawn(executablePath, { stdio: 'ignore' });
+        child.on('error', (error) => {
+            reject(error);
+        });
+        child.on('close', (code: number | undefined) => {
+            if (code === undefined) {
+                reject(new Error('Process exited without an exit code (likely a signal)'));
+            } else {
+                resolve(code.toString());
+            }
+        });
+    });
+}
+
 /**
  * 测试给定的代码并检查退出状态。Test the given code and check the exit status.
  * @param {string} code - 要测试的代码。The code to test.
@@ -62,27 +81,33 @@ async function testCode(code: string, expectedExitStatus: string, filename: stri
     await generateCode(globalEntry);
     const assemblyCode = getGenerated();
     const exitStatus = await runAssemblyCode(assemblyCode, filename);
-    expect(exitStatus).toBe(expectedExitStatus);
+    try {
+        expect(exitStatus).toBe(expectedExitStatus);
+    } catch (error) {
+        console.error('Assembly Code:', assemblyCode.join('\n'));
+        throw error;
+    }
 }
 
 /**
  * 运行一组测试用例。Run a group of test cases.
  * @param {Array<{ code: string; expectedExitStatus: string }>} testCases - 包含代码和预期退出状态的测试用例。Test cases containing code and expected exit status.
  * @param {string} testName - 测试名。The name of the test.
- * @param {string} filename - 文件名。The name of the file.
+ * @param {string} filenamePrefix - 文件名前缀。The filename prefix.
  */
 function runTestCases(
     testCases: Array<{ code: string; expectedExitStatus: string }>,
     testName: string,
-    filename = 'test',
+    filenamePrefix = 'test',
 ): void {
     describe(testName, () => {
-        afterEach(async () => {
-            await cleanupDistributionFiles(filename);
-        }, 3000);
-        for (const { code, expectedExitStatus } of testCases) {
+        for (const [index, testCase] of testCases.entries()) {
+            const { code, expectedExitStatus } = testCase;
+            const uniqueFilename = `${filenamePrefix}-${index}`;
             test(`Code: ${code}\n\tshould return correct exit status [${expectedExitStatus}]`, async () => {
-                await testCode(code, expectedExitStatus, filename);
+                await cleanupDistributionFiles(uniqueFilename);
+                await testCode(code, expectedExitStatus, uniqueFilename);
+                await cleanupDistributionFiles(uniqueFilename);
             }, 3000);
         }
     });

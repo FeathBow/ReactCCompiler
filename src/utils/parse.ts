@@ -16,7 +16,6 @@ import { skipToken, isEqual, isVariableTypeDefinition, consumeToken } from './to
 import { getNodeValue, getQuadruple } from './quadruple';
 import { IntermediateManager } from './classes/intermediate-class';
 import * as parser from './parser';
-import { newUnary } from './parser/creater';
 import { handlers } from './parser';
 import Tag from './classes/tag-class';
 
@@ -288,45 +287,72 @@ export function returnStatement(token: Token): { returnNode: ASTNode; token: Tok
 }
 
 /**
- * 为结构体中的成员分配偏移量。Assign offsets for members in a struct.
- * @param {TypeDefinition} type - 要处理的结构体类型。The struct type to process.
+ * 为成员分配偏移量。Assign offsets for members.
+ * @param {TypeDefinition} type - 要处理的类型。The type to process.
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
 function assignMemberOffsets(type: TypeDefinition): TypeDefinition {
-    let offset = 0;
-    let member: Member | undefined = type.members;
-    while (member !== undefined) {
-        const memberType = member.type;
-        if (memberType?.alignment === undefined) {
-            logMessage('error', 'Invalid variable type', {
-                position: assignMemberOffsets,
-                type: memberType,
-            });
-            throw new Error('Invalid variable type');
+    if (type.type === ASTNodeType.Struct) {
+        let offset = 0;
+        let member: Member | undefined = type.members;
+        while (member !== undefined) {
+            const memberType = member.type;
+            if (memberType?.alignment === undefined) {
+                logMessage('error', 'Invalid variable type', { position: assignMemberOffsets, type: memberType });
+                throw new Error('Invalid variable type');
+            }
+            offset = commons.alignToNearest(offset, memberType.alignment);
+            member.offset = offset;
+            offset += memberType.size ?? 0;
+            member = member.nextMember;
+            type.alignment = Math.max(type.alignment ?? 1, memberType.alignment);
         }
-        offset = commons.alignToNearest(offset, memberType.alignment);
-        member.offset = offset;
-        offset += memberType.size ?? 0;
-        member = member.nextMember;
-        type.alignment = Math.max(type.alignment ?? 1, memberType.alignment);
+        type.size = commons.alignToNearest(offset, type.alignment ?? 1);
+    } else if (type.type === ASTNodeType.Union) {
+        let member: Member | undefined = type.members;
+        while (member !== undefined) {
+            const memberType = member.type;
+            if (memberType?.alignment === undefined) {
+                logMessage('error', 'Invalid variable type', { position: assignMemberOffsets, type: memberType });
+                throw new Error('Invalid variable type');
+            }
+            member.offset = 0;
+            member = member.nextMember;
+            type.alignment = Math.max(type.alignment ?? 1, memberType.alignment);
+            type.size = Math.max(type.size ?? 0, memberType.size ?? 0);
+        }
+        type.size = commons.alignToNearest(type.size ?? 0, type.alignment ?? 1);
     }
-    type.size = commons.alignToNearest(offset, type.alignment ?? 1);
     return type;
 }
 
 /**
  * 解析结构体。Parse a struct.
- * 产生式为：结构体 ::= '{' 成员* '}'
+ * 产生式为：结构体 ::= 标签 '{' 成员* '}'
+ * Production rule: struct ::= tag '{' member* '}'
  * @param {Token} token 代表结构体的令牌。The token representing the struct.
  * @param {TypeDefinition} type 类型定义。The type definition.
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
 function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
+    type = parseTag(token, type);
+    return assignMemberOffsets(type);
+}
+
+/**
+ * 解析标签。Parse a tag.
+ * 产生式为：标签 ::= 标识符 ('{' 成员* '}')?
+ * Production rule: tag ::= identifier ('{' member* '}')?
+ * @param {Token} token 代表标签的令牌。The token representing the tag.
+ * @param {TypeDefinition} type 类型定义。The type definition.
+ * @returns {TypeDefinition} 类型定义。The type definition.
+ */
+function parseTag(token: Token, type: TypeDefinition): TypeDefinition {
     let tag: Tag | undefined;
     if (token.kind === TokenType.Identifier) {
         tag = new Tag({ name: commons.getIdentifier(token), type });
         if (token.next === undefined) {
-            logMessage('error', 'Unexpected end of input', { token, position: parseStruct });
+            logMessage('error', 'Unexpected end of input', { token, position: parseTag });
             throw new Error('Unexpected end of input');
         }
         token = token.next;
@@ -338,13 +364,13 @@ function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
             TokenManager.getInstance().nowToken = token;
             return foundTag.type;
         }
-        logMessage('error', 'Tag not found', { token, position: parseStruct });
+        logMessage('error', 'Tag not found', { token, position: parseTag });
         throw new Error('Tag not found');
     }
 
     let nextToken = skipToken(token, '{');
     if (nextToken === undefined) {
-        logMessage('error', 'Unexpected end of input', { token, position: declareType });
+        logMessage('error', 'Unexpected end of input', { token, position: parseTag });
         throw new Error('Unexpected end of input');
     }
     token = nextToken;
@@ -362,7 +388,7 @@ function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
             if (parseFirst) {
                 nextToken = skipToken(token, ',');
                 if (nextToken === undefined) {
-                    logMessage('error', 'Unexpected end of input', { token, position: declareType });
+                    logMessage('error', 'Unexpected end of input', { token, position: parseTag });
                     throw new Error('Unexpected end of input');
                 }
                 token = nextToken;
@@ -381,11 +407,24 @@ function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
     }
     type.members = head.nextMember?.deepCopy();
     if (token.next === undefined) {
-        logMessage('error', 'Unexpected end of input', { token, position: parseDeclaration });
+        logMessage('error', 'Unexpected end of input', { token, position: parseTag });
         throw new Error('Unexpected end of input');
     }
     TokenManager.getInstance().nowToken = token.next;
     if (tag !== undefined) ScopeManager.getInstance().declareTag(tag);
+    return type;
+}
+
+/**
+ * 解析联合体。Parse a union.
+ * 产生式为：联合体 ::= 标签 '{' 成员* '}'
+ * Production rule: union ::= tag '{' member* '}'
+ * @param {Token} token 代表联合体的令牌。The token representing the union.
+ * @param {TypeDefinition} type 类型定义。The type definition.
+ * @returns {TypeDefinition} 类型定义。The type definition.
+ */
+function parseUnion(token: Token, type: TypeDefinition): TypeDefinition {
+    type = parseTag(token, type);
     return assignMemberOffsets(type);
 }
 
@@ -397,15 +436,24 @@ function parseStruct(token: Token, type: TypeDefinition): TypeDefinition {
  * @returns {TypeDefinition} 类型定义。The type definition.
  */
 export function declareType(token: Token): TypeDefinition {
-    for (const type in handlers.typeDefinitions) {
-        if (isEqual(token, type)) {
-            if (isEqual(token, 'struct')) {
-                const structType = handleTypeDefinition(token, type);
-                token = TokenManager.getInstance().nowToken;
-                return parseStruct(token, structType);
-            }
-            return handleTypeDefinition(token, type);
+    for (const type in handlers.typeDefinitions) if (isEqual(token, type)) return handleTypeDefinition(token, type);
+    if (isEqual(token, 'struct')) {
+        const nextToken = token.next;
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declareType });
+            throw new Error('Unexpected end of input');
         }
+        token = nextToken;
+        return parseStruct(token, new TypeDefinition({ type: ASTNodeType.Struct, size: 0, alignment: 1 }));
+    }
+    if (isEqual(token, 'union')) {
+        const nextToken = token.next;
+        if (nextToken === undefined) {
+            logMessage('error', 'Unexpected end of input', { token, position: declareType });
+            throw new Error('Unexpected end of input');
+        }
+        token = nextToken;
+        return parseUnion(token, new TypeDefinition({ type: ASTNodeType.Union, size: 0, alignment: 1 }));
     }
     logMessage('error', 'Unknown type', { token, position: declareType });
     throw new Error('Unknown type');
@@ -835,7 +883,7 @@ export function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
 
     if (leftNode.typeDef.ptr?.size !== undefined && rightNode.typeDef.ptr?.size !== undefined) {
         const node = creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
-        node.typeDef = commons.intTypeDefinition;
+        node.typeDef = new TypeDefinition({ type: ASTNodeType.Integer, size: 4, alignment: 4 });
         return creater.newBinary(ASTNodeKind.Division, node, creater.newNumber(leftNode.typeDef.ptr.size));
     }
 
@@ -887,8 +935,9 @@ function parseDotAccess(token: Token, node: ASTNode): [ASTNode, Token] {
     token = nextToken;
     commons.addType(node);
     if (node.typeDef === undefined) throw new Error('TypeDefinition is undefined');
-    if (node.typeDef.type !== ASTNodeType.Struct) throw new Error('Type is not a struct');
-    const nowNode = newUnary(ASTNodeKind.DotAccess, node);
+    if (node.typeDef.type !== ASTNodeType.Struct && node.typeDef.type !== ASTNodeType.Union)
+        throw new Error('Type is not a struct or union');
+    const nowNode = creater.newUnary(ASTNodeKind.DotAccess, node);
     let foundMember: Member | undefined = node.typeDef?.members;
     while (foundMember !== undefined) {
         if (foundMember.token === undefined) throw new Error('Token is undefined');
@@ -1395,7 +1444,6 @@ function bracketsPrimary(token: Token): { returnNode: ASTNode; token: Token } {
  */
 export function parse(tokens: Token[]): { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } {
     creater.initialParse();
-    IntermediateManager.resetInstance();
     let token = tokens[0];
     while (token.kind !== TokenType.EndOfFile) {
         const type = declareType(token);

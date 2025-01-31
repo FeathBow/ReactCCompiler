@@ -91,7 +91,7 @@ module.exports = {
     },
 
     output: {
-        filename: `js/[name]${isDev ? '' : '.[hash:8]'}.js`,
+        filename: `js/[name]${isDev ? '' : '.[contenthash:8]'}.js`,
         path: resolve(PROJECT_PATH, './dist'),
         assetModuleFilename: 'images/[name].[contenthash:8].[ext]',
     },

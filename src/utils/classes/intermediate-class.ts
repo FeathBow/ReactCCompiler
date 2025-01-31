@@ -29,6 +29,9 @@ export class IntermediateManager {
 
     public static resetInstance(): void {
         IntermediateManager.instance = new IntermediateManager();
+        IntermediateManager.instance.codes = [];
+        IntermediateManager.instance.nextquad = 100;
+        IntermediateManager.instance.nowVariable = 0;
     }
 
     /**

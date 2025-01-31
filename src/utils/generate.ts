@@ -448,17 +448,15 @@ function assignTextSection(prog: SymbolEntry): void {
  * @returns {Promise<void>} 生成代码的 Promise。The Promise of generating code.
  */
 export async function generateCode(prog: SymbolEntry): Promise<void> {
+    depth = 0;
+    generated = [];
+    count = 0;
+    nowFunction = undefined;
     await new Promise<void>((resolve, reject) => {
         try {
-            depth = 0;
-            generated = [];
-            count = 0;
-            nowFunction = undefined;
-
             assignLocalVariableOffsets(prog);
             assignDataSection(prog);
             assignTextSection(prog);
-
             resolve();
         } catch (error) {
             reject(error instanceof Error ? error : new Error(String(error)));

@@ -8,7 +8,7 @@ import type Tag from './tag-class';
  */
 class ScopeManager {
     private static instance: ScopeManager;
-    private readonly scopeStack: Scope[] = [];
+    private scopeStack: Scope[] = [];
 
     /**
      * 类构造函数。
@@ -116,6 +116,8 @@ class ScopeManager {
      */
     public static resetInstance(): void {
         ScopeManager.instance = new ScopeManager();
+        ScopeManager.instance.scopeStack = [];
+        ScopeManager.instance.enterScope();
     }
 }
 

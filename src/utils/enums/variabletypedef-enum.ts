@@ -15,6 +15,8 @@ enum VariableTypeDefinition {
     Short = 'short',
     /** 结构体。struct */
     Struct = 'struct',
+    /** 联合体。union */
+    Union = 'union',
 }
 
 export default VariableTypeDefinition;

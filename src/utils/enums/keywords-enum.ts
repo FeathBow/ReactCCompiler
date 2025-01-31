@@ -27,6 +27,8 @@ enum Keywords {
     Sizeof = 'sizeof',
     /** 结构体。Struct. */
     Struct = 'struct',
+    /** 联合体。Union. */
+    Union = 'union',
 }
 
 export default Keywords;

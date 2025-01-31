@@ -184,6 +184,7 @@ export function initialParse(): void {
     localConstantNumber = 0;
     ScopeManager.resetInstance();
     TokenManager.resetInstance();
+    IntermediateManager.resetInstance();
 }
 
 /**

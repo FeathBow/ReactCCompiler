@@ -1,12 +1,6 @@
-import type { ASTNode, Token, TypeDefinition } from '../classes';
-import {
-    intTypeDefinition,
-    voidTypeDefinition,
-    charTypeDefinition,
-    int64TypeDefinition,
-    shortTypeDefinition,
-    structTypeDefinition,
-} from '../commons';
+import type { ASTNode, Token } from '../classes';
+import { TypeDefinition } from '../classes';
+import { intTypeDefinition, voidTypeDefinition, charTypeDefinition, int64TypeDefinition, shortTypeDefinition } from '../commons';
 import ASTNodeKind from '../enums/astnodekind-enum';
 
 /**
@@ -35,9 +29,8 @@ export const typeDefinitions: Record<string, TypeDefinition> = {
     int: intTypeDefinition,
     void: voidTypeDefinition,
     char: charTypeDefinition,
-    i64: int64TypeDefinition,
     short: shortTypeDefinition,
-    struct: structTypeDefinition,
+    i64: int64TypeDefinition,
 };
 
 /**

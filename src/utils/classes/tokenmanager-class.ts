@@ -32,6 +32,7 @@ class TokenManager {
      */
     public static resetInstance(): void {
         TokenManager.instance = new TokenManager();
+        TokenManager.instance.token = new Token();
     }
 
     /**

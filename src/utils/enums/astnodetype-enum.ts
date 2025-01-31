@@ -21,6 +21,8 @@ enum ASTNodeType {
     Short = 'Short',
     /** 结构体。Struct */
     Struct = 'Struct',
+    /** 联合体。Union */
+    Union = 'Union',
 }
 
 export default ASTNodeType;

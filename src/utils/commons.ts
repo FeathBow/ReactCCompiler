@@ -54,16 +54,6 @@ export const shortTypeDefinition = new TypeDefinition({
 });
 
 /**
- * 定义了结构体类型的变量。
- * Defination of struct type variable.
- */
-export const structTypeDefinition = new TypeDefinition({
-    type: ASTNodeType.Struct,
-    size: 0,
-    alignment: 1,
-});
-
-/**
  * 判断一个变量类型是否是数类型。Judge if a variable type is a number type.
  * @param {TypeDefinition} type - 要判断的变量类型（The variable type to evaluate）。
  * @returns {boolean} 如果变量类型是数类型，返回 true，否则返回 false（Return true if the variable type is a number type, otherwise return false）。
