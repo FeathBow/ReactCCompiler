@@ -21,5 +21,5 @@ module.exports = {
         'no-invalid-double-slash-comments': null,
         'rule-empty-line-before': 'always',
     },
-    ignoreFiles: ['node_modules/**/*', 'build/**/*'],
+    ignoreFiles: ['node_modules/**/*', 'build/**/*', 'dist/**/*', 'README.md'],
 };
