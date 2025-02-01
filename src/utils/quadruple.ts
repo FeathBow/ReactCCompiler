@@ -14,7 +14,9 @@ export function getNodeValue(node: ASTNode | undefined): string | undefined {
     else if (node.nodeNumber !== undefined) return `N${node.nodeNumber}`;
     else if (node.numberValue !== undefined) return String(node.numberValue);
     else return undefined;
-} /**
+}
+
+/**
  * 获取四元式。Get the quadruple.
  * @returns {string} 四元式输出。The quadruple output.
  */

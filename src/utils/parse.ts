@@ -10,6 +10,7 @@ import {
     TokenManager,
     Member,
     TypeDefinition,
+    Tag,
 } from './classes';
 import { logMessage } from './logger';
 import { skipToken, isEqual, isVariableTypeDefinition, consumeToken } from './token';
@@ -17,7 +18,6 @@ import { getNodeValue, getQuadruple } from './quadruple';
 import { IntermediateManager } from './classes/intermediate-class';
 import * as parser from './parser';
 import { handlers } from './parser';
-import Tag from './classes/tag-class';
 
 const { creater, operators } = parser;
 
@@ -883,7 +883,7 @@ export function ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
 
     if (leftNode.typeDef.ptr?.size !== undefined && rightNode.typeDef.ptr?.size !== undefined) {
         const node = creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
-        node.typeDef = new TypeDefinition({ type: ASTNodeType.Integer, size: 4, alignment: 4 });
+        node.typeDef = commons.intTypeDefinition;
         return creater.newBinary(ASTNodeKind.Division, node, creater.newNumber(leftNode.typeDef.ptr.size));
     }
 

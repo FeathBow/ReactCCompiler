@@ -1,8 +1,7 @@
 import { charTypeDefinition, addArray } from './commons';
 import { VariableTypeDefinition, Keywords, TokenType } from './enums';
-import Token from './classes/token-class';
 import { logMessage } from './logger';
-import { TokenManager } from './classes';
+import { TokenManager, Token } from './classes';
 
 /**
  * 判断给定的 token 是否是一个关键字。Evaluate if the given token is a keyword.

@@ -1,45 +1,58 @@
 import { exec as execCallback, spawn } from 'node:child_process';
-import { writeFile, unlink } from 'node:fs/promises';
+import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
+import path from 'node:path';
+import os from 'node:os';
 import { tokenize } from '../../src/utils/token';
 import { parse } from '../../src/utils/parse';
 import { generateCode, getGenerated } from '../../src/utils/generate';
 
 const exec = promisify(execCallback);
 
+const OUTPUT_DIR = path.join(os.tmpdir(), 'reactccompiler-tests');
+
 /**
- * 清理 dist 目录中的文件。Cleanup files in the dist directory.
- * @param {string} filename - 要清理的文件名。The filename to cleanup.
- * @returns {Promise<void>} Promise。
+ * 确保输出目录存在。只需在整个测试期间创建一次即可。
+ * ensure output directory exists.
+ * @returns {Promise<void>}
  */
-async function cleanupDistributionFiles(filename: string): Promise<void> {
+async function ensureOutput(): Promise<void> {
     try {
-        if (process.platform === 'win32') {
-            await unlink(`dist/${filename}.exe`);
-            await unlink(`dist/${filename}.s`);
-        } else {
-            await unlink(`dist/${filename}`);
-            await unlink(`dist/${filename}.s`);
-        }
+        await mkdir(OUTPUT_DIR, { recursive: true });
     } catch (error) {
-        if ((error as NodeJS.ErrnoException).code !== 'ENOENT') {
-            console.error('Error cleaning up dist files:', error);
-            throw error;
-        }
+        console.error('Error ensuring output directory exists:', error);
+        throw error;
     }
 }
 
 /**
- * 运行汇编代码并返回退出状态。Execute the assembly code and return the exit status.
- * @param {string[]} assemblyCode - 汇编代码的数组，每个元素代表一行代码。An array of assembly code, each element represents a line of code.
- * @param {string} filename - 生成的文件名。The generated filename.
- * @returns {Promise<string>} Promise，解析为执行汇编代码后的退出状态。A Promise that resolves to the exit status after executing the assembly code.
+ * 全局清理输出目录。
+ * global cleanup output directory.
+ * @returns {Promise<void>}
+ */
+export async function cleanupOutput(): Promise<void> {
+    try {
+        await rm(OUTPUT_DIR, { recursive: true, force: true });
+    } catch (error) {
+        console.error('Error cleaning up output directory:', error);
+    }
+}
+
+/**
+ * 将生成的汇编代码写入 OUTPUT_DIR，并用 gcc 编译后执行，返回程序退出状态。
+ * write generated assembly code to OUTPUT_DIR, compile with gcc and execute, return program exit status.
+ * @param {string[]} assemblyCode - 生成的汇编代码。The generated assembly code.
+ * @param {string} filename - 文件名。The filename.
+ * @returns {Promise<string>} - 程序退出状态。The program exit status.
  */
 async function runAssemblyCode(assemblyCode: string[], filename: string): Promise<string> {
     try {
-        await writeFile(`dist/${filename}.s`, assemblyCode.join('\n'));
-        await exec(`gcc -o dist/${filename} dist/${filename}.s`);
-        const executablePath = process.platform === 'win32' ? `dist\\${filename}.exe` : `./dist/${filename}`;
+        await ensureOutput();
+        const asmFilePath = path.join(OUTPUT_DIR, `${filename}.s`);
+        await writeFile(asmFilePath, assemblyCode.join('\n'));
+        const executablePath =
+            process.platform === 'win32' ? path.join(OUTPUT_DIR, `${filename}.exe`) : path.join(OUTPUT_DIR, filename);
+        await exec(`gcc -o "${executablePath}" "${asmFilePath}"`);
         return await runBinaryAndGetCode(executablePath);
     } catch (error: unknown) {
         console.error('Error running assembly code:', error);
@@ -48,17 +61,25 @@ async function runAssemblyCode(assemblyCode: string[], filename: string): Promis
 }
 
 /**
- * 运行二进制文件并获取退出状态。Run the binary file and get the exit status.
- * @param {string} executablePath - 可执行文件的路径。The path to the executable file.
- * @returns {Promise<string>} Promise，解析为退出状态。A Promise that resolves to the exit status.
+ * 启动编译好的二进制文件并返回退出状态。
+ * start compiled binary file and return exit status.
+ * @param {string} executablePath - 可执行文件路径。The executable file path.
+ * @returns {Promise<string>} - 程序退出状态。The program exit status.
  */
 async function runBinaryAndGetCode(executablePath: string): Promise<string> {
     return await new Promise((resolve, reject) => {
         const child = spawn(executablePath, { stdio: 'ignore' });
+        const timeout = setTimeout(() => {
+            child.kill();
+            reject(new Error('Process execution timed out'));
+        }, 5000);
+
         child.on('error', (error) => {
+            clearTimeout(timeout);
             reject(error);
         });
         child.on('close', (code: number | undefined) => {
+            clearTimeout(timeout);
             if (code === undefined) {
                 reject(new Error('Process exited without an exit code (likely a signal)'));
             } else {
@@ -69,10 +90,11 @@ async function runBinaryAndGetCode(executablePath: string): Promise<string> {
 }
 
 /**
- * 测试给定的代码并检查退出状态。Test the given code and check the exit status.
- * @param {string} code - 要测试的代码。The code to test.
- * @param {string} expectedExitStatus - 预期的退出状态。The expected exit status.
- * @param {string} filename - 生成的文件名。The generated filename.
+ * 根据给定代码，执行词法分析、语法分析、代码生成、编译、运行，最后断言程序退出状态是否符合预期。
+ * @param {string} code - 代码。The code.
+ * @param {string} expectedExitStatus - 预期退出状态。The expected exit status.
+ * @param {string} filename - 文件名。The filename.
+ * @returns {Promise<void>}
  */
 async function testCode(code: string, expectedExitStatus: string, filename: string): Promise<void> {
     const tokens = tokenize(code);
@@ -84,11 +106,10 @@ async function testCode(code: string, expectedExitStatus: string, filename: stri
     try {
         expect(exitStatus).toBe(expectedExitStatus);
     } catch (error) {
-        console.error('Assembly Code:', assemblyCode.join('\n'));
+        console.error('Assembly Code:\n', assemblyCode.join('\n'));
         throw error;
     }
 }
-
 /**
  * 运行一组测试用例。Run a group of test cases.
  * @param {Array<{ code: string; expectedExitStatus: string }>} testCases - 包含代码和预期退出状态的测试用例。Test cases containing code and expected exit status.
@@ -101,14 +122,15 @@ function runTestCases(
     filenamePrefix = 'test',
 ): void {
     describe(testName, () => {
+        beforeAll(async () => {
+            await ensureOutput();
+        });
         for (const [index, testCase] of testCases.entries()) {
             const { code, expectedExitStatus } = testCase;
             const uniqueFilename = `${filenamePrefix}-${index}`;
-            test(`Code: ${code}\n\tshould return correct exit status [${expectedExitStatus}]`, async () => {
-                await cleanupDistributionFiles(uniqueFilename);
+            test(`Code: ${code} should return exit status [${expectedExitStatus}]`, async () => {
                 await testCode(code, expectedExitStatus, uniqueFilename);
-                await cleanupDistributionFiles(uniqueFilename);
-            }, 3000);
+            }, 5000);
         }
     });
 }

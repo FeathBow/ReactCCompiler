@@ -1,7 +1,6 @@
 import { alignToNearest } from './commons';
 import { ASTNodeKind, ASTNodeType } from './enums';
-import type { TypeDefinition, ASTNode } from './classes';
-import { FunctionNode, Variable, SymbolEntry } from './classes';
+import { type TypeDefinition, type ASTNode, FunctionNode, Variable, SymbolEntry } from './classes';
 import { logMessage } from './logger';
 import { generateExpressionHandlerMap } from './parser/handlers';
 import { sizeToStoreOperation, sizeToLoadOperation } from './parser/operation';

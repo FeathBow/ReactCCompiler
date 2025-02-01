@@ -1,5 +1,4 @@
-import type { ASTNode, Token } from './classes';
-import { Variable, TypeDefinition, ScopeManager, Member } from './classes';
+import { type ASTNode, type Token, Variable, TypeDefinition, ScopeManager, Member } from './classes';
 import { TokenType, ASTNodeType, ASTNodeKind } from './enums';
 import { logMessage } from './logger';
 

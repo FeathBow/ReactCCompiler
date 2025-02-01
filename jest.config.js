@@ -1,6 +1,6 @@
 module.exports = {
     preset: 'ts-jest',
-    testEnvironment: 'jest-environment-jsdom',
+    testEnvironment: 'jest-environment-node',
     setupFilesAfterEnv: ['@testing-library/jest-dom'],
     collectCoverage: true,
     coverageDirectory: 'docs',
@@ -8,5 +8,6 @@ module.exports = {
     displayName: { name: 'ReactCCompiler', color: 'magenta' },
     verbose: true,
     forceExit: true,
-    detectOpenHandles: true,
+    detectOpenHandles: false,
+    maxWorkers: '50%',
 };
