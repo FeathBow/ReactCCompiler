@@ -210,7 +210,7 @@ export function ifStatement(token: Token): { returnNode: ASTNode; token: Token }
         logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
         throw new Error('Unexpected end of input');
     }
-    const trueToken: Token | undefined = skipToken(token.next, ';');
+    const trueToken: Token | undefined = skipToken(token.next, '(');
     if (trueToken === undefined) {
         logMessage('error', 'Unexpected end of input', { token, position: statement, condition: 'if' });
         throw new Error('Unexpected end of input');

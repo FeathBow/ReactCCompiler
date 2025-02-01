@@ -53,11 +53,12 @@ export function isEqual(token: Token, operator: string): boolean {
 export function skipToken(token: Token, operator: string): Token | undefined {
     if (!isEqual(token, operator)) {
         const location = token.location === undefined ? 'undefined' : token.location.slice(0, token.length);
-        logMessage('info', `Unexpected token: ${location}. Expected: ${operator}`, {
+        logMessage('error', `Unexpected token: ${location}. Expected: ${operator}`, {
             token: location,
             operator,
             position: skipToken,
         });
+        throw new Error(`Unexpected token: ${location}. Expected: ${operator}`);
     }
     return token.next;
 }

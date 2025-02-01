@@ -38,12 +38,13 @@ const config = {
 const log = logger.createLogger(config);
 
 /**
- * 记录一条消息。
+ * 记录一条消息。Log a message.
  * @param {LogLevel} level 日志级别。The log level.
  * @param {string} message 要记录的消息。The message to log.
  * @param {object} context 上下文对象。The context object.
  * @param {Error | undefined} error 可选的错误对象。An optional error object.
  * @param {string} namespace 日志的命名空间。The namespace for the log.
+ * @returns {void} 无返回值。No return value.
  */
 export function logMessage(
     level: LogLevel,
