@@ -22,7 +22,7 @@ import Separator from 'Components/Separator';
 import CustomAlert from 'Components/Alert';
 import { tokenize } from 'Utils/token';
 import { parse } from 'Utils/parse';
-import { generateCode, getGenerated } from 'Utils/generate';
+import { GenerateCode, GenerateContext } from 'Utils/generator';
 import OutputComponent from './output-component';
 import QuadrupleOutputComponent from './quadruple-output-component';
 import CodeBlock from './code-block';
@@ -85,8 +85,10 @@ function Compiler(): JSX.Element {
                 const tokens = tokenize(code);
                 const { globalEntry, quadrupleOutput } = parse(tokens);
                 if (globalEntry === undefined) throw new Error('Global entry is undefined');
-                await generateCode(globalEntry);
-                setOutput(getGenerated());
+                const context = new GenerateContext();
+                const generator = new GenerateCode(context);
+                await generator.generateCode(globalEntry);
+                setOutput(context.generated);
                 setQuadruple(quadrupleOutput);
                 setIsLoading(false);
             } catch (error) {

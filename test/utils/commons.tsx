@@ -5,7 +5,7 @@ import path from 'node:path';
 import os from 'node:os';
 import { tokenize } from '../../src/utils/token';
 import { parse } from '../../src/utils/parse';
-import { generateCode, getGenerated } from '../../src/utils/generate';
+import { GenerateCode, GenerateContext } from '../../src/utils/generator';
 
 const exec = promisify(execCallback);
 
@@ -100,8 +100,10 @@ async function testCode(code: string, expectedExitStatus: string, filename: stri
     const tokens = tokenize(code);
     const { globalEntry } = parse(tokens);
     if (globalEntry === undefined) throw new Error('Global entry is undefined');
-    await generateCode(globalEntry);
-    const assemblyCode = getGenerated();
+    const context = new GenerateContext();
+    const generator = new GenerateCode(context);
+    await generator.generateCode(globalEntry);
+    const assemblyCode = context.generated;
     const exitStatus = await runAssemblyCode(assemblyCode, filename);
     try {
         expect(exitStatus).toBe(expectedExitStatus);
