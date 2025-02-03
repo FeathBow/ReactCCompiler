@@ -1,5 +1,4 @@
-import ASTNode from './classes/astnode-class';
-import { IntermediateManager } from './classes/intermediate-class';
+import { type ASTNode, IntermediateManager } from './classes';
 
 /**
  * 获取节点的值
@@ -10,10 +9,10 @@ export function getNodeValue(node: ASTNode | undefined): string | undefined {
     if (node === undefined) return undefined;
 
     if (node.localVar?.name !== undefined) return node.localVar?.name;
-    else if (node.functionDef !== undefined) return node.functionDef;
-    else if (node.nodeNumber !== undefined) return `N${node.nodeNumber}`;
-    else if (node.numberValue !== undefined) return String(node.numberValue);
-    else return undefined;
+    if (node.functionDef !== undefined) return node.functionDef;
+    if (node.nodeNumber !== undefined) return `N${node.nodeNumber}`;
+    if (node.numberValue !== undefined) return String(node.numberValue);
+    return undefined;
 }
 
 /**
@@ -28,7 +27,8 @@ export function getQuadruple(): string {
             (code, index) =>
                 `${(100 + index).toString().padEnd(13)}${code
                     .map((item) => {
-                        if (item?.startsWith('N')) {
+                        if (item === undefined) return '';
+                        if (item.startsWith('N')) {
                             if (!nodeToQuadrupleMap.has(item)) {
                                 nodeToQuadrupleMap.set(item, `N${nextQuadrupleNumber}`);
                                 nextQuadrupleNumber += 1;
@@ -36,7 +36,7 @@ export function getQuadruple(): string {
                             const mappedItem = nodeToQuadrupleMap.get(item);
                             return (mappedItem ?? '').padEnd(13);
                         }
-                        return (item ?? '').padEnd(13);
+                        return item.padEnd(13);
                     })
                     .join('')}`,
         )

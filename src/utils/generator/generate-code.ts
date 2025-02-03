@@ -476,6 +476,7 @@ class CodeGenerator {
 
     /**
      * 对外接口：生成给定 AST 的汇编代码。Public interface: generate assembly code for a given AST.
+     * @async
      * @param {SymbolEntry} prog 符号表。Symbol table.
      * @returns {Promise<void>} 空。Void.
      */

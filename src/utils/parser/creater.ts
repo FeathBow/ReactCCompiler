@@ -7,7 +7,6 @@ import {
     FunctionNode,
     Variable,
     ScopeManager,
-    TokenManager,
     IntermediateManager,
 } from '../classes';
 import { logMessage } from '../logger';
@@ -183,7 +182,6 @@ export function initialParse(): void {
     astNodeNumber = 0;
     localConstantNumber = 0;
     ScopeManager.resetInstance();
-    TokenManager.resetInstance();
     IntermediateManager.resetInstance();
 }
 

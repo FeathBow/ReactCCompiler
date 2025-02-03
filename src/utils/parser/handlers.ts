@@ -1,6 +1,12 @@
 import type { ASTNode, Token } from '../classes';
 import { TypeDefinition } from '../classes';
-import { intTypeDefinition, voidTypeDefinition, charTypeDefinition, int64TypeDefinition, shortTypeDefinition } from '../commons';
+import {
+    intTypeDefinition,
+    voidTypeDefinition,
+    charTypeDefinition,
+    int64TypeDefinition,
+    shortTypeDefinition,
+} from '../commons';
 import ASTNodeKind from '../enums/astnodekind-enum';
 
 /**

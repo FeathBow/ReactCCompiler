@@ -3,9 +3,10 @@ import { writeFile, mkdir, rm } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import os from 'node:os';
-import { tokenize } from '../../src/utils/token';
-import { parse } from '../../src/utils/parse';
 import { GenerateCode, GenerateContext } from '../../src/utils/generator';
+import TokenManager from '../../src/utils/classes/tokenmanager-class';
+import Tokenizer from '../../src/utils/lexer/tokenizer';
+import Parser from '../../src/utils/parser/parser';
 
 const exec = promisify(execCallback);
 
@@ -97,8 +98,10 @@ async function runBinaryAndGetCode(executablePath: string): Promise<string> {
  * @returns {Promise<void>}
  */
 async function testCode(code: string, expectedExitStatus: string, filename: string): Promise<void> {
-    const tokens = tokenize(code);
-    const { globalEntry } = parse(tokens);
+    const tokenManager = new TokenManager();
+    const tokenizer = new Tokenizer(code, tokenManager);
+    const parser = new Parser(tokenizer);
+    const { globalEntry } = parser.parse();
     if (globalEntry === undefined) throw new Error('Global entry is undefined');
     const context = new GenerateContext();
     const generator = new GenerateCode(context);

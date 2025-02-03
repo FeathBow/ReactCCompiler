@@ -20,9 +20,10 @@ import { ArrowForwardIcon, ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/ico
 import { useLocation } from 'react-router-dom';
 import Separator from 'Components/Separator';
 import CustomAlert from 'Components/Alert';
-import { tokenize } from 'Utils/token';
-import { parse } from 'Utils/parse';
+import Parser from 'Utils/parser/parser';
 import { GenerateCode, GenerateContext } from 'Utils/generator';
+import TokenManager from 'Src/utils/classes/tokenmanager-class';
+import Tokenizer from 'Src/utils/lexer/tokenizer';
 import OutputComponent from './output-component';
 import QuadrupleOutputComponent from './quadruple-output-component';
 import CodeBlock from './code-block';
@@ -82,8 +83,10 @@ function Compiler(): JSX.Element {
         setIsLoading(true);
         void (async () => {
             try {
-                const tokens = tokenize(code);
-                const { globalEntry, quadrupleOutput } = parse(tokens);
+                const tokenManager = new TokenManager();
+                const tokenizer = new Tokenizer(code, tokenManager);
+                const parser = new Parser(tokenizer);
+                const { globalEntry, quadrupleOutput } = parser.parse();
                 if (globalEntry === undefined) throw new Error('Global entry is undefined');
                 const context = new GenerateContext();
                 const generator = new GenerateCode(context);
