@@ -1,4 +1,5 @@
-import { type ASTNode, type Token, Variable, TypeDefinition, ScopeManager, Member } from './classes';
+import { type ASTNode, Variable, TypeDefinition, ScopeManager, Member } from './classes';
+import Token from './lexer/token';
 import { TokenType, ASTNodeType, ASTNodeKind } from './enums';
 import { logMessage } from './logger';
 

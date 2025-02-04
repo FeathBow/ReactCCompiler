@@ -2,24 +2,21 @@ import * as commons from '../commons';
 import { ASTNodeType, ASTNodeKind, TokenType } from '../enums';
 import {
     type ASTNode,
-    type Token,
     type FunctionNode,
     type Variable,
     type SymbolEntry,
     ScopeManager,
-    type TokenManager,
     Member,
     TypeDefinition,
     Tag,
+    IntermediateManager,
 } from '../classes';
+import { type Token, type TokenManager, Tokenizer, Tokenutils } from '../lexer';
 import { logMessage } from '../logger';
-import { skipToken, isEqual, isVariableTypeDefinition, consumeToken } from '../lexer/tokenutils';
 import { getNodeValue, getQuadruple } from '../quadruple';
-import { IntermediateManager } from '../classes/intermediate-class';
 import * as handlers from './handlers';
-import * as creater from './creater';
+import Creator from './creator';
 import * as operators from './operators';
-import Tokenizer from '../lexer/tokenizer';
 
 /**
  * Parser 类封装了解析过程，依赖注入 Tokenizer（及其内部的 TokenManager）。
@@ -28,6 +25,40 @@ import Tokenizer from '../lexer/tokenizer';
 class Parser {
     private readonly tokenizer: Tokenizer;
     private readonly tokenManager: TokenManager;
+    private readonly creator: Creator;
+
+    /**
+     * 构造函数。Constructor.
+     * @param {Tokenizer} tokenizer - 令牌化器。The tokenizer.
+     */
+    constructor(tokenizer: Tokenizer) {
+        this.tokenizer = tokenizer;
+        this.tokenManager = tokenizer.manager;
+        this.creator = new Creator();
+        this.creator.initialParse();
+    }
+
+    /**
+     * 解析。Parse.
+     * - 解析输入的令牌流，生成抽象语法树。
+     * - Parse the input token stream, generating an abstract syntax tree.
+     * @returns { { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } } 包含全局入口和四元输出的对象。An object containing the global entry and the quadruple output.
+     */
+    public parse(): { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } {
+        const tokens = this.tokenizer.tokenize();
+        let token = tokens[0];
+        while (token.kind !== TokenType.EndOfFile) {
+            const type = this.declareType(token);
+            token = this.tokenManager.nowToken;
+            const judgeFunction =
+                token.next !== undefined &&
+                !Tokenutils.isEqual(token.next, ';') &&
+                this.declare(token, type).type === ASTNodeType.Function;
+            token = judgeFunction ? this.parseFunction(token, type) : this.parseGlobalVariable(token, type);
+        }
+        const quadrupleOutput = getQuadruple();
+        return { globalEntry: this.creator.Globals, quadrupleOutput };
+    }
 
     /**
      * 处理类型定义。Handle type definition.
@@ -39,7 +70,7 @@ class Parser {
         token: Token,
         type: string,
     ): TypeDefinition => {
-        const nextToken = skipToken(token, type);
+        const nextToken = Tokenutils.skipToken(token, type);
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'handleTypeDefinition' });
             throw new Error('Unexpected end of input');
@@ -61,9 +92,9 @@ class Parser {
             logMessage('error', 'Unexpected end of input', { token, position: 'returnStatement', condition: 'return' });
             throw new Error('Unexpected end of input');
         }
-        const node = creater.newUnary(ASTNodeKind.Return, this.expression(token.next));
+        const node = this.creator.newUnary(ASTNodeKind.Return, this.expression(token.next));
         token = this.tokenManager.nowToken;
-        const nextToken = skipToken(token, ';');
+        const nextToken = Tokenutils.skipToken(token, ';');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'returnStatement', condition: 'return' });
             throw new Error('Unexpected end of input');
@@ -87,12 +118,12 @@ class Parser {
      * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
      */
     private readonly whileStatement = (token: Token): { returnNode: ASTNode; token: Token } => {
-        const node = creater.newNode(ASTNodeKind.For);
+        const node = this.creator.newNode(ASTNodeKind.For);
         if (token.next === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'whileStatement', condition: 'while' });
             throw new Error('Unexpected end of input');
         }
-        const conditionToken: Token | undefined = skipToken(token.next, '(');
+        const conditionToken: Token | undefined = Tokenutils.skipToken(token.next, '(');
         if (conditionToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'whileStatement', condition: 'while' });
             throw new Error('Unexpected end of input');
@@ -105,7 +136,7 @@ class Parser {
         const conditionValue = getNodeValue(node.condition);
         const jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0');
 
-        const outToken: Token | undefined = skipToken(token, ')');
+        const outToken: Token | undefined = Tokenutils.skipToken(token, ')');
         if (outToken === undefined) {
             logMessage('error', 'Unexpected end of input', {
                 token,
@@ -134,12 +165,12 @@ class Parser {
      * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
      */
     private readonly forStatement = (token: Token): { returnNode: ASTNode; token: Token } => {
-        const node = creater.newNode(ASTNodeKind.For);
+        const node = this.creator.newNode(ASTNodeKind.For);
         if (token.next === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'forStatement', condition: 'for' });
             throw new Error('Unexpected end of input');
         }
-        const initToken: Token | undefined = skipToken(token.next, '(');
+        const initToken: Token | undefined = Tokenutils.skipToken(token.next, '(');
         if (initToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'forStatement', condition: 'for' });
             throw new Error('Unexpected end of input');
@@ -149,7 +180,7 @@ class Parser {
 
         const bIndex = IntermediateManager.getInstance().nextquad;
 
-        if (!isEqual(token, ';')) {
+        if (!Tokenutils.isEqual(token, ';')) {
             node.condition = this.expression(token);
             token = this.tokenManager.nowToken;
         }
@@ -161,7 +192,7 @@ class Parser {
             jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0');
         }
 
-        let conditionToken: Token | undefined = skipToken(token, ';');
+        let conditionToken: Token | undefined = Tokenutils.skipToken(token, ';');
         if (conditionToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'forStatement', condition: 'for' });
             throw new Error('Unexpected end of input');
@@ -169,13 +200,13 @@ class Parser {
 
         const jumpTrueIndex = IntermediateManager.getInstance().emit('j');
 
-        if (!isEqual(conditionToken, ')')) {
+        if (!Tokenutils.isEqual(conditionToken, ')')) {
             node.incrementBody = this.expression(conditionToken);
             token = this.tokenManager.nowToken;
             conditionToken = token;
         }
 
-        const outToken: Token | undefined = skipToken(conditionToken, ')');
+        const outToken: Token | undefined = Tokenutils.skipToken(conditionToken, ')');
         if (outToken === undefined) {
             logMessage('error', 'Unexpected end of input', {
                 token,
@@ -212,12 +243,12 @@ class Parser {
      * @throws 当输入意外结束时抛出错误。Throws an error when the input ends unexpectedly.
      */
     private readonly ifStatement = (token: Token): { returnNode: ASTNode; token: Token } => {
-        const node = creater.newNode(ASTNodeKind.If);
+        const node = this.creator.newNode(ASTNodeKind.If);
         if (token.next === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'ifStatement', condition: 'if' });
             throw new Error('Unexpected end of input');
         }
-        const trueToken: Token | undefined = skipToken(token.next, '(');
+        const trueToken: Token | undefined = Tokenutils.skipToken(token.next, '(');
         if (trueToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'ifStatement', condition: 'if' });
             throw new Error('Unexpected end of input');
@@ -228,7 +259,7 @@ class Parser {
         const conditionValue = getNodeValue(node.condition);
         const jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0', '-');
 
-        const elseToken: Token | undefined = skipToken(token, ')');
+        const elseToken: Token | undefined = Tokenutils.skipToken(token, ')');
         if (elseToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'ifStatement', condition: 'if' });
             throw new Error('Unexpected end of input');
@@ -244,7 +275,7 @@ class Parser {
             String(IntermediateManager.getInstance().nextquad),
         );
 
-        if (isEqual(token, 'else')) {
+        if (Tokenutils.isEqual(token, 'else')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'ifStatement', condition: 'else' });
                 throw new Error('Unexpected end of input');
@@ -273,28 +304,6 @@ class Parser {
         for: this.forStatement,
         while: this.whileStatement,
     };
-
-    constructor(tokenizer: Tokenizer) {
-        this.tokenizer = tokenizer;
-        this.tokenManager = tokenizer.manager;
-    }
-
-    public parse(): { globalEntry: SymbolEntry | undefined; quadrupleOutput: string } {
-        creater.initialParse();
-        const tokens = this.tokenizer.tokenize();
-        let token = tokens[0];
-        while (token.kind !== TokenType.EndOfFile) {
-            const type = this.declareType(token);
-            token = this.tokenManager.nowToken;
-            const judgeFunction =
-                token.next !== undefined &&
-                !isEqual(token.next, ';') &&
-                this.declare(token, type).type === ASTNodeType.Function;
-            token = judgeFunction ? this.parseFunction(token, type) : this.parseGlobalVariable(token, type);
-        }
-        const quadrupleOutput = getQuadruple();
-        return { globalEntry: creater.getGlobals(), quadrupleOutput };
-    }
 
     /**
      * 解析一个语句。语句可以是多种类型之一：
@@ -403,7 +412,7 @@ class Parser {
             token = token.next;
         }
 
-        if (tag !== undefined && !isEqual(token, '{')) {
+        if (tag !== undefined && !Tokenutils.isEqual(token, '{')) {
             const foundTag = ScopeManager.getInstance().findTag(tag.name);
             if (foundTag !== undefined) {
                 this.tokenManager.nowToken = token;
@@ -413,7 +422,7 @@ class Parser {
             throw new Error('Tag not found');
         }
 
-        let nextToken = skipToken(token, '{');
+        let nextToken = Tokenutils.skipToken(token, '{');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'parseTag' });
             throw new Error('Unexpected end of input');
@@ -422,16 +431,16 @@ class Parser {
         const head: Member = new Member({});
         let current: Member = head;
 
-        while (!isEqual(token, '}')) {
+        while (!Tokenutils.isEqual(token, '}')) {
             const nowType = this.declareType(token);
             token = this.tokenManager.nowToken;
             let parseFirst = false;
             while (true) {
-                const successConsume = consumeToken(token, ';', this.tokenManager);
+                const successConsume = Tokenutils.consumeToken(token, ';', this.tokenManager);
                 token = this.tokenManager.nowToken;
                 if (successConsume) break;
                 if (parseFirst) {
-                    nextToken = skipToken(token, ',');
+                    nextToken = Tokenutils.skipToken(token, ',');
                     if (nextToken === undefined) {
                         logMessage('error', 'Unexpected end of input', { token, position: 'parseTag' });
                         throw new Error('Unexpected end of input');
@@ -482,8 +491,8 @@ class Parser {
      */
     private declareType(token: Token): TypeDefinition {
         for (const type in handlers.typeDefinitions)
-            if (isEqual(token, type)) return this.handleTypeDefinition(token, type);
-        if (isEqual(token, 'struct')) {
+            if (Tokenutils.isEqual(token, type)) return this.handleTypeDefinition(token, type);
+        if (Tokenutils.isEqual(token, 'struct')) {
             const nextToken = token.next;
             if (nextToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'declareType' });
@@ -492,7 +501,7 @@ class Parser {
             token = nextToken;
             return this.parseStruct(token, new TypeDefinition({ type: ASTNodeType.Struct, size: 0, alignment: 1 }));
         }
-        if (isEqual(token, 'union')) {
+        if (Tokenutils.isEqual(token, 'union')) {
             const nextToken = token.next;
             if (nextToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'declareType' });
@@ -512,19 +521,19 @@ class Parser {
      * @returns {TypeDefinition} 类型定义。The type definition.
      */
     private declare(token: Token, type: TypeDefinition): TypeDefinition {
-        while (consumeToken(token, '*', this.tokenManager)) {
+        while (Tokenutils.consumeToken(token, '*', this.tokenManager)) {
             token = this.tokenManager.nowToken;
             type = commons.pointerTo(type);
         }
-        if (isEqual(token, '(')) {
-            const returnToken: Token | undefined = skipToken(token, '(');
+        if (Tokenutils.isEqual(token, '(')) {
+            const returnToken: Token | undefined = Tokenutils.skipToken(token, '(');
             if (returnToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'declare' });
                 throw new Error('Unexpected end of input');
             }
             this.declare(returnToken, type);
             token = this.tokenManager.nowToken;
-            let nextToken = skipToken(token, ')');
+            let nextToken = Tokenutils.skipToken(token, ')');
             if (nextToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'declare' });
                 throw new Error('Unexpected end of input');
@@ -565,9 +574,9 @@ class Parser {
         let current: ASTNode = head;
         let parseFirst = false;
 
-        while (!isEqual(token, ';')) {
+        while (!Tokenutils.isEqual(token, ';')) {
             if (parseFirst) {
-                const nextToken = skipToken(token, ',');
+                const nextToken = Tokenutils.skipToken(token, ',');
                 if (nextToken === undefined) {
                     logMessage('error', 'Unexpected end of input', { token, position: 'parseDeclaration' });
                     throw new Error('Unexpected end of input');
@@ -585,18 +594,18 @@ class Parser {
                 logMessage('error', 'Token is undefined', { token, position: 'parseDeclaration' });
                 throw new Error('Token is undefined');
             }
-            const variable = creater.newLocalVariable(commons.getIdentifier(type.tokens), type);
+            const variable = this.creator.newLocalVariable(commons.getIdentifier(type.tokens), type);
 
-            if (isEqual(token, '=')) {
-                const leftNode = creater.newVariableNode(variable);
+            if (Tokenutils.isEqual(token, '=')) {
+                const leftNode = this.creator.newVariableNode(variable);
                 if (token.next === undefined) {
                     logMessage('error', 'Unexpected end of input', { token, position: 'parseDeclaration' });
                     throw new Error('Unexpected end of input');
                 }
                 const rightNode = this.assign(token.next);
                 token = this.tokenManager.nowToken;
-                const node = creater.newBinary(ASTNodeKind.Assignment, leftNode, rightNode);
-                current = current.nextNode = creater.newUnary(ASTNodeKind.ExpressionStatement, node);
+                const node = this.creator.newBinary(ASTNodeKind.Assignment, leftNode, rightNode);
+                current = current.nextNode = this.creator.newUnary(ASTNodeKind.ExpressionStatement, node);
 
                 if (rightNode.functionDef === undefined) {
                     IntermediateManager.getInstance().emit(':=', 'call', getNodeValue(rightNode), variable.name);
@@ -611,7 +620,7 @@ class Parser {
             }
         }
 
-        const node = creater.newNode(ASTNodeKind.Block);
+        const node = this.creator.newNode(ASTNodeKind.Block);
         node.blockBody = head.nextNode;
         if (token.next === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'parseDeclaration' });
@@ -632,15 +641,15 @@ class Parser {
         const head: ASTNode = { nodeKind: ASTNodeKind.Return, nodeNumber: -1 };
         let current: ASTNode = head;
         ScopeManager.getInstance().enterScope();
-        while (!isEqual(token, '}')) {
-            current = current.nextNode = isVariableTypeDefinition(token)
+        while (!Tokenutils.isEqual(token, '}')) {
+            current = current.nextNode = Tokenutils.isVariableTypeDefinition(token)
                 ? this.parseDeclaration(token)
                 : this.statement(token);
             token = this.tokenManager.nowToken;
             commons.addType(current);
         }
         ScopeManager.getInstance().leaveScope();
-        const node = creater.newNode(ASTNodeKind.Block);
+        const node = this.creator.newNode(ASTNodeKind.Block);
         node.blockBody = head.nextNode;
         if (token.next === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'blockStatement' });
@@ -659,13 +668,13 @@ class Parser {
      */
     private expressionStatement(token: Token): ASTNode {
         let node: ASTNode;
-        if (isEqual(token, ';')) {
-            node = creater.newNode(ASTNodeKind.Block);
+        if (Tokenutils.isEqual(token, ';')) {
+            node = this.creator.newNode(ASTNodeKind.Block);
         } else {
-            node = creater.newUnary(ASTNodeKind.ExpressionStatement, this.expression(token));
+            node = this.creator.newUnary(ASTNodeKind.ExpressionStatement, this.expression(token));
             token = this.tokenManager.nowToken;
         }
-        const nextToken = skipToken(token, ';');
+        const nextToken = Tokenutils.skipToken(token, ';');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'expressionStatement' });
             throw new Error('Unexpected end of input');
@@ -684,12 +693,12 @@ class Parser {
     private expression(token: Token): ASTNode {
         let node = this.assign(token);
         token = this.tokenManager.nowToken;
-        if (isEqual(token, ',')) {
+        if (Tokenutils.isEqual(token, ',')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'expression' });
                 throw new Error('Unexpected end of input');
             }
-            node = creater.newBinary(ASTNodeKind.Comma, node, this.expression(token.next));
+            node = this.creator.newBinary(ASTNodeKind.Comma, node, this.expression(token.next));
             token = this.tokenManager.nowToken;
         }
         this.tokenManager.nowToken = token;
@@ -707,12 +716,12 @@ class Parser {
         let node = this.equality(token);
         token = this.tokenManager.nowToken;
 
-        if (isEqual(token, '=')) {
+        if (Tokenutils.isEqual(token, '=')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'assign' });
                 throw new Error('Unexpected end of input');
             }
-            node = creater.newBinary(ASTNodeKind.Assignment, node, this.assign(token.next));
+            node = this.creator.newBinary(ASTNodeKind.Assignment, node, this.assign(token.next));
             token = this.tokenManager.nowToken;
             if (node.rightNode?.functionDef === undefined) {
                 IntermediateManager.getInstance().emit(
@@ -745,7 +754,7 @@ class Parser {
         let node = this.relational(token);
         token = this.tokenManager.nowToken;
         const processOperator = (operator: string): boolean => {
-            if (isEqual(token, operator)) {
+            if (Tokenutils.isEqual(token, operator)) {
                 const kind: ASTNodeKind = operators.equalityOperators[operator];
                 node = this.handleEqualityOperation(token, kind, node);
                 token = this.tokenManager.nowToken;
@@ -780,7 +789,7 @@ class Parser {
         token = this.tokenManager.nowToken;
 
         const processOperator = (operator: string): boolean => {
-            if (isEqual(token, operator)) {
+            if (Tokenutils.isEqual(token, operator)) {
                 const [kind, swapNodes] = operators.relationalOperators[operator];
                 node = this.handleRelationalOperation(token, kind, node, swapNodes);
                 token = this.tokenManager.nowToken;
@@ -815,7 +824,7 @@ class Parser {
         let node = this.mul(token);
         token = this.tokenManager.nowToken;
         const processOperator = (operator: string): boolean => {
-            if (isEqual(token, operator)) {
+            if (Tokenutils.isEqual(token, operator)) {
                 const kind: ASTNodeKind = operators.addOperators[operator];
                 node = this.handleAddOperation(token, kind, node);
                 token = this.tokenManager.nowToken;
@@ -849,7 +858,7 @@ class Parser {
         let node = this.unary(token);
         token = this.tokenManager.nowToken;
         const processOperator = (operator: string): boolean => {
-            if (isEqual(token, operator)) {
+            if (Tokenutils.isEqual(token, operator)) {
                 const kind: ASTNodeKind = operators.mulOperators[operator];
                 node = this.handleMulOperation(token, kind, node);
                 token = this.tokenManager.nowToken;
@@ -878,7 +887,7 @@ class Parser {
      * @param {ASTNode} rightNode 右节点。The right node.
      * @returns {ASTNode} 代表指针加法的抽象语法树节点。The abstract syntax tree node representing the pointer addition.
      */
-    private static ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
+    private ptrAdd(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
         commons.addType(leftNode);
         commons.addType(rightNode);
 
@@ -886,7 +895,7 @@ class Parser {
             throw new Error('TypeDefinition is undefined');
 
         if (commons.isNumberType(leftNode.typeDef) && commons.isNumberType(rightNode.typeDef))
-            return creater.newBinary(ASTNodeKind.Addition, leftNode, rightNode);
+            return this.creator.newBinary(ASTNodeKind.Addition, leftNode, rightNode);
 
         if (leftNode.typeDef.ptr !== undefined && rightNode.typeDef.ptr !== undefined) {
             logMessage('error', 'Invalid operands', { leftNode, rightNode, position: 'ptrAdd' });
@@ -896,12 +905,12 @@ class Parser {
             [leftNode, rightNode] = [rightNode, leftNode];
 
         if (leftNode.typeDef?.ptr?.size !== undefined) {
-            rightNode = creater.newBinary(
+            rightNode = this.creator.newBinary(
                 ASTNodeKind.Multiplication,
                 rightNode,
-                creater.newNumber(leftNode.typeDef.ptr.size),
+                this.creator.newNumber(leftNode.typeDef.ptr.size),
             );
-            return creater.newBinary(ASTNodeKind.Addition, leftNode, rightNode);
+            return this.creator.newBinary(ASTNodeKind.Addition, leftNode, rightNode);
         }
         logMessage('error', 'Invalid operands', { leftNode, rightNode, position: 'ptrAdd' });
         throw new Error('Invalid operands');
@@ -913,7 +922,7 @@ class Parser {
      * @param {ASTNode} rightNode 右节点。The right node.
      * @returns {ASTNode} 代表指针减法的抽象语法树节点。The abstract syntax tree node representing the pointer subtraction.
      */
-    private static ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
+    private ptrSub(leftNode: ASTNode, rightNode: ASTNode): ASTNode {
         commons.addType(leftNode);
         commons.addType(rightNode);
 
@@ -921,24 +930,28 @@ class Parser {
             throw new Error('TypeDefinition is undefined');
 
         if (commons.isNumberType(leftNode.typeDef) && commons.isNumberType(rightNode.typeDef))
-            return creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
+            return this.creator.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
 
         if (leftNode.typeDef.ptr?.size !== undefined && commons.isNumberType(rightNode.typeDef)) {
-            rightNode = creater.newBinary(
+            rightNode = this.creator.newBinary(
                 ASTNodeKind.Multiplication,
                 rightNode,
-                creater.newNumber(leftNode.typeDef.ptr.size),
+                this.creator.newNumber(leftNode.typeDef.ptr.size),
             );
             commons.addType(rightNode);
-            const node = creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
+            const node = this.creator.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
             node.typeDef = leftNode.typeDef;
             return node;
         }
 
         if (leftNode.typeDef.ptr?.size !== undefined && rightNode.typeDef.ptr?.size !== undefined) {
-            const node = creater.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
+            const node = this.creator.newBinary(ASTNodeKind.Subtraction, leftNode, rightNode);
             node.typeDef = commons.intTypeDefinition;
-            return creater.newBinary(ASTNodeKind.Division, node, creater.newNumber(leftNode.typeDef.ptr.size));
+            return this.creator.newBinary(
+                ASTNodeKind.Division,
+                node,
+                this.creator.newNumber(leftNode.typeDef.ptr.size),
+            );
         }
 
         throw new Error('Invalid operands');
@@ -959,14 +972,14 @@ class Parser {
         }
         const nowNode = this.expression(token.next);
         token = this.tokenManager.nowToken;
-        const nextToken = skipToken(token, ']');
+        const nextToken = Tokenutils.skipToken(token, ']');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'parseArrayAccess' });
             throw new Error('Unexpected end of input');
         }
         token = nextToken;
         const primaryNode = node;
-        node = creater.newUnary(ASTNodeKind.Dereference, Parser.ptrAdd(node, nowNode));
+        node = this.creator.newUnary(ASTNodeKind.Dereference, this.ptrAdd(node, nowNode));
 
         IntermediateManager.getInstance().emit(
             '=[]',
@@ -985,7 +998,7 @@ class Parser {
      * @param {ASTNode} node 代表点访问表达式的抽象语法树节点。The abstract syntax tree node representing the dot access expression.
      * @returns {[ASTNode, Token]} 解析得到的抽象语法树节点和下一个令牌。The parsed abstract syntax tree node and the next token.
      */
-    private static parseDotAccess(token: Token, node: ASTNode): [ASTNode, Token] {
+    private parseDotAccess(token: Token, node: ASTNode): [ASTNode, Token] {
         const nextToken = token.next;
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'parseDotAccess' });
@@ -996,7 +1009,7 @@ class Parser {
         if (node.typeDef === undefined) throw new Error('TypeDefinition is undefined');
         if (node.typeDef.type !== ASTNodeType.Struct && node.typeDef.type !== ASTNodeType.Union)
             throw new Error('Type is not a struct or union');
-        const nowNode = creater.newUnary(ASTNodeKind.DotAccess, node);
+        const nowNode = this.creator.newUnary(ASTNodeKind.DotAccess, node);
         let foundMember: Member | undefined = node.typeDef?.members;
         while (foundMember !== undefined) {
             if (foundMember.token === undefined) throw new Error('Token is undefined');
@@ -1028,11 +1041,11 @@ class Parser {
         let node = this.primary(token);
         token = this.tokenManager.nowToken;
         while (true) {
-            if (isEqual(token, '[')) [node, token] = this.parseArrayAccess(token, node);
-            else if (isEqual(token, '.')) [node, token] = Parser.parseDotAccess(token, node);
-            else if (isEqual(token, '->')) {
-                node = creater.newUnary(ASTNodeKind.Dereference, node);
-                [node, token] = Parser.parseDotAccess(token, node);
+            if (Tokenutils.isEqual(token, '[')) [node, token] = this.parseArrayAccess(token, node);
+            else if (Tokenutils.isEqual(token, '.')) [node, token] = this.parseDotAccess(token, node);
+            else if (Tokenutils.isEqual(token, '->')) {
+                node = this.creator.newUnary(ASTNodeKind.Dereference, node);
+                [node, token] = this.parseDotAccess(token, node);
             } else break;
         }
         this.tokenManager.nowToken = token;
@@ -1048,7 +1061,7 @@ class Parser {
      */
     private unary(token: Token): ASTNode {
         for (const operator in operators.unaryOperators) {
-            if (isEqual(token, operator)) {
+            if (Tokenutils.isEqual(token, operator)) {
                 const kind: ASTNodeKind = operators.unaryOperators[operator];
                 const node = this.handleUnaryOperation(token, kind);
 
@@ -1076,9 +1089,9 @@ class Parser {
     private checkTypeFunction(token: Token, type: TypeDefinition): TypeDefinition {
         const head: TypeDefinition = new TypeDefinition({ type: ASTNodeType.Void, size: 0, alignment: 0 });
         let current: TypeDefinition = head;
-        while (!isEqual(token, ')')) {
+        while (!Tokenutils.isEqual(token, ')')) {
             if (current !== head) {
-                const nextToken = skipToken(token, ',');
+                const nextToken = Tokenutils.skipToken(token, ',');
                 if (nextToken === undefined) {
                     logMessage('error', 'Unexpected end of input', { token, position: 'checkTypeFunction' });
                     throw new Error('Unexpected end of input');
@@ -1086,7 +1099,8 @@ class Parser {
                 token = nextToken;
             }
 
-            if (isEqual(token, 'void') && token.next !== undefined && isEqual(token.next, ')')) token = token.next;
+            if (Tokenutils.isEqual(token, 'void') && token.next !== undefined && Tokenutils.isEqual(token.next, ')'))
+                token = token.next;
             else {
                 let nowType = this.declareType(token);
                 token = this.tokenManager.nowToken;
@@ -1118,7 +1132,7 @@ class Parser {
      * @returns {TypeDefinition} 如果存在函数参数列表，则返回函数类型，否则返回原始类型。If there is a function parameter list, return the function type, otherwise return the original type.
      */
     private checkTypeSuffix(token: Token, type: TypeDefinition): TypeDefinition {
-        if (isEqual(token, '(')) {
+        if (Tokenutils.isEqual(token, '(')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'checkTypeSuffix' });
                 throw new Error('Unexpected end of input');
@@ -1126,7 +1140,7 @@ class Parser {
             return this.checkTypeFunction(token.next, type);
         }
 
-        if (isEqual(token, '[')) {
+        if (Tokenutils.isEqual(token, '[')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'checkTypeSuffix' });
                 throw new Error('Unexpected end of input');
@@ -1144,7 +1158,7 @@ class Parser {
                 logMessage('error', 'Unexpected end of input', { token, position: 'checkTypeSuffix' });
                 throw new Error('Unexpected end of input');
             }
-            const nextToken = skipToken(token.next.next, ']');
+            const nextToken = Tokenutils.skipToken(token.next.next, ']');
             if (nextToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'checkTypeSuffix' });
                 throw new Error('Unexpected end of input');
@@ -1170,9 +1184,9 @@ class Parser {
             logMessage('error', 'Token is undefined', { token, position: 'parseFunction' });
             throw new Error('Token is undefined');
         }
-        const isDeclare = consumeToken(token, ';', this.tokenManager);
+        const isDeclare = Tokenutils.consumeToken(token, ';', this.tokenManager);
         token = this.tokenManager.nowToken;
-        const nowEntry = creater.newGlobalEntry(
+        const nowEntry = this.creator.newGlobalEntry(
             commons.getIdentifier(type.tokens),
             type,
             true,
@@ -1180,13 +1194,13 @@ class Parser {
         ) as FunctionNode;
         if (nowEntry.declare === false) return token;
 
-        creater.setLocals(undefined);
+        this.creator.Locals = undefined;
         IntermediateManager.getInstance().emit('begin', nowEntry.name, type.type);
         ScopeManager.getInstance().enterScope();
-        creater.createLocalVariablesForParameters(type.parameters);
-        nowEntry.Arguments = creater.getLocals();
+        this.creator.createLocalVariablesForParameters(type.parameters);
+        nowEntry.Arguments = this.creator.Locals;
 
-        const nextToken = skipToken(token, '{');
+        const nextToken = Tokenutils.skipToken(token, '{');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'parseFunction' });
             throw new Error('Unexpected end of input');
@@ -1194,7 +1208,7 @@ class Parser {
         token = nextToken;
         nowEntry.body = this.blockStatement(token);
         token = this.tokenManager.nowToken;
-        nowEntry.locals = creater.getLocals();
+        nowEntry.locals = this.creator.Locals;
         ScopeManager.getInstance().leaveScope();
         return token;
     }
@@ -1216,9 +1230,9 @@ class Parser {
         const head: ASTNode = { nodeKind: ASTNodeKind.Return, nodeNumber: -1 };
         let current: ASTNode = head;
 
-        while (!isEqual(startToken, ')')) {
+        while (!Tokenutils.isEqual(startToken, ')')) {
             if (current !== head) {
-                const nextToken = skipToken(startToken, ',');
+                const nextToken = Tokenutils.skipToken(startToken, ',');
                 if (nextToken === undefined) {
                     logMessage('error', 'Unexpected end of input', { token, position: 'functionCall' });
                     throw new Error('Unexpected end of input');
@@ -1232,14 +1246,14 @@ class Parser {
 
             startToken = this.tokenManager.nowToken;
         }
-        const nextToken = skipToken(startToken, ')');
+        const nextToken = Tokenutils.skipToken(startToken, ')');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'functionCall' });
             throw new Error('Unexpected end of input');
         }
         this.tokenManager.nowToken = nextToken;
 
-        const node = creater.newNode(ASTNodeKind.FunctionCall);
+        const node = this.creator.newNode(ASTNodeKind.FunctionCall);
         node.functionDef = commons.getIdentifier(token);
         node.functionArgs = head.nextNode;
         return node;
@@ -1256,11 +1270,11 @@ class Parser {
     private parseGlobalVariable(token: Token, type: TypeDefinition): Token {
         let judgeFirst = true;
         while (true) {
-            const judge = consumeToken(token, ';', this.tokenManager);
+            const judge = Tokenutils.consumeToken(token, ';', this.tokenManager);
             token = this.tokenManager.nowToken;
             if (judge) break;
             if (!judgeFirst) {
-                const nextToken = skipToken(token, ',');
+                const nextToken = Tokenutils.skipToken(token, ',');
                 if (nextToken === undefined) {
                     logMessage('error', 'Unexpected end of input', { token, position: 'parseGlobalVariable' });
                     throw new Error('Unexpected end of input');
@@ -1274,7 +1288,7 @@ class Parser {
                 logMessage('error', 'Token is undefined', { token, position: 'parseGlobalVariable' });
                 throw new Error('Token is undefined');
             }
-            creater.newGlobalEntry(commons.getIdentifier(nowType.tokens), nowType, false);
+            this.creator.newGlobalEntry(commons.getIdentifier(nowType.tokens), nowType, false);
         }
         return token;
     }
@@ -1290,7 +1304,7 @@ class Parser {
      * @returns {TypeDefinition} 解析得到的类型。The parsed type.
      */
     private parseAbstractDeclarator(token: Token, type: TypeDefinition): TypeDefinition {
-        while (isEqual(token, '*')) {
+        while (Tokenutils.isEqual(token, '*')) {
             type = commons.pointerTo(type);
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'parseAbstractDeclarator' });
@@ -1299,7 +1313,7 @@ class Parser {
             token = token.next;
         }
 
-        if (isEqual(token, '(')) {
+        if (Tokenutils.isEqual(token, '(')) {
             const nextToken = token.next;
             if (nextToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'parseAbstractDeclarator' });
@@ -1307,7 +1321,7 @@ class Parser {
             }
             this.parseAbstractDeclarator(nextToken, type);
             token = this.tokenManager.nowToken;
-            const outToken = skipToken(token, ')');
+            const outToken = Tokenutils.skipToken(token, ')');
             if (outToken === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'parseAbstractDeclarator' });
                 throw new Error('Unexpected end of input');
@@ -1340,19 +1354,19 @@ class Parser {
      * @returns {ASTNode} 代表主表达式的抽象语法树节点。The abstract syntax tree node representing the primary expression.
      */
     private primary(token: Token): ASTNode {
-        if (isEqual(token, '(')) {
+        if (Tokenutils.isEqual(token, '(')) {
             const { returnNode } = this.bracketsPrimary(token);
             return returnNode;
         }
-        if (isEqual(token, 'sizeof')) {
+        if (Tokenutils.isEqual(token, 'sizeof')) {
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'primary' });
                 throw new Error('Unexpected end of input');
             }
             if (
-                isEqual(token.next, '(') &&
+                Tokenutils.isEqual(token.next, '(') &&
                 token.next.next !== undefined &&
-                isVariableTypeDefinition(token.next.next)
+                Tokenutils.isVariableTypeDefinition(token.next.next)
             ) {
                 const { returnNode } = this.sizeofVariableType(token.next.next);
 
@@ -1378,7 +1392,7 @@ class Parser {
         }
 
         if (token.kind === TokenType.Identifier) {
-            if (token.next !== undefined && isEqual(token.next, '(')) return this.functionCall(token);
+            if (token.next !== undefined && Tokenutils.isEqual(token.next, '(')) return this.functionCall(token);
             return this.identifierPrimary(token);
         }
 
@@ -1387,7 +1401,7 @@ class Parser {
                 logMessage('error', 'String type is undefined', { token, position: 'primary' });
                 throw new Error('String type is undefined');
             }
-            const node = creater.newStringLiteral(token.stringValue, token.stringType) as Variable;
+            const node = this.creator.newStringLiteral(token.stringValue, token.stringType) as Variable;
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'primary' });
                 throw new Error('Unexpected end of input');
@@ -1396,7 +1410,7 @@ class Parser {
 
             IntermediateManager.getInstance().emit('=', token.stringValue, undefined, `LC${node.name}`);
 
-            return creater.newVariableNode(node);
+            return this.creator.newVariableNode(node);
         }
 
         if (token.kind === TokenType.NumericLiteral) {
@@ -1404,7 +1418,7 @@ class Parser {
                 logMessage('error', 'Invalid number', { token, position: 'primary' });
                 throw new Error('Invalid number');
             }
-            const node = creater.newNumber(token.numericValue);
+            const node = this.creator.newNumber(token.numericValue);
             if (token.next === undefined) {
                 logMessage('error', 'Unexpected end of input', { token, position: 'primary' });
                 throw new Error('Unexpected end of input');
@@ -1437,7 +1451,7 @@ class Parser {
             logMessage('error', 'Variable not found', { token, position: 'identifierPrimary' });
             throw new Error('Variable not found');
         }
-        return creater.newVariableNode(variableNode);
+        return this.creator.newVariableNode(variableNode);
     }
 
     /**
@@ -1454,7 +1468,7 @@ class Parser {
             logMessage('error', 'TypeDefinition is undefined', { token, position: 'sizeofVariable' });
             throw new Error('TypeDefinition is undefined');
         }
-        return creater.newNumber(node.typeDef.size);
+        return this.creator.newNumber(node.typeDef.size);
     }
 
     /**
@@ -1468,7 +1482,7 @@ class Parser {
     private sizeofVariableType(token: Token): { returnNode: ASTNode; token: Token } {
         const type = this.parseType(token);
         token = this.tokenManager.nowToken;
-        const nextToken = skipToken(token, ')');
+        const nextToken = Tokenutils.skipToken(token, ')');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'sizeofVariableType' });
             throw new Error('Unexpected end of input');
@@ -1478,7 +1492,7 @@ class Parser {
             logMessage('error', 'TypeDefinition is undefined', { token, position: 'sizeofVariableType' });
             throw new Error('TypeDefinition is undefined');
         }
-        return { returnNode: creater.newNumber(type.size), token };
+        return { returnNode: this.creator.newNumber(type.size), token };
     }
 
     /**
@@ -1496,7 +1510,7 @@ class Parser {
         }
         const node = this.expression(token.next);
         token = this.tokenManager.nowToken;
-        const nextToken = skipToken(token, ')');
+        const nextToken = Tokenutils.skipToken(token, ')');
         if (nextToken === undefined) {
             logMessage('error', 'Unexpected end of input', { token, position: 'bracketsPrimary' });
             throw new Error('Unexpected end of input');
@@ -1525,7 +1539,7 @@ class Parser {
         }
         const leftNode: ASTNode = swapNodes ? this.add(token.next) : node;
         const rightNode: ASTNode = swapNodes ? node : this.add(token.next);
-        return creater.newBinary(kind, leftNode, rightNode);
+        return this.creator.newBinary(kind, leftNode, rightNode);
     };
 
     /**
@@ -1541,10 +1555,10 @@ class Parser {
             throw new Error('Unexpected end of input');
         }
         if (kind === ASTNodeKind.Addition) {
-            return Parser.ptrAdd(left, this.mul(token.next));
+            return this.ptrAdd(left, this.mul(token.next));
         }
         if (kind === ASTNodeKind.Subtraction) {
-            return Parser.ptrSub(left, this.mul(token.next));
+            return this.ptrSub(left, this.mul(token.next));
         }
         throw new Error('Invalid operation');
     };
@@ -1565,7 +1579,7 @@ class Parser {
             logMessage('error', 'Unexpected end of input', { token, position: 'handleEqualityOperation' });
             throw new Error('Unexpected end of input');
         }
-        return creater.newBinary(kind, left, this.relational(token.next));
+        return this.creator.newBinary(kind, left, this.relational(token.next));
     };
 
     /**
@@ -1580,7 +1594,7 @@ class Parser {
             logMessage('error', 'Unexpected end of input', { token, position: 'handleMulOperation' });
             throw new Error('Unexpected end of input');
         }
-        return creater.newBinary(kind, left, this.unary(token.next));
+        return this.creator.newBinary(kind, left, this.unary(token.next));
     };
 
     /**
@@ -1594,7 +1608,9 @@ class Parser {
             logMessage('error', 'Unexpected end of input', { token, position: 'handleUnaryOperation' });
             throw new Error('Unexpected end of input');
         }
-        return kind === ASTNodeKind.Addition ? this.unary(token.next) : creater.newUnary(kind, this.unary(token.next));
+        return kind === ASTNodeKind.Addition
+            ? this.unary(token.next)
+            : this.creator.newUnary(kind, this.unary(token.next));
     };
 }
 

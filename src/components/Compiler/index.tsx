@@ -22,7 +22,7 @@ import Separator from 'Components/Separator';
 import CustomAlert from 'Components/Alert';
 import Parser from 'Utils/parser/parser';
 import { GenerateCode, GenerateContext } from 'Utils/generator';
-import TokenManager from 'Src/utils/classes/tokenmanager-class';
+import TokenManager from 'Src/utils/lexer/tokenmanager';
 import Tokenizer from 'Src/utils/lexer/tokenizer';
 import OutputComponent from './output-component';
 import QuadrupleOutputComponent from './quadruple-output-component';

@@ -1,8 +1,8 @@
 import TokenType from '../enums/tokentype-enum';
-import Token from '../classes/token-class';
+import Token from './token';
 import { logMessage } from '../logger';
 import { addArray, charTypeDefinition } from '../commons';
-import TokenManager from '../classes/tokenmanager-class';
+import TokenManager from './tokenmanager';
 import {
     isValidFirstCharOfIdentifier,
     isValidNonFirstCharOfIdentifier,

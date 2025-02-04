@@ -1,4 +1,4 @@
-import Token from './token-class';
+import Token from './token';
 
 /**
  * 代表一个令牌管理器的类。

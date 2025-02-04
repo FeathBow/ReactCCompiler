@@ -1,5 +1,5 @@
-import type { ASTNode, Token } from '../classes';
-import { TypeDefinition } from '../classes';
+import { type ASTNode, TypeDefinition } from '../classes';
+import Token from '../lexer/token';
 import {
     intTypeDefinition,
     voidTypeDefinition,

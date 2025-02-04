@@ -1,8 +1,8 @@
 import TokenType from '../enums/tokentype-enum';
-import Token from '../classes/token-class';
+import Token from './token';
 import { logMessage } from '../logger';
 import { Keywords, VariableTypeDefinition } from '../enums';
-import TokenManager from '../classes/tokenmanager-class';
+import TokenManager from './tokenmanager';
 
 /**
  * 判断给定的 token 是否是一个关键字。Evaluate if the given token is a keyword.

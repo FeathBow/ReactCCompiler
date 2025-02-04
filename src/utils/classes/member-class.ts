@@ -1,4 +1,4 @@
-import Token from './token-class';
+import Token from '../lexer/token';
 import TypeDefinition from './typedef-class';
 
 /**

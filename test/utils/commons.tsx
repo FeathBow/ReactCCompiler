@@ -4,9 +4,8 @@ import { promisify } from 'node:util';
 import path from 'node:path';
 import os from 'node:os';
 import { GenerateCode, GenerateContext } from '../../src/utils/generator';
-import TokenManager from '../../src/utils/classes/tokenmanager-class';
-import Tokenizer from '../../src/utils/lexer/tokenizer';
-import Parser from '../../src/utils/parser/parser';
+import { TokenManager, Tokenizer } from '../../src/utils/lexer';
+import { Parser } from '../../src/utils/parser';
 
 const exec = promisify(execCallback);
 

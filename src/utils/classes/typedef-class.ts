@@ -1,4 +1,4 @@
-import type Token from './token-class';
+import type Token from '../lexer/token';
 import type ASTNodeType from '../enums/astnodetype-enum';
 import type Member from './member-class';
 
