@@ -235,10 +235,11 @@ export function addArray(type: TypeDefinition, length: number): TypeDefinition {
 /**
  * 在当前的变量列表中查找一个变量。Find a variable in the current list of local variables.
  * @param {Token} token 代表变量的令牌。The token representing the variable.
+ * @param {ScopeManager} scopeManager - 作用域管理器。The scope manager.
  * @returns {Variable | undefined} 如果找到了变量，则返回该变量的节点，否则返回undefined。The node of the variable if found, otherwise undefined.
  */
-export function findVariable(token: Token): Variable | undefined {
-    const result = ScopeManager.getInstance().findEntry(getIdentifier(token));
+export function findVariable(token: Token, scopeManager: ScopeManager): Variable | undefined {
+    const result = scopeManager.findEntry(getIdentifier(token));
     return result instanceof Variable ? result : undefined;
 }
 

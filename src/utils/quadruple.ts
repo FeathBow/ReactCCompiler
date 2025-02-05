@@ -17,13 +17,14 @@ export function getNodeValue(node: ASTNode | undefined): string | undefined {
 
 /**
  * 获取四元式。Get the quadruple.
+ * @param {IntermediateManager} intermediateManager - 四元式管理器。The intermediate manager.
  * @returns {string} 四元式输出。The quadruple output.
  */
-export function getQuadruple(): string {
+export function getQuadruple(intermediateManager: IntermediateManager): string {
     const nodeToQuadrupleMap = new Map<string, string>();
     let nextQuadrupleNumber = 1;
-    const quadrupleOutput = `${['id', 'op', 'argument1', 'argument2', 'result'].map((header) => header.padEnd(13)).join('')}\n${IntermediateManager.getInstance()
-        .codes.map(
+    const quadrupleOutput = `${['id', 'op', 'argument1', 'argument2', 'result'].map((header) => header.padEnd(13)).join('')}\n${intermediateManager.codes
+        .map(
             (code, index) =>
                 `${(100 + index).toString().padEnd(13)}${code
                     .map((item) => {

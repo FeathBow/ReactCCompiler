@@ -34,8 +34,7 @@ class Parser {
     constructor(tokenizer: Tokenizer) {
         this.tokenizer = tokenizer;
         this.tokenManager = tokenizer.manager;
-        this.creator = new Creator();
-        this.creator.initialParse();
+        this.creator = new Creator(new ScopeManager(), new IntermediateManager());
     }
 
     /**
@@ -56,7 +55,7 @@ class Parser {
                 this.declare(token, type).type === ASTNodeType.Function;
             token = judgeFunction ? this.parseFunction(token, type) : this.parseGlobalVariable(token, type);
         }
-        const quadrupleOutput = getQuadruple();
+        const quadrupleOutput = getQuadruple(this.creator.IntermediateManager);
         return { globalEntry: this.creator.Globals, quadrupleOutput };
     }
 
@@ -101,9 +100,9 @@ class Parser {
         }
         this.tokenManager.nowToken = nextToken;
         if (node.leftNode?.functionDef === undefined) {
-            IntermediateManager.getInstance().emit('return', getNodeValue(node.leftNode));
+            this.creator.IntermediateManager.emit('return', getNodeValue(node.leftNode));
         } else {
-            IntermediateManager.getInstance().emit('return', 'call', getNodeValue(node.leftNode));
+            this.creator.IntermediateManager.emit('return', 'call', getNodeValue(node.leftNode));
         }
 
         return { returnNode: node, token };
@@ -129,12 +128,12 @@ class Parser {
             throw new Error('Unexpected end of input');
         }
 
-        const conditionLabel = String(IntermediateManager.getInstance().nextquad);
+        const conditionLabel = String(this.creator.IntermediateManager.nextquad);
 
         node.condition = this.expression(conditionToken);
         token = this.tokenManager.nowToken;
         const conditionValue = getNodeValue(node.condition);
-        const jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0');
+        const jumpFalseIndex = this.creator.IntermediateManager.emit('j=', conditionValue, '0');
 
         const outToken: Token | undefined = Tokenutils.skipToken(token, ')');
         if (outToken === undefined) {
@@ -147,10 +146,10 @@ class Parser {
         }
         node.trueBody = this.statement(outToken);
 
-        IntermediateManager.getInstance().emit('j', undefined, undefined, conditionLabel);
-        IntermediateManager.getInstance().backpatch(
+        this.creator.IntermediateManager.emit('j', undefined, undefined, conditionLabel);
+        this.creator.IntermediateManager.backpatch(
             commons.makelist(String(jumpFalseIndex)),
-            String(IntermediateManager.getInstance().nextquad),
+            String(this.creator.IntermediateManager.nextquad),
         );
 
         return { returnNode: node, token };
@@ -178,7 +177,7 @@ class Parser {
         node.initBody = this.expressionStatement(initToken);
         token = this.tokenManager.nowToken;
 
-        const bIndex = IntermediateManager.getInstance().nextquad;
+        const bIndex = this.creator.IntermediateManager.nextquad;
 
         if (!Tokenutils.isEqual(token, ';')) {
             node.condition = this.expression(token);
@@ -189,7 +188,7 @@ class Parser {
 
         if (node.condition !== undefined) {
             const conditionValue = getNodeValue(node.condition);
-            jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0');
+            jumpFalseIndex = this.creator.IntermediateManager.emit('j=', conditionValue, '0');
         }
 
         let conditionToken: Token | undefined = Tokenutils.skipToken(token, ';');
@@ -198,7 +197,7 @@ class Parser {
             throw new Error('Unexpected end of input');
         }
 
-        const jumpTrueIndex = IntermediateManager.getInstance().emit('j');
+        const jumpTrueIndex = this.creator.IntermediateManager.emit('j');
 
         if (!Tokenutils.isEqual(conditionToken, ')')) {
             node.incrementBody = this.expression(conditionToken);
@@ -216,18 +215,18 @@ class Parser {
             throw new Error('Unexpected end of input');
         }
 
-        const cIndex = IntermediateManager.getInstance().nextquad;
-        IntermediateManager.getInstance().emit('j', undefined, undefined, String(bIndex));
+        const cIndex = this.creator.IntermediateManager.nextquad;
+        this.creator.IntermediateManager.emit('j', undefined, undefined, String(bIndex));
 
         node.trueBody = this.statement(outToken);
 
-        IntermediateManager.getInstance().emit('j', undefined, undefined, String(jumpTrueIndex + 1));
-        IntermediateManager.getInstance().backpatch(commons.makelist(String(jumpTrueIndex)), String(cIndex + 1));
+        this.creator.IntermediateManager.emit('j', undefined, undefined, String(jumpTrueIndex + 1));
+        this.creator.IntermediateManager.backpatch(commons.makelist(String(jumpTrueIndex)), String(cIndex + 1));
 
         if (node.condition !== undefined && jumpFalseIndex !== undefined) {
-            IntermediateManager.getInstance().backpatch(
+            this.creator.IntermediateManager.backpatch(
                 commons.makelist(String(jumpFalseIndex)),
-                String(IntermediateManager.getInstance().nextquad),
+                String(this.creator.IntermediateManager.nextquad),
             );
         }
 
@@ -257,7 +256,7 @@ class Parser {
         token = this.tokenManager.nowToken;
 
         const conditionValue = getNodeValue(node.condition);
-        const jumpFalseIndex = IntermediateManager.getInstance().emit('j=', conditionValue, '0', '-');
+        const jumpFalseIndex = this.creator.IntermediateManager.emit('j=', conditionValue, '0', '-');
 
         const elseToken: Token | undefined = Tokenutils.skipToken(token, ')');
         if (elseToken === undefined) {
@@ -268,11 +267,11 @@ class Parser {
         node.trueBody = this.statement(elseToken);
         token = this.tokenManager.nowToken;
 
-        const jumpIndex = IntermediateManager.getInstance().emit('j');
+        const jumpIndex = this.creator.IntermediateManager.emit('j');
 
-        IntermediateManager.getInstance().backpatch(
+        this.creator.IntermediateManager.backpatch(
             commons.makelist(String(jumpFalseIndex)),
-            String(IntermediateManager.getInstance().nextquad),
+            String(this.creator.IntermediateManager.nextquad),
         );
 
         if (Tokenutils.isEqual(token, 'else')) {
@@ -285,9 +284,9 @@ class Parser {
             token = this.tokenManager.nowToken;
         }
 
-        IntermediateManager.getInstance().backpatch(
+        this.creator.IntermediateManager.backpatch(
             commons.makelist(String(jumpIndex)),
-            String(IntermediateManager.getInstance().nextquad),
+            String(this.creator.IntermediateManager.nextquad),
         );
 
         this.tokenManager.nowToken = token;
@@ -413,7 +412,7 @@ class Parser {
         }
 
         if (tag !== undefined && !Tokenutils.isEqual(token, '{')) {
-            const foundTag = ScopeManager.getInstance().findTag(tag.name);
+            const foundTag = this.creator.ScopeManager.findTag(tag.name);
             if (foundTag !== undefined) {
                 this.tokenManager.nowToken = token;
                 return foundTag.type;
@@ -465,7 +464,7 @@ class Parser {
             throw new Error('Unexpected end of input');
         }
         this.tokenManager.nowToken = token.next;
-        if (tag !== undefined) ScopeManager.getInstance().declareTag(tag);
+        if (tag !== undefined) this.creator.ScopeManager.declareTag(tag);
         return type;
     }
 
@@ -608,10 +607,10 @@ class Parser {
                 current = current.nextNode = this.creator.newUnary(ASTNodeKind.ExpressionStatement, node);
 
                 if (rightNode.functionDef === undefined) {
-                    IntermediateManager.getInstance().emit(':=', 'call', getNodeValue(rightNode), variable.name);
-                } else IntermediateManager.getInstance().emit(':=', getNodeValue(rightNode), undefined, variable.name);
+                    this.creator.IntermediateManager.emit(':=', 'call', getNodeValue(rightNode), variable.name);
+                } else this.creator.IntermediateManager.emit(':=', getNodeValue(rightNode), undefined, variable.name);
             } else {
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     'declare',
                     String(variable?.type?.type),
                     undefined,
@@ -640,7 +639,7 @@ class Parser {
     private blockStatement(token: Token): ASTNode {
         const head: ASTNode = { nodeKind: ASTNodeKind.Return, nodeNumber: -1 };
         let current: ASTNode = head;
-        ScopeManager.getInstance().enterScope();
+        this.creator.ScopeManager.enterScope();
         while (!Tokenutils.isEqual(token, '}')) {
             current = current.nextNode = Tokenutils.isVariableTypeDefinition(token)
                 ? this.parseDeclaration(token)
@@ -648,7 +647,7 @@ class Parser {
             token = this.tokenManager.nowToken;
             commons.addType(current);
         }
-        ScopeManager.getInstance().leaveScope();
+        this.creator.ScopeManager.leaveScope();
         const node = this.creator.newNode(ASTNodeKind.Block);
         node.blockBody = head.nextNode;
         if (token.next === undefined) {
@@ -724,14 +723,14 @@ class Parser {
             node = this.creator.newBinary(ASTNodeKind.Assignment, node, this.assign(token.next));
             token = this.tokenManager.nowToken;
             if (node.rightNode?.functionDef === undefined) {
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     ':=',
                     getNodeValue(node.rightNode),
                     undefined,
                     getNodeValue(node.leftNode),
                 );
             } else {
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     ':=',
                     'call',
                     getNodeValue(node.rightNode),
@@ -759,7 +758,7 @@ class Parser {
                 node = this.handleEqualityOperation(token, kind, node);
                 token = this.tokenManager.nowToken;
 
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     operator,
                     getNodeValue(node.leftNode),
                     getNodeValue(node.rightNode),
@@ -794,7 +793,7 @@ class Parser {
                 node = this.handleRelationalOperation(token, kind, node, swapNodes);
                 token = this.tokenManager.nowToken;
 
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     operator,
                     getNodeValue(node.leftNode),
                     getNodeValue(node.rightNode),
@@ -829,7 +828,7 @@ class Parser {
                 node = this.handleAddOperation(token, kind, node);
                 token = this.tokenManager.nowToken;
 
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     operator,
                     getNodeValue(node.leftNode),
                     getNodeValue(node.rightNode),
@@ -863,7 +862,7 @@ class Parser {
                 node = this.handleMulOperation(token, kind, node);
                 token = this.tokenManager.nowToken;
 
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     operator,
                     getNodeValue(node.leftNode),
                     getNodeValue(node.rightNode),
@@ -981,7 +980,7 @@ class Parser {
         const primaryNode = node;
         node = this.creator.newUnary(ASTNodeKind.Dereference, this.ptrAdd(node, nowNode));
 
-        IntermediateManager.getInstance().emit(
+        this.creator.IntermediateManager.emit(
             '=[]',
             getNodeValue(primaryNode),
             getNodeValue(nowNode),
@@ -1065,7 +1064,7 @@ class Parser {
                 const kind: ASTNodeKind = operators.unaryOperators[operator];
                 const node = this.handleUnaryOperation(token, kind);
 
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     operator,
                     getNodeValue(node.leftNode),
                     undefined,
@@ -1195,8 +1194,8 @@ class Parser {
         if (nowEntry.declare === false) return token;
 
         this.creator.Locals = undefined;
-        IntermediateManager.getInstance().emit('begin', nowEntry.name, type.type);
-        ScopeManager.getInstance().enterScope();
+        this.creator.IntermediateManager.emit('begin', nowEntry.name, type.type);
+        this.creator.ScopeManager.enterScope();
         this.creator.createLocalVariablesForParameters(type.parameters);
         nowEntry.Arguments = this.creator.Locals;
 
@@ -1209,7 +1208,7 @@ class Parser {
         nowEntry.body = this.blockStatement(token);
         token = this.tokenManager.nowToken;
         nowEntry.locals = this.creator.Locals;
-        ScopeManager.getInstance().leaveScope();
+        this.creator.ScopeManager.leaveScope();
         return token;
     }
 
@@ -1241,8 +1240,8 @@ class Parser {
             }
             current = current.nextNode = this.assign(startToken);
 
-            if (current.functionDef === undefined) IntermediateManager.getInstance().emit('arg', getNodeValue(current));
-            else IntermediateManager.getInstance().emit('arg', 'call', getNodeValue(current));
+            if (current.functionDef === undefined) this.creator.IntermediateManager.emit('arg', getNodeValue(current));
+            else this.creator.IntermediateManager.emit('arg', 'call', getNodeValue(current));
 
             startToken = this.tokenManager.nowToken;
         }
@@ -1370,7 +1369,7 @@ class Parser {
             ) {
                 const { returnNode } = this.sizeofVariableType(token.next.next);
 
-                IntermediateManager.getInstance().emit(
+                this.creator.IntermediateManager.emit(
                     'sizeof',
                     String(returnNode.numberValue),
                     undefined,
@@ -1381,7 +1380,7 @@ class Parser {
             }
             const sizeofNode = this.sizeofVariable(token.next);
 
-            IntermediateManager.getInstance().emit(
+            this.creator.IntermediateManager.emit(
                 'sizeof',
                 String(sizeofNode.numberValue),
                 undefined,
@@ -1408,7 +1407,7 @@ class Parser {
             }
             this.tokenManager.nowToken = token.next;
 
-            IntermediateManager.getInstance().emit('=', token.stringValue, undefined, `LC${node.name}`);
+            this.creator.IntermediateManager.emit('=', token.stringValue, undefined, `LC${node.name}`);
 
             return this.creator.newVariableNode(node);
         }
@@ -1425,7 +1424,7 @@ class Parser {
             }
             this.tokenManager.nowToken = token.next;
 
-            IntermediateManager.getInstance().emit('=', String(token.numericValue), undefined, `N${node.nodeNumber}`);
+            this.creator.IntermediateManager.emit('=', String(token.numericValue), undefined, `N${node.nodeNumber}`);
 
             return node;
         }
@@ -1441,7 +1440,7 @@ class Parser {
      * @throws 当变量未定义或未找到时抛出错误。Throws an error when the variable is not defined or not found.
      */
     private identifierPrimary(token: Token): ASTNode {
-        const variableNode = commons.findVariable(token);
+        const variableNode = commons.findVariable(token, this.creator.ScopeManager);
         if (variableNode === undefined && token.location !== undefined && token.length !== undefined) {
             logMessage('error', 'Variable not defined', { token, position: 'identifierPrimary' });
             throw new Error('Variable not defined');

@@ -2,36 +2,20 @@
  * 定义四元式列表类，用于存储四元式的数组和下一个四元式的索引
  * Define the IntermediateCodeList class, which is used to store an array of quadruples and the index of the next quadruple
  */
-export class IntermediateManager {
-    private static instance: IntermediateManager;
+class IntermediateManager {
     codes: IntermediateCode[] = [];
     nextquad: number;
     nowVariable: number;
-    /** Private constructor to enforce singleton pattern */
-    private constructor() {
+
+    /**
+     * 构造函数。Constructor.
+     * 初始化四元式的变量编号，四元式编号，四元式列表。
+     * Initialize the variable number, quadruple number, and quadruple list.
+     */
+    constructor() {
         this.nowVariable = 0;
         this.nextquad = 100;
         this.codes = [];
-    }
-
-    /**
-     * 获取四元式列表的单例实例
-     * Get the singleton instance of IntermediateCodeList
-     * @returns {IntermediateManager} 返回四元式列表的单例实例。The singleton instance of IntermediateCodeList.
-     * @static
-     */
-    public static getInstance(): IntermediateManager {
-        if (IntermediateManager.instance === undefined) {
-            IntermediateManager.instance = new IntermediateManager();
-        }
-        return IntermediateManager.instance;
-    }
-
-    public static resetInstance(): void {
-        IntermediateManager.instance = new IntermediateManager();
-        IntermediateManager.instance.codes = [];
-        IntermediateManager.instance.nextquad = 100;
-        IntermediateManager.instance.nowVariable = 0;
     }
 
     /**
@@ -68,6 +52,7 @@ export class IntermediateManager {
 }
 
 export default IntermediateManager;
+
 /**
  * 四元式的类型定义
  * Type definition of quadruples

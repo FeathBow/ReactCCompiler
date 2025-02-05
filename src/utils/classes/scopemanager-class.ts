@@ -7,8 +7,7 @@ import type Tag from './tag-class';
  * Class representing a scope manager.
  */
 class ScopeManager {
-    private static instance: ScopeManager;
-    private scopeStack: Scope[] = [];
+    private readonly scopeStack: Scope[];
 
     /**
      * 类构造函数。
@@ -17,6 +16,7 @@ class ScopeManager {
      * @class
      */
     constructor() {
+        this.scopeStack = [];
         this.enterScope();
     }
 
@@ -95,29 +95,6 @@ class ScopeManager {
             if (found !== undefined) return found;
         }
         return undefined;
-    }
-
-    /**
-     * 获取 ScopeManager 的单例
-     * Get the singleton instance of ScopeManager
-     * @returns {ScopeManager} ScopeManager 的单例。The singleton instance of ScopeManager.
-     * @static
-     */
-    public static getInstance(): ScopeManager {
-        if (ScopeManager.instance === undefined) ScopeManager.instance = new ScopeManager();
-        return ScopeManager.instance;
-    }
-
-    /**
-     * 重置 ScopeManager 的单例
-     * Reset the singleton instance of ScopeManager
-     * @returns {void}
-     * @static
-     */
-    public static resetInstance(): void {
-        ScopeManager.instance = new ScopeManager();
-        ScopeManager.instance.scopeStack = [];
-        ScopeManager.instance.enterScope();
     }
 }
 

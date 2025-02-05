@@ -21,28 +21,21 @@ class Creator {
     private globals: SymbolEntry | undefined;
     private localConstantNumber: number;
     private astNodeNumber: number;
+    private readonly scopeManager: ScopeManager;
+    private readonly intermediateManager: IntermediateManager;
 
     /**
      * 构造函数。Constructor.
+     * @param {ScopeManager} scopeManager - 作用域管理器。The scope manager.
+     * @param {IntermediateManager} intermediateManager - 四元式管理器。The intermediate manager.
      */
-    constructor() {
+    constructor(scopeManager: ScopeManager, intermediateManager: IntermediateManager) {
         this.locals = undefined;
         this.globals = undefined;
         this.localConstantNumber = 0;
         this.astNodeNumber = 0;
-    }
-
-    /**
-     * 初始化解析。Initialize the parsing.
-     * @returns {void} 无返回值。No return value.
-     */
-    public initialParse(): void {
-        this.locals = undefined;
-        this.globals = undefined;
-        this.astNodeNumber = 0;
-        this.localConstantNumber = 0;
-        ScopeManager.resetInstance();
-        IntermediateManager.resetInstance();
+        this.scopeManager = scopeManager;
+        this.intermediateManager = intermediateManager;
     }
 
     /**
@@ -75,6 +68,14 @@ class Creator {
      */
     public set Locals(nowLocals: Variable | undefined) {
         this.locals = nowLocals;
+    }
+
+    public get ScopeManager(): ScopeManager {
+        return this.scopeManager;
+    }
+
+    public get IntermediateManager(): IntermediateManager {
+        return this.intermediateManager;
     }
 
     /**
@@ -158,7 +159,7 @@ class Creator {
      */
     public newLocalVariable(name: string, type: TypeDefinition): Variable {
         const localVariable = new Variable({ name, offsetFromRBP: 0, isGlobal: false, type, nextEntry: this.locals });
-        ScopeManager.getInstance().declareEntry(localVariable);
+        this.scopeManager.declareEntry(localVariable);
         this.locals = localVariable;
         return localVariable;
     }
@@ -175,7 +176,7 @@ class Creator {
         const globalEntry = isFunctionNode
             ? new FunctionNode({ name, locals: this.locals, returnFunc: this.globals, type, declare: isDeclare })
             : new Variable({ name, offsetFromRBP: 0, isGlobal: true, type, nextEntry: this.globals as Variable });
-        ScopeManager.getInstance().declareEntry(globalEntry);
+        this.scopeManager.declareEntry(globalEntry);
         this.globals = globalEntry;
         return globalEntry;
     }
@@ -208,8 +209,7 @@ class Creator {
                 throw new Error('Token is undefined');
             }
             this.newLocalVariable(getIdentifier(type.tokens), type);
-
-            IntermediateManager.getInstance().emit('param', getIdentifier(type.tokens), type.type);
+            this.intermediateManager.emit('param', getIdentifier(type.tokens), type.type);
         }
     }
 }
