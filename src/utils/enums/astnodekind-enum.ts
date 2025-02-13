@@ -47,6 +47,8 @@ enum ASTNodeKind {
     Comma,
     /** 成员选择(对象)。Member selection (object). */
     DotAccess,
+    /** 类型转换。Type cast. */
+    TypeCast,
 }
 
 export default ASTNodeKind;

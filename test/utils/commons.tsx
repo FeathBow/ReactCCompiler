@@ -1,18 +1,18 @@
 import { exec as execCallback, spawn } from 'node:child_process';
-import { writeFile, mkdir, rm } from 'node:fs/promises';
+import { writeFile, mkdir, rm, access } from 'node:fs/promises';
 import { promisify } from 'node:util';
 import path from 'node:path';
 import os from 'node:os';
+import { randomUUID } from 'node:crypto';
 import { GenerateCode, GenerateContext } from '../../src/utils/generator';
 import { TokenManager, Tokenizer } from '../../src/utils/lexer';
 import { Parser } from '../../src/utils/parser';
 
 const exec = promisify(execCallback);
-
 const OUTPUT_DIR = path.join(os.tmpdir(), 'reactccompiler-tests');
 
 /**
- * 确保输出目录存在。只需在整个测试期间创建一次即可。
+ * 确保输出目录存在。
  * ensure output directory exists.
  * @returns {Promise<void>}
  */
@@ -20,8 +20,36 @@ async function ensureOutput(): Promise<void> {
     try {
         await mkdir(OUTPUT_DIR, { recursive: true });
     } catch (error) {
-        console.error('Error ensuring output directory exists:', error);
+        console.error('Error ensuring base output directory exists:', error);
         throw error;
+    }
+}
+
+/**
+ * 为每个测试生成独立的临时目录。
+ * generate a unique temporary directory for each test.
+ * @param {string} uniqueName - 用于区分测试的唯一名称。The unique name for distinguishing tests.
+ * @returns {Promise<string>} - 生成的临时目录路径。The path to the generated temporary directory.
+ */
+async function createTestOutputDirectory(uniqueName: string): Promise<string> {
+    await ensureOutput();
+    const testDirectory = path.join(OUTPUT_DIR, `${uniqueName}-${randomUUID()}`);
+    await mkdir(testDirectory, { recursive: true });
+    return testDirectory;
+}
+
+/**
+ * 删除指定文件（如果存在）。
+ * remove file if exists.
+ * @param {string} filePath - 文件路径。The file path.
+ * @returns {Promise<void>}
+ */
+async function removeFileIfExists(filePath: string): Promise<void> {
+    try {
+        await access(filePath);
+        await rm(filePath, { force: true });
+    } catch {
+        // file not exists, ignore error.
     }
 }
 
@@ -47,12 +75,19 @@ export async function cleanupOutput(): Promise<void> {
  */
 async function runAssemblyCode(assemblyCode: string[], filename: string): Promise<string> {
     try {
-        await ensureOutput();
-        const asmFilePath = path.join(OUTPUT_DIR, `${filename}.s`);
-        await writeFile(asmFilePath, assemblyCode.join('\n'));
+        const testOutputDirectory = await createTestOutputDirectory(filename);
+        const asmFilePath = path.join(testOutputDirectory, `${filename}.s`);
         const executablePath =
-            process.platform === 'win32' ? path.join(OUTPUT_DIR, `${filename}.exe`) : path.join(OUTPUT_DIR, filename);
-        await exec(`gcc -o "${executablePath}" "${asmFilePath}"`);
+            process.platform === 'win32'
+                ? path.join(testOutputDirectory, `${filename}.exe`)
+                : path.join(testOutputDirectory, filename);
+
+        await removeFileIfExists(executablePath);
+        await writeFile(asmFilePath, assemblyCode.join('\n'));
+        const compileCmd = `gcc -o "${executablePath}" "${asmFilePath}"`;
+
+        await exec(compileCmd);
+        await access(executablePath);
         return await runBinaryAndGetCode(executablePath);
     } catch (error: unknown) {
         console.error('Error running assembly code:', error);
@@ -72,7 +107,7 @@ async function runBinaryAndGetCode(executablePath: string): Promise<string> {
         const timeout = setTimeout(() => {
             child.kill();
             reject(new Error('Process execution timed out'));
-        }, 5000);
+        }, 7000);
 
         child.on('error', (error) => {
             clearTimeout(timeout);
@@ -132,9 +167,9 @@ function runTestCases(
         for (const [index, testCase] of testCases.entries()) {
             const { code, expectedExitStatus } = testCase;
             const uniqueFilename = `${filenamePrefix}-${index}`;
-            test(`Code: ${code} should return exit status [${expectedExitStatus}]`, async () => {
+            test.concurrent(`Code: ${code} should return exit status [${expectedExitStatus}]`, async () => {
                 await testCode(code, expectedExitStatus, uniqueFilename);
-            }, 5000);
+            }, 7000);
         }
     });
 }

@@ -1,5 +1,5 @@
 import { alignToNearest } from '../commons';
-import { ASTNodeKind, ASTNodeType } from '../enums';
+import { ASTNodeKind, ASTNodeType, IntegerType } from '../enums';
 import { type TypeDefinition, type ASTNode, FunctionNode, Variable, SymbolEntry } from '../classes';
 import { logMessage } from '../logger';
 import { generateExpressionHandlerMap } from '../parser/handlers';
@@ -22,6 +22,29 @@ class CodeGenerator {
         2: this.reg16ForArguments,
         4: this.reg32ForArguments,
         default: this.reg64ForArguments,
+    };
+
+    private readonly castInstructions: Record<IntegerType, Partial<Record<IntegerType, string>>> = {
+        [IntegerType.Int8]: {
+            [IntegerType.Int64]: 'movsxd %eax, %rax',
+        },
+        [IntegerType.Int16]: {
+            [IntegerType.Int8]: 'movsbl %al, %eax',
+            [IntegerType.Int64]: 'movsxd %eax, %rax',
+        },
+        [IntegerType.Int32]: {
+            [IntegerType.Int8]: 'movsbl %al, %eax',
+            [IntegerType.Int16]: 'movswl %ax, %eax',
+            [IntegerType.Int64]: 'movsxd %eax, %rax',
+        },
+        [IntegerType.Int64]: {
+            [IntegerType.Int8]: 'movsbl %al, %eax',
+            [IntegerType.Int16]: 'movswl %ax, %eax',
+        },
+        [IntegerType.Uint8]: {},
+        [IntegerType.Uint16]: {},
+        [IntegerType.Uint32]: {},
+        [IntegerType.Uint64]: {},
     };
 
     /**
@@ -80,6 +103,31 @@ class CodeGenerator {
             const operation = sizeToStoreOperation[type.size] ?? sizeToStoreOperation.default;
             this.ctx.addLine(`  ${operation}`);
         }
+    }
+
+    /**
+     * 如果需要将 fromType 转换为 toType，则向生成上下文中添加转换指令。
+     * @param {IntegerType} fromType 原始整数类型。
+     * @param {IntegerType} toType 目标整数类型。
+     * @returns {void} 空。Void.
+     */
+    private typeCast(fromType: IntegerType, toType: IntegerType): void {
+        if (fromType === toType) return;
+        const instr = this.castInstructions[fromType]?.[toType];
+        if (instr) this.ctx.addLine(`  ${instr}`);
+    }
+
+    /**
+     * 将类型转换为整数类型。Convert a type to an integer type.
+     * @param {TypeDefinition} type 类型。Type.
+     * @returns {IntegerType} 整数类型。Integer type.
+     */
+    private integerType(type: TypeDefinition): IntegerType {
+        if (type.type === ASTNodeType.Char) return IntegerType.Int8;
+        if (type.type === ASTNodeType.Short) return IntegerType.Int16;
+        if (type.type === ASTNodeType.Integer) return IntegerType.Int32;
+        if (type.type === ASTNodeType.Int64) return IntegerType.Int64;
+        return IntegerType.Int64;
     }
 
     /**
@@ -158,6 +206,14 @@ class CodeGenerator {
             if (node.typeDef === undefined)
                 this.handleASTError(node, 'Invalid object member', ASTNodeKind.DotAccess, this.generateExpression);
             this.load(node.typeDef);
+        },
+        [ASTNodeKind.TypeCast]: (node: ASTNode) => {
+            if (node.leftNode === undefined || node.typeDef === undefined)
+                this.handleASTError(node, 'Invalid type cast', ASTNodeKind.TypeCast, this.generateExpression);
+            this.generateExpression(node.leftNode);
+            if (node.leftNode.typeDef === undefined)
+                this.handleASTError(node, 'Invalid type', ASTNodeKind.TypeCast, this.generateExpression);
+            this.typeCast(this.integerType(node.leftNode.typeDef), this.integerType(node.typeDef));
         },
     };
 

@@ -1,4 +1,4 @@
-import { getIdentifier } from '../commons';
+import { addType, getIdentifier } from '../commons';
 import ASTNodeKind from '../enums/astnodekind-enum';
 import {
     type SymbolEntry,
@@ -104,6 +104,23 @@ class Creator {
             nodeKind: kind,
             leftNode: lhs,
             rightNode: rhs,
+            nodeNumber: this.astNodeNumber,
+        };
+    }
+
+    /**
+     * 创建一个新的类型转换节点。Create a new type cast node.
+     * @param {TypeDefinition} type 类型定义。The type definition.
+     * @param {ASTNode} expr 操作数。The operand.
+     * @returns {ASTNode} 新创建的抽象语法树节点。The newly created abstract syntax tree node.
+     */
+    public newTypeCast(type: TypeDefinition, expr: ASTNode): ASTNode {
+        addType(expr);
+        this.astNodeNumber += 1;
+        return {
+            nodeKind: ASTNodeKind.TypeCast,
+            leftNode: expr,
+            typeDef: type.deepCopy(),
             nodeNumber: this.astNodeNumber,
         };
     }

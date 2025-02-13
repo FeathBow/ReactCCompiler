@@ -17,6 +17,7 @@ import { getNodeValue, getQuadruple } from '../quadruple';
 import * as handlers from './handlers';
 import Creator from './creator';
 import * as operators from './operators';
+import { skipToken } from '../lexer/tokenutils';
 
 /**
  * Parser 类封装了解析过程，依赖注入 Tokenizer（及其内部的 TokenManager）。
@@ -847,14 +848,40 @@ class Parser {
     }
 
     /**
+     * 解析一个类型转换表达式。Parse a type cast expression.
+     * 产生式为：类型转换 ::= '(' 类型 ')' 类型转换 | 一元
+     * Production rule: cast ::= '(' type ') cast | unary
+     * @param {Token} token 代表类型转换表达式的令牌。The token representing the type cast expression.
+     * @returns {ASTNode} 代表类型转换表达式的抽象语法树节点。The abstract syntax tree node representing the type cast expression.
+     */
+    private cast(token: Token): ASTNode {
+        if (Tokenutils.isEqual(token, '(')) {
+            if (token.next === undefined) {
+                logMessage('error', 'Unexpected end of input', { token, position: 'cast' });
+                throw new Error('Unexpected end of input');
+            }
+            if (Tokenutils.isVariableTypeDefinition(token.next)) {
+                token = token.next;
+                const type = this.parseType(token);
+                token = this.tokenManager.nowToken;
+                token = skipToken(token, ')');
+                const node = this.creator.newTypeCast(type, this.cast(token));
+                return node;
+            }
+            return this.unary(token);
+        }
+        return this.unary(token);
+    }
+
+    /**
      * 解析一个乘法表达式。Parse a multiplication expression.
-     * 产生式为：乘法 ::= 一元 ( '*' 一元 | '/' 一元 )*
-     * Production rule: mul ::= unary ( '*' unary | '/' unary )*
+     * 产生式为：乘法 ::= 类型转换 ( '*' 类型转换 | '/' 类型转换 )*
+     * Production rule: mul ::= cast ( '*' cast | '/' cast )*
      * @param {Token} token 代表乘法表达式的令牌。The token representing the multiplication expression.
      * @returns {ASTNode} 代表乘法表达式的抽象语法树节点。The abstract syntax tree node representing the multiplication expression.
      */
     private mul(token: Token): ASTNode {
-        let node = this.unary(token);
+        let node = this.cast(token);
         token = this.tokenManager.nowToken;
         const processOperator = (operator: string): boolean => {
             if (Tokenutils.isEqual(token, operator)) {
@@ -1593,7 +1620,7 @@ class Parser {
             logMessage('error', 'Unexpected end of input', { token, position: 'handleMulOperation' });
             throw new Error('Unexpected end of input');
         }
-        return this.creator.newBinary(kind, left, this.unary(token.next));
+        return this.creator.newBinary(kind, left, this.cast(token.next));
     };
 
     /**
@@ -1608,8 +1635,8 @@ class Parser {
             throw new Error('Unexpected end of input');
         }
         return kind === ASTNodeKind.Addition
-            ? this.unary(token.next)
-            : this.creator.newUnary(kind, this.unary(token.next));
+            ? this.cast(token.next)
+            : this.creator.newUnary(kind, this.cast(token.next));
     };
 }
 

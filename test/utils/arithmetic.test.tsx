@@ -98,4 +98,12 @@ describe('Arithmetic operations', () => {
     ];
     runTestCases(commaTestCases, 'Comma test');
 
+    const typecastTestCases = [
+        { code: 'int main(){ return (int)4294967300; }', expectedExitStatus: '4' },
+        { code: 'int main(){ return (short)4295032840; }', expectedExitStatus: '8' },
+        { code: 'int main(){ return (char)257; }', expectedExitStatus: '1' },
+        { code: 'int main(){ int a = 64; *(char *)&a = 1; return a; }', expectedExitStatus: '1' },
+        { code: 'int main(){ int a = 65536; *(short *)&a = 257; return (char)a; }', expectedExitStatus: '1' },
+    ];
+    runTestCases(typecastTestCases, 'Typecast test');
 });
