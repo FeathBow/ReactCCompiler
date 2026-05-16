@@ -15,11 +15,11 @@ import {
     Container,
     Heading,
 } from '@chakra-ui/react';
-import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { ArrowForwardIcon, ChevronDownIcon, ChevronUpIcon } from '@chakra-ui/icons';
 import { useLocation } from 'react-router-dom';
 import Separator from 'Components/Separator';
 import CustomAlert from 'Components/Alert';
+import { getSyntaxHighlightStyle } from 'Utils/syntax-highlighting';
 import Parser from 'Utils/parser/parser';
 import { GenerateCode, GenerateContext } from 'Utils/generator';
 import TokenManager from 'Src/utils/lexer/tokenmanager';
@@ -117,7 +117,7 @@ function Compiler(): JSX.Element {
         })();
     };
 
-    const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
+    const currentStyle = getSyntaxHighlightStyle(colorMode);
     const isAssemblyPage = location.pathname === '/assembly';
     const isQuadruplePage = location.pathname === '/quadruple';
     const pageTitle = isAssemblyPage ? 'C Code to Assembly Converter' : 'C Code to Quadruple Converter';

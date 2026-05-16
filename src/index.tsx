@@ -1,7 +1,8 @@
 /* eslint-disable import/no-import-module-exports */
 import * as React from 'react';
 import ReactDOM from 'react-dom';
-import { ChakraProvider } from '@chakra-ui/react';
+import { ChakraProvider } from '@chakra-ui/provider';
+import { baseTheme } from '@chakra-ui/theme';
 import Header from 'Components/Header';
 import { HashRouter as Router } from 'react-router-dom';
 import AppRoutes from './routes';
@@ -20,7 +21,7 @@ if (module?.hot !== undefined) {
  */
 function IndexView(): JSX.Element {
     return (
-        <ChakraProvider>
+        <ChakraProvider theme={baseTheme}>
             <Router>
                 <Header />
                 <AppRoutes />

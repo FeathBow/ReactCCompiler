@@ -21,18 +21,6 @@ module.exports = merge(common, {
             banner: '/* @preserve */',
         }),
     ],
-    optimization: {
-        splitChunks: {
-            chunks: 'all',
-            cacheGroups: {
-                vendors: {
-                    test: /[/\\]node_modules[/\\]/,
-                    name: 'vendors',
-                    chunks: 'all',
-                },
-            },
-        },
-    },
 });
 
 /* eslint-enable @typescript-eslint/no-var-requires */

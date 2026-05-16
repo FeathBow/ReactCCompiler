@@ -16,10 +16,9 @@ import {
 } from '@chakra-ui/react';
 import React from 'react';
 import { CopyIcon } from '@chakra-ui/icons';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/cjs/styles/prism';
 import CustomAlert from 'Components/Alert';
 import Separator from 'Components/Separator';
+import SyntaxHighlighter, { getSyntaxHighlightStyle } from 'Utils/syntax-highlighting';
 import { Link as RouterLink } from 'react-router-dom';
 
 /**
@@ -32,7 +31,7 @@ function HelpsPage(): JSX.Element {
     const codeStringC = 'int main()\n{\n\treturn 42;\n}';
     const codeStringCommand = 'gcc -o test test.s && ./test && echo $?';
     const { colorMode } = useColorMode();
-    const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
+    const currentStyle = getSyntaxHighlightStyle(colorMode);
     const boxShadowColor = colorMode === 'light' ? 'rgba(0, 0, 0, 0.3)' : 'rgba(255, 255, 255, 0.3)';
 
     const handleCopy = (textToCopy: string): void => {
@@ -357,8 +356,9 @@ function HelpsPage(): JSX.Element {
                     </ListItem>
                     <ListItem>
                         <Text>
-                            <Text as='b'>Further Assistance:</Text> Don&apos;t hesitate to search online for tutorials on
-                            using the command line or compiling code. There are many resources available for beginners.
+                            <Text as='b'>Further Assistance:</Text> Don&apos;t hesitate to search online for tutorials
+                            on using the command line or compiling code. There are many resources available for
+                            beginners.
                         </Text>
                     </ListItem>
                 </UnorderedList>

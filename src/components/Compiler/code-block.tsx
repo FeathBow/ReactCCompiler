@@ -1,7 +1,7 @@
 import React from 'react';
 import { Box, Collapse, Text } from '@chakra-ui/react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import CustomAlert from 'Components/Alert';
+import SyntaxHighlighter, { type SyntaxHighlightStyle } from 'Utils/syntax-highlighting';
 
 /**
  * CodeBlock properties.
@@ -16,7 +16,7 @@ export interface CodeBlockProperties {
     isOpen: boolean;
     code: string;
     colorMode: string;
-    currentStyle: Record<string, React.CSSProperties>;
+    currentStyle: SyntaxHighlightStyle;
     codeLanguage?: string;
 }
 

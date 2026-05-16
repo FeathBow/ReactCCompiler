@@ -14,8 +14,7 @@ import {
     Text,
 } from '@chakra-ui/react';
 import { CopyIcon } from '@chakra-ui/icons';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import SyntaxHighlighter, { getSyntaxHighlightStyle } from 'Utils/syntax-highlighting';
 
 /**
  * CodeModal properties.
@@ -42,7 +41,7 @@ function CodeModal({ isOpen, onClose, code, result }: Readonly<CodeModalProperti
     const bg = useColorModeValue('white', 'gray.700');
     const color = useColorModeValue('gray.800', 'white');
     const { colorMode } = useColorMode();
-    const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
+    const currentStyle = getSyntaxHighlightStyle(colorMode);
 
     return (
         <Modal isOpen={isOpen} onClose={onClose} isCentered size='xl'>

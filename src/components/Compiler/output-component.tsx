@@ -1,9 +1,8 @@
 import React from 'react';
 import { Box, Button, useToast, useColorMode } from '@chakra-ui/react';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { solarizedlight, okaidia } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { CopyIcon } from '@chakra-ui/icons';
 import CustomAlert from 'Components/Alert';
+import SyntaxHighlighter, { getSyntaxHighlightStyle } from 'Utils/syntax-highlighting';
 
 interface OutputProperties {
     readonly output: string[];
@@ -19,7 +18,7 @@ function OutputComponent({ output }: OutputProperties): JSX.Element {
     const toast = useToast();
     const { colorMode } = useColorMode();
 
-    const currentStyle = colorMode === 'light' ? solarizedlight : okaidia;
+    const currentStyle = getSyntaxHighlightStyle(colorMode);
 
     return (
         <Box>
