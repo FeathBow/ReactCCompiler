@@ -16,7 +16,6 @@ module.exports = {
         'airbnb/hooks',
         'plugin:@typescript-eslint/recommended-type-checked',
         'plugin:@typescript-eslint/stylistic-type-checked',
-        'standard-with-typescript',
         'plugin:react/recommended',
         'plugin:@typescript-eslint/recommended',
         'plugin:eslint-comments/recommended',
@@ -27,6 +26,8 @@ module.exports = {
     parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
+        project: './tsconfig.json',
+        tsconfigRootDir: __dirname,
         ecmaFeatures: {
             jsx: true,
         },

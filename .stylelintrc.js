@@ -10,7 +10,7 @@ module.exports = {
     // },
     // ignoreFiles: ['node_modules/**/*', 'build/**/*'],
 
-    extends: ['stylelint-config-standard', 'stylelint-config-rational-order'],
+    extends: ['stylelint-config-standard'],
     plugins: ['stylelint-order', 'stylelint-declaration-block-no-ignored-properties'],
     rules: {
         'plugin/declaration-block-no-ignored-properties': true,
