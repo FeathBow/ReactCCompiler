@@ -158,7 +158,7 @@
         "react-dom": "^18.2.0",
         "react-icons": "^5.0.1",
         "react-native-logs": "^5.1.0",
-        "react-router-dom": "^6.30.3",
+        "react-router-dom": "^6.30.4",
         "react-syntax-highlighter": "^16.1.0",
         "styled-components": "^6.1.8",
         "sweetalert2": "^11.22.4",
